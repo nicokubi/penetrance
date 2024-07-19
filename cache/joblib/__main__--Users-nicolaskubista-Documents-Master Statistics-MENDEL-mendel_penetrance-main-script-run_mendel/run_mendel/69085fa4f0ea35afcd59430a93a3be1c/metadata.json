@@ -1,1 +1,0 @@
-{"duration": 5.11121392250061, "input_args": {"data_dir": "'../data'", "keep_results": "True", "**": "{'age_cutoffs': [0, 20, 40, 60, 90], 'cancer_type': 'breast', 'label': '', 'mxiter': 500, 'parinit': 0.5, 'parmax': 10, 'parmin': -10, 'rr_model': 'linear', 'travel': 'SEARCH'}"}, "time": 1721404374.226839}
