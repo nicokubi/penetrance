@@ -21,7 +21,7 @@ Open the source directory as new R project and install the package with
 
 This following is a quick-start guide for basic usage of the package.
 For greater detail on options, please refer to the other vignettes
-[using_PenEstim]() and documentation.
+[using_PenEstim](https://github.com/nicokubi/PenEstim/blob/main/vignettes/using_PenEstim.Rmd) and documentation.
 
 The primary function in the package is `PenEstim`. The package workflow
 includes three main parts: user input, including family data in the form
