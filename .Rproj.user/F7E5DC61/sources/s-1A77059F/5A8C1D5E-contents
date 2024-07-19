@@ -1,0 +1,296 @@
+---
+title: "PenEstim - CoH Application"
+subtitle: "Comparing with and without Proband"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 6-11-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(clipp)
+library(survival)
+library(plyr) #need to load plyr before dplyr
+library(truncnorm)
+library(PanelPRO)
+library(tidyverse)
+library(stringr)
+library(PedUtils)
+library(survival)
+library(MASS)
+library(profvis)
+library(survminer)
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(rlang)
+library(GGally)
+library(gridExtra)
+library(kinship2)
+
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/prior_elicitation.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/helpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/outputHelpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/mhLoglikehood.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/PenEstimMain.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/InternalVars.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/imputeAges.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/Additional Scripts/describeFamilies.R")
+```
+
+# Descriptive Statistics - CoH MLH1 Families
+
+```{r fam4, echo=TRUE, cache=FALSE}
+
+# Load data
+load("/Users/nicolaskubista/Dropbox (Partners HealthCare)/CCGCRN Hispanic Cohort Data/PenEstim/Data/carrierProbandFamilies_cohPedigree_MLH1.RData")
+
+dat <- carrierProbandFamilies_cohPedigree_MLH1
+
+describeFamilies(dat,"Colorectal","MLH1")
+```
+
+
+
+## Trance Plots (with Proband)
+
+```{r a1, echo=TRUE, cache=FALSE}
+load("/Users/nicolaskubista/Documents/Master Statistics/PenEstim - App/Application - CoH/out_sim_COL.Rdata")
+plot_traceSingle(out_sim_COL$results[[1]])
+
+```
+
+## Trance Plots (without Proband)
+
+```{r a2, echo=TRUE, cache=FALSE}
+load("/Users/nicolaskubista/Documents/Master Statistics/PenEstim - App/Application - CoH/out_sim_COL_woP.Rdata")
+plot_traceSingle(out_sim_COL_woP$results[[1]])
+
+```
+
+
+# Comparison of Posterior Densities
+
+```{r comp3, echo=TRUE, cache=FALSE}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+
+# Function to combine data for plotting
+combine_data <- function(values_A, values_B, parameter_name) {
+  data_A <- data.frame(value = c(values_A$male, values_A$female),
+                       gender = rep(c("Male", "Female"), each = length(values_A$male)),
+                       method = "with Proband",
+                       parameter = parameter_name)
+
+  data_B <- data.frame(value = c(values_B$male, values_B$female),
+                       gender = rep(c("Male", "Female"), each = length(values_B$male)),
+                       method = "without Proband",
+                       parameter = parameter_name)
+
+  combined_data <- rbind(data_A, data_B)
+  return(combined_data)
+}
+
+# Extract and combine data for each parameter
+params_A <- list(
+  first_quartile = list(male = out_sim_COL$combined_chains$first_quartile_male_results,
+                        female = out_sim_COL$combined_chains$first_quartile_female_results),
+  median = list(male = out_sim_COL$combined_chains$median_male_results,
+                female = out_sim_COL$combined_chains$median_female_results),
+  threshold = list(male = out_sim_COL$combined_chains$threshold_male_results,
+                   female = out_sim_COL$combined_chains$threshold_female_results),
+  asymptote = list(male = out_sim_COL$combined_chains$asymptote_male_results,
+                   female = out_sim_COL$combined_chains$asymptote_female_results)
+)
+
+params_B <- list(
+  first_quartile = list(male = out_sim_COL_woP$combined_chains$first_quartile_male_results,
+                        female = out_sim_COL_woP$combined_chains$first_quartile_female_results),
+  median = list(male = out_sim_COL_woP$combined_chains$median_male_results,
+                female = out_sim_COL_woP$combined_chains$median_female_results),
+  threshold = list(male = out_sim_COL_woP$combined_chains$threshold_male_results,
+                   female = out_sim_COL_woP$combined_chains$threshold_female_results),
+  asymptote = list(male = out_sim_COL_woP$combined_chains$asymptote_male_results,
+                   female = out_sim_COL_woP$combined_chains$asymptote_female_results)
+)
+
+# Combine all data for plotting
+combined_data_all <- bind_rows(
+  combine_data(params_A$first_quartile, params_B$first_quartile, "First Quartile"),
+  combine_data(params_A$median, params_B$median, "Median"),
+  combine_data(params_A$threshold, params_B$threshold, "Threshold"),
+  combine_data(params_A$asymptote, params_B$asymptote, "Asymptote")
+)
+
+# Separate data for males and females
+combined_data_male <- combined_data_all %>% filter(gender == "Male")
+combined_data_female <- combined_data_all %>% filter(gender == "Female")
+
+# Plot for males
+plot_male <- ggplot(combined_data_male, aes(x = value, color = method)) +
+  geom_density() +
+  facet_wrap(~ parameter, scales = "free") +
+  labs(title = "Posterior Densities Comparison - Males",
+       x = "Value",
+       y = "Density") +
+  theme_minimal()
+
+# Plot for females
+plot_female <- ggplot(combined_data_female, aes(x = value, color = method)) +
+  geom_density() +
+  facet_wrap(~ parameter, scales = "free") +
+  labs(title = "Posterior Densities Comparison - Females",
+       x = "Value",
+       y = "Density") +
+  theme_minimal()
+
+# Print the plots
+print(plot_male)
+print(plot_female)
+
+```
+# Comparison of Penetrance Curves
+
+```{r comp4, echo=TRUE, cache=FALSE}
+# Function to plot the penetrance and compare with Panelpro Database and additional data
+plot_penetrance_comparison <- function(data, db_sim, prob, max_age, cancer, gene, sex, race, type, additional_data) {
+  if (prob <= 0 || prob >= 1) {
+    stop("prob must be between 0 and 1")
+  }
+
+  # Helper function to calculate Weibull cumulative density
+  calculate_cumulative_density <- function(data, sex) {
+    params <- if (sex == "Male") {
+      calculate_weibull_parameters(
+        data$median_male_results,
+        data$first_quartile_male_results,
+        data$threshold_male_results
+      )
+    } else if (sex == "Female") {
+      calculate_weibull_parameters(
+        data$median_female_results,
+        data$first_quartile_female_results,
+        data$threshold_female_results
+      )
+    } else {
+      stop("Invalid sex. Please choose 'Male' or 'Female'.")
+    }
+
+    alphas <- params$alpha
+    betas <- params$beta
+    thresholds <- if (sex == "Male") data$threshold_male_results else data$threshold_female_results
+    asymptotes <- if (sex == "Male") data$asymptote_male_results else data$asymptote_female_results
+
+    x_values <- seq(1, max_age)
+
+    cumulative_density <- mapply(function(alpha, beta, threshold, asymptote) {
+      pweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
+    }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+
+    distributions_matrix <- matrix(unlist(cumulative_density), nrow = length(x_values), byrow = FALSE)
+    mean_density <- rowMeans(distributions_matrix, na.rm = TRUE)
+
+    lower_prob <- (1 - prob) / 2
+    upper_prob <- 1 - lower_prob
+    lower_ci <- apply(distributions_matrix, 1, quantile, probs = lower_prob)
+    upper_ci <- apply(distributions_matrix, 1, quantile, probs = upper_prob)
+
+    list(mean_density = mean_density, lower_ci = lower_ci, upper_ci = upper_ci)
+  }
+
+  # Calculate Weibull cumulative densities for both data sets
+  main_density <- calculate_cumulative_density(data, sex)
+  additional_density <- calculate_cumulative_density(additional_data, sex)
+
+  # Extract cumulative data from the Panelpro Database
+  dim_names <- attr(db_sim$Penetrance, "dimnames")
+  cancer_index <- which(dim_names[[1]] == cancer)
+  gene_index <- which(dim_names[[2]] == gene)
+  race_index <- which(dim_names[[3]] == race)
+  sex_index <- which(dim_names[[4]] == sex)
+  type_index <- which(dim_names[[6]] == type)
+
+  density_data <- db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index]
+  cumulative_density_panelpro <- cumsum(density_data)
+
+  # Create data frame for plotting
+  age_values <- seq_along(density_data)
+  min_length <- min(length(cumulative_density_panelpro), length(main_density$mean_density), length(additional_density$mean_density))
+
+  plot_df <- data.frame(
+    age = age_values[1:min_length],
+    cumulative_density_panelpro = cumulative_density_panelpro[1:min_length],
+    main_mean_density = main_density$mean_density[1:min_length],
+    main_lower_ci = main_density$lower_ci[1:min_length],
+    main_upper_ci = main_density$upper_ci[1:min_length],
+    additional_mean_density = additional_density$mean_density[1:min_length],
+    additional_lower_ci = additional_density$lower_ci[1:min_length],
+    additional_upper_ci = additional_density$upper_ci[1:min_length]
+  )
+
+  # Plot the cumulative densities with credible intervals
+ ggplot(plot_df, aes(x = age)) +
+    geom_line(aes(y = cumulative_density_panelpro, color = "PanelPro Cumulative Density (for reference only)"), linewidth = 1, linetype = "solid", na.rm = TRUE) +
+    geom_line(aes(y = main_mean_density, color = "Weibull Mean Density (without Proband)"), linewidth = 1, linetype = "dotted", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = main_lower_ci, ymax = main_upper_ci), alpha = 0.2, fill = "red", na.rm = TRUE) +
+    geom_line(aes(y = additional_mean_density, color = "Weibull Mean Density (with Proband)"), linewidth = 1, linetype = "dashed", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = additional_lower_ci, ymax = additional_upper_ci), alpha = 0.2, fill = "green", na.rm = TRUE) +
+    labs(title = paste("Cumulative Density Comparison for", sex, "in", race),
+         x = "Age",
+         y = "Cumulative Density",
+         color = "Legend") +
+    theme_minimal() +
+    scale_color_manual(values = c("PanelPro Cumulative Density (for reference only)" = "blue", 
+                                  "Weibull Mean Density (without Proband)" = "red",
+                                  "Weibull Mean Density (with Proband)"= "green")) +
+    scale_y_continuous(labels = scales::percent)
+}
+
+
+
+plot_penetrance_comparison(
+  data = out_sim_COL$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "MLH1_hetero_anyPV", 
+  race = "All_Races",
+  sex = "Male",
+  type = "Net",
+  additional_data = out_sim_COL_woP$combined_chains
+)
+
+plot_penetrance_comparison(
+  data = out_sim_COL$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "MLH1_hetero_anyPV", 
+  race = "All_Races",
+  sex = "Female",
+  type = "Net",
+  additional_data = out_sim_COL_woP$combined_chains
+  
+)
+
+
+
+```
+
+
+

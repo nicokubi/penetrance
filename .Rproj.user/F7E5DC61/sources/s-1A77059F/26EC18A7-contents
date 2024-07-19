@@ -1,0 +1,412 @@
+---
+title: "Vignette for clipp"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{using_clipp}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+The R package `clipp` provides a fast and general implementation of the Elston-Stewart
+algorithm.    
+
+The main function is `pedigree_loglikelihood`, which calculates the 
+pedigree log-likelihood for almost any choice of genetic model.  Helper functions 
+are provided that specify commonly used genetic models, though users 
+are free to define and use more advanced ones.  Combining `clipp` with 
+an optimisation function like `mle` allows the user to perform 
+maximum-likelihood estimation of model parameters, as illustrated below.  
+
+`clipp` also provides a function, `genotype_probabilities`, that calculates 
+genotype probabilities for a target person within a family, given the family's 
+observed data. 
+
+## Pedigree likelihoods
+
+The function `pedigree_loglikelihood` calculates (the logarithm of) any pedigree 
+likelihood that can be written in Ott's form, as given on page 117 of (Lange, 2002). 
+In this formulation, the likelihood $L$ for a given family is 
+$$ L = \sum_{g_1} \dots \sum_{g_n} \prod_{i=1}^n P(x_i \mid g_i) P(g_i \mid g_{m(i)}, g_{f(i)}),$$
+where: there are $n$ members of the family, who are labeled by identifiers 
+$i = 1, \dots, n$; $g_i$ and $x_i$ are the genotype and observed data for 
+person $i$, respectively;  $P(x_i \mid g_i)$ is the conditional probability of 
+person $i$'s observed data give his or her genotype; $m(i)$ and $f(i)$ are the 
+identifiers of person $i$'s mother and father, respectively, or missing 
+if person $i$ is a founder (i.e. if person $i$ does not have parents in the pedigree); 
+and $P(g_i \mid g_{m(i)}, g_{f(i)})$ is either the population prevalence 
+of genotype $g_i$ (if person $i$ is a founder) or the conditional probability of 
+offspring genotype $g_i$ given parental genotypes $g_{m(i)}$ and 
+$g_{f(i)}$ (if person $i$ is a non-founder).  Each sum is over all 
+possible genotypes at the genetic locus under consideration (or over all 
+possible multi-locus genotypes if we are modeling two or more genetic loci).  
+
+The terms in this likelihood correspond to the main arguments of the function 
+`pedigree_loglikelihood`. The argument `dat` specifies the family structure, 
+i.e. $m(i)$ and $f(i)$ for all family members $i$. The argument `geno_freq`
+specifies the population genotype prevalences, i.e. 
+$P(g_i \mid g_{m(i)}, g_{f(i)})$ when person $i$ is a founder.  The argument `trans` 
+specifies the transmission probabilities, i.e. $P(g_i \mid g_{m(i)}, g_{f(i)})$ 
+when person $i$ is a non-founder.  Lastly, the penetrance matrix `penet` specifies 
+the relationship between the observed data and the genotypes, i.e. $P(x_i \mid g_i)$. 
+
+## Specifying the genetic model
+
+The transmission probabilities `trans` and population genotype prevalences `geno_freq` 
+determine the joint probability for any combination of genotypes 
+within a family, so we say that `trans` and `geno_freq` define the genetic model 
+of the analysis.  These terms are usually based on known genetic laws (such as 
+Mendel's laws) and user-specified genotype or allele frequencies. 
+`clipp` provides helper functions to calculate `trans` and `geno_freq` for 
+common genetic models.  For example, the following code specifies a genetic 
+model consisting of a single biallelic locus with a minor allele frequency 
+of 10%.  
+
+```{r}
+library(clipp)
+MAF <- 0.1
+geno_freq <- geno_freq_monogenic(p_alleles = c(1 - MAF, MAF))
+trans <- trans_monogenic(n_alleles = 2)
+```
+
+We can view a more user-friendly version of the genotype frequencies by using 
+the option `annotate = TRUE`.   
+
+```{r}
+geno_freq_monogenic(p_alleles = c(1 - MAF, MAF), annotate = TRUE)
+```
+
+This shows that the alleles at the genetic locus have been given the default names 
+`1` and `2`, and that the possible genotypes are `1/1`, `1/2` and `2/2`. 
+In this example, the population prevalence of the heterozygous genotype `1/2` is 18%. 
+
+The option `annotate = TRUE` also reveals a more user-friendly version of the 
+transmission probabilities.  
+
+```{r}
+trans_monogenic(n_alleles = 2, annotate = TRUE)
+```
+
+Here, the rows correspond to the nine possible joint parental genotypes and the 
+last three columns correspond to the three possible offspring genotypes.
+Each number is the conditional probability of the offspring genotype,
+given the parental genotypes. 
+For example, row `3` says that when the mother has genotype `1/1` 
+and the father has genotype `2/2` then the offspring will have genotype `1/2` 
+(with probability `1`).  The probabilities in this table are 
+given by Mendel's laws of genetics.  Note that the probabilities in each row 
+sum to `1`, since the offspring must always have one of the three possible 
+genotypes, regardless of the parental genotypes.
+
+## Calculating the pedigree likelihood
+
+Now that we've defined a genetic model, we can use the function `pedigree_loglikelihood`
+to calculate the pedigree log-likelihoods of some sample families. 
+
+```{r}
+data("dat_small", "penet_small", "dat_large", "penet_large")
+head(dat_small)
+head(penet_small)
+```
+
+Each row of `dat_small` corresponds to a person in one of 10 families. 
+Here, `dat_small` specifies the family structure for these 10 families, meaning that 
+`dat_small` specifies the mother and father of each person in each family. 
+Some people, such as person `ora002`, have missing parental identifiers
+because they are founders (i.e. their parents are not included in the pedigree).
+Each person has either both or no parents included in their pedigree, i.e. if 
+the mother identifier is missing then so is the father identifier, and vice versa.
+Also, each person who is mentioned as a parent has a corresponding row, e.g. 
+person `ora009` is listed as the mother of person `ora001`, so there must be 
+a row later in the pedigree with `indiv` equal to `ora009`. 
+The columns `sex`, `aff`, `age` and `geno` are ignored by the function 
+`pedigree_loglikelihood`, though data like this will usually contribute to the 
+corresponding pedigree likelihood via the penetrance matrix.
+We will soon give examples of calculating penetrance matrices from this sort of observed 
+data, but for now we simply use the sample penetrance matrix `penet_small`.  
+
+If there are any identical twins or triplets in the family then we can specify 
+them using an optional argument `monozyg`.  For example, to indicate that 
+`ora024` and `ora027` are identical twins, and so are `aey063` and `aey064`, 
+then we can use the following as the `monozyg` argument:  
+
+```{r}
+monozyg_small <- list(c("ora024", "ora027"), c("aey063", "aey064"))
+```
+
+We can now calculate the log-likelihoods of the 10 families.  
+
+```{r}
+pedigree_loglikelihood(dat_small, geno_freq, trans, penet_small, 
+                       monozyg = monozyg_small, sum_loglik = FALSE, ncores = 2)
+```
+
+By default, `pedigree_loglikelihood` will return the sum of the pedigree 
+log-likelihoods of all of the families.  However, the option `sum_loglik = FALSE` 
+above instructs `pedigree_loglikelihood` to return the separate 
+log-likelihoods, e.g. 
+the above output shows that family `ora` has a log-likelihood of `-224.0860`. 
+The option `ncores = 2` instructs `pedigree_loglikelihood` to perform this 
+calculation in parallel on two cores, with the log-likelihoods of five families 
+calculated on one core and the remaining five on another core.  
+
+The function `pedigree_loglikelihood` can also handle very large families.
+For example, the following code takes much less than one minute on a 
+standard desktop computer to calculate the log-likelihood of a family 
+with approximately 10,000 family members.  
+
+```{r, eval = FALSE}
+system.time(ll <- pedigree_loglikelihood(dat_large, geno_freq, trans, penet_large))
+#>    user  system elapsed 
+#>   10.64    0.15   10.83
+ll
+#> [1] -18020.99
+```
+
+## Maximum likelihood estimation
+
+The argument `penet` of `pedigree_loglikelihood` specifies the penetrance matrix, 
+which usually depends on the observed data and some unknown parameters that we 
+would like to estimate. In this section, we give a simple example of such a 
+penetrance matrix and then use this to estimate its unknown parameters.
+
+Let's take `dat_small` as our sample data, and suppose 
+we're interested in estimating the log-odds of disease for the three possible
+genotypes from previous sections.  Here, 
+the log-odds of disease is `log(p/(1-p))` when `p` is the probability 
+of disease.  
+
+```{r}
+head(dat_small)
+```
+
+As a toy example, we ignore age and most other data, and take the observed data to 
+be just the disease affected status `aff`.  For simplicity, we also assume that 
+allele `1` is dominant to allele `2`, meaning that the log-odds of disease 
+are the same for people with genotypes `1/1` and `1/2`.  The parameters that we 
+would like to estimate are therefore the log-odds of disease for genotypes 
+`1/1` and `1/2` (combined) and for genotype `2/2`.  We denote these parameters 
+by `logodds1` and `logodds2`, respectively. 
+
+A penetrance matrix `penet` is designed to give a probabilistic connection 
+between a peron's genotype and his or her observed data.  Each row of 
+`penet` corresponds to a person and each column corresponds to one of the 
+possible genotypes.  (Row `i` of `penet` and row `i` of `dat` should correspond 
+to the same person, and the order of the genotypes should be the same for `penet`, 
+`geno_freq` and `trans`.)  The `(i, j)`^th^ entry of `penet` gives the conditional 
+probability of person `i`'s observed data, given that he or she has the `j`^th^ 
+genotype.  In our example, these conditional probabilities are determined 
+by the parameters `logodds1` and `logodds2`.  For instance, if person `i` has 
+genotype `1/1` then his or her probability of disease is 
+`prob1 = 1/(1 + exp(-logodds1))`, so if person `i` is affected 
+then the conditional probability of his or her observed data
+is `prob1`, and if person `i` is unaffected then this 
+conditional probability is `1 - prob1`.  Therefore, the `(i, 1)`^th^ entry of 
+`penet`, corresponding to person `i` and the first genotype (i.e. `1/1`), 
+is `prob1` if person `i` is affected and `1 - prob1` if person `i` is unaffected. 
+The following function uses this and similar reasoning to calculate row `i` 
+of `penet`.  
+
+```{r}
+penet.fn <- function(i, logodds1, logodds2) {
+  prob1 <- 1/(1 + exp(-logodds1))
+  prob2 <- 1/(1 + exp(-logodds2))
+  penet.i <- c(prob1, prob1, prob2)
+  if (dat_small$aff[i] == 0)  penet.i <- 1 - penet.i
+  return(penet.i)
+}
+```
+
+We can now estimate our parameters of interest, `logodds1` and `logodds2`, using 
+maximum likelihood estimation, as implemented in the `mle` function of the 
+`stats4` package.  
+
+```{r, eval = FALSE}
+library(stats4)
+minusll <- function(logodds1 = 0, logodds2 = 0) {
+  penet <- t(sapply(1:nrow(dat_small), penet.fn, logodds1, logodds2))
+  loglik <- pedigree_loglikelihood(dat_small, geno_freq, trans, penet,
+                                   monozyg = monozyg_small, ncores = 2)
+  return(-loglik)
+}
+minusll()
+#> [1] 705.6238
+fit <- mle(minusll)
+summary(fit)
+#> Maximum likelihood estimation
+#> 
+#> Call:
+#> mle(minuslogl = minusll)
+#> 
+#> Coefficients:
+#>           Estimate Std. Error
+#> logodds1 -1.359962  0.1054336
+#> logodds2 -1.313467  6.8597364
+#> 
+#> -2 log L: 1030.901
+```
+
+The function `minusll` above first calculates the penetrance matrix `penet` 
+corresponding to any given values of the parameters `logodds1` and `logodds2`, 
+and then uses this matrix and `pedigree_loglikelihood` to calculate the 
+corresponding log-likelihood.  The above code then uses `mle` to perform 
+maximum likelihood estimation, giving estimates of `-1.36` and `-1.31` 
+for `logodds1` and `logodds2`, respectively.  
+
+## Incorporating known genotypes
+
+We will now extend the analysis of the previous section to include known
+genotypes.  
+
+The dataset `dat_small` has a column `geno` corresponding to known genotypes.
+As is often the case with family data, many people in `dat_small` do not have 
+measured genotypes, and so have a blank (`""`) in the `geno` column. 
+
+```{r}
+head(dat_small)
+```
+
+The standard method for incorporating known genotypes into the Elston-Stewart 
+algorithm is to first calculate the penetrance matrix `penet` while ignoring all 
+genotype data, and then change `penet` for people who have measured genotypes 
+according to the following simple rule.  If person `i` is known to have the 
+`j`^th^ genotype then `penet[i, j]` is unchanged but `penet[i, k]` is set to `0` 
+for all `k != j`.  See later for brief justification for this rule. 
+
+For example, to incorporate known genotypes into the analysis of the previous 
+section, we modify `penet.fn` by adding the three lines of code below that are 
+marked with $\color{darkred}{\text{###}}$.  
+
+```{r}
+penet.fn <- function(i, logodds1, logodds2) {
+  prob1 <- 1/(1 + exp(-logodds1))
+  prob2 <- 1/(1 + exp(-logodds2))
+  penet.i <- c(prob1, prob1, prob2)
+  if (dat_small$aff[i] == 0)  penet.i <- 1 - penet.i
+  if (dat_small$geno[i] == "1/1")  penet.i[-1] <- 0     ###
+  if (dat_small$geno[i] == "1/2")  penet.i[-2] <- 0     ###
+  if (dat_small$geno[i] == "2/2")  penet.i[-3] <- 0     ###
+  return(penet.i)
+}
+```
+
+We can now use the same code as in the previous section to estimate the log-odds 
+of disease, though our estimates are now based on the known genotypes as well as 
+disease affected statuses.
+
+```{r, eval = FALSE}
+minusll()
+#> [1] 788.5003
+fit <- mle(minusll)
+summary(fit)
+#> Maximum likelihood estimation
+#> 
+#> Call:
+#> mle(minuslogl = minusll)
+#> 
+#> Coefficients:
+#>           Estimate Std. Error
+#> logodds1 -1.357596 0.08405912
+#> logodds2 -1.395321 0.61632248
+#> 
+#> -2 log L: 1196.65
+
+```
+
+The above method for incorporating known genotypes can be justified as follows.
+Measured genotypes can differ from actual genotypes due to genotyping 
+errors, and even when genotyping errors are negligible, we can make a conceptual 
+distinction between the actual genotype $g_i$ of person `i`, and any measured 
+genotype of person `i`, which is part of his or her observed data $x_i$. 
+The `(i, k)`^th^ component `penet[i, k]` of the penetrance matrix is the 
+conditional probability of person `i`'s observed data $x_i$, given that 
+his or her actual genotype $g_i$ is the `k`^th^ genotype (e.g. `2/2` is 
+the third genotype, in our running example).  When genotyping errors 
+are negligible, the chance of observing a genotype different from the actual 
+genotype is `0`.  So if person `i` is observed to have the `j`^th^ genotype then 
+`penet[i, k]` is `0` for all `k != j`. Using similar reasoning, non-negligible 
+genotyping errors and partial genotyping information can also be incorporated 
+in an analysis.  
+
+## Calculating carrier probabilities
+
+Given a genetic model and a penetrance matrix, `clipp` can also use the 
+Elston-Stewart algorithm to calculate genotype probabilities for a person of 
+interest, using the function `genotype_probabilities`.  For example, we can 
+calculate the genotype probabilities for individual `ora008` in the family `ora`,
+as follows.  
+
+```{r}
+head(dat_small)
+genotype_probabilities(target = "ora008", dat_small, geno_freq, trans, 
+                       penet_small, monozyg_small)
+```
+
+This shows that person `ora008` has a `19.8%` chance of having the first genotype 
+(`1/1`), given the inputs (family structure, genetic model and penetrance matrix).
+In this calculation, the penetrance matrix `penet_small` depends on all of the 
+observed data.  If we instead wanted genotype probabilities that are based only 
+on the family structure and observed genotypes then we could use the following code.  
+
+```{r}
+penet.fn <- function(i) {
+  penet.i <- rep(1, 3)
+  if (dat_small$geno[i] == "1/1")  penet.i[-1] <- 0
+  if (dat_small$geno[i] == "1/2")  penet.i[-2] <- 0
+  if (dat_small$geno[i] == "2/2")  penet.i[-3] <- 0
+  return(penet.i)
+}
+penet <- t(sapply(1:nrow(dat_small), penet.fn))
+genotype_probabilities(target = "ora008", dat_small, geno_freq, trans, 
+                       penet, monozyg_small)
+```
+
+## Advanced notes
+
+Many statistical analyses of family data can be performed by the 
+Elston-Stewart algorithm combined with maximum likelihood estimation, 
+for some choice of genetic model and penetrance matrix.  We have given 
+simple examples of segregation analyses to estimate disease risk.  These 
+can be modified slightly and combined with a genetic model based on phased 
+genotypes (as given by `clipp`'s functions `geno_freq_phased` and `trans_phased`) 
+to investigate parent-of-origin effects.  With some ingenuity, the user can also 
+use `clipp` to investigate other interesting genetic models, such as 
+linked loci and non-standard transmission probabilities, or whatever genetic 
+model can be imagined.
+
+Ott's form for the pedigree likelihood assumes that the observed data of 
+different family members is conditionally independent, given their genotypes. 
+However, this assumption can be weakened for a genetic locus of interest, by 
+adding an unmeasured polygene into the genetic model 
+(using functions like `trans_polygenic` and `combine_loci`). 
+
+## The Elston-Stewart algorithm
+
+General references for the Elston-Stewart algorithm are (Elston & Stewart, 1971), 
+(Lange & Elston, 1975) and (Cannings et al., 1978). 
+Up to logarithmic factors, the complexity of the algorithm is  `O(n * m)`,
+where `n` is the number of people in the family and `m` is the number of 
+possible genotypes. 
+
+
+## References
+
+Cannings C, Thompson E, Skolnick M. Probability functions on complex pedigrees. 
+Advances in Applied Probability, 1978;10(1):26-61.
+
+Elston RC, Stewart J. A general model for the genetic analysis of pedigree data. 
+Hum Hered. 1971;21(6):523-542.
+
+Lange K. Mathematical and Statistical Methods for Genetic Analysis 
+(second edition). Springer, New York. 2002.
+
+Lange K, Elston RC. Extensions to pedigree analysis I. Likehood calculations 
+for simple and complex pedigrees. Hum Hered. 1975;25(2):95-105.
+

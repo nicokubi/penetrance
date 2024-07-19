@@ -1,0 +1,483 @@
+---
+title: "PenEstim"
+subtitle: "Application CoH Data - MLH1 and CRC - v11"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 6-11-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(clipp)
+library(survival)
+library(plyr) #need to load plyr before dplyr
+library(truncnorm)
+library(PanelPRO)
+library(tidyverse)
+library(stringr)
+library(PedUtils)
+library(survival)
+library(MASS)
+library(profvis)
+library(survminer)
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(rlang)
+library(GGally)
+library(gridExtra)
+library(kinship2)
+
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/prior_elicitation.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/helpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/outputHelpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/mhLoglikehood.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/PenEstimMain.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/InternalVars.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/imputeAges.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/Additional Scripts/describeFamilies.R")
+
+set.seed(2024)
+```
+
+# Descriptive Statistics - CoH MLH1 Families
+
+Here the NA in the current age and cancer age of the individuals is
+replaced by the median from the observed data. Seperate medians are
+calculated for Current Age (non-affected) and Cancer Age (affected) for
+both sexes.
+
+```{r fam4, echo=TRUE, cache=TRUE}
+
+# Load data
+load("/Users/nicolaskubista/Dropbox (Partners HealthCare)/CCGCRN Hispanic Cohort Data/PenEstim/Data/carrierProbandFamilies_cohPedigree_MLH1.RData")
+
+dat <- carrierProbandFamilies_cohPedigree_MLH1
+
+describeFamilies(dat,"Colorectal","MLH1")
+```
+
+# Age Imputation
+
+The dataset contains missing ages for both affected and non-affected
+individuals. We apply an age imputation as part of the MCMC routine.
+
+The imputation of ages is performed based on the individual's affected
+status ($aff$), sex ($sex$), and their degree of relationship to the
+proband who is a carrier of the PV.
+
+**Calculating Degrees of Relationship**
+
+To calculate the degree of relationship to the proband, we use the
+kinship matrix from the pedigree data. The degree of relationship
+between two individuals is twice the kinship coefficient.
+
+```{=tex}
+\begin{enumerate}
+    \item Construct the pedigree object using individual, father, mother, sex, affected status, and family ID data.
+    \item Calculate the kinship matrix for the pedigree.
+    \item For each family, determine the degrees of relationship using the kinship matrix.
+\end{enumerate}
+```
+**Weibull Distribution for Carriers**
+
+For affected individuals $aff = 1$ and if a randomly drawn value is less
+than the relationship probability, the age is drawn from a Weibull
+distribution. The Weibull distribution parameters for males and females
+are $(\alpha, \beta, \delta)$. We use the quantile function of the
+Weibull to draw the ages (separately for males and females).
+
+$$
+age = \delta + \beta ( -\log(1 - u))^{\frac{1}{\alpha}} 
+$$
+
+Here, $u$ is a uniform random variable: 
+$$ 
+u \sim \text{Uniform}(0, 1) 
+$$
+
+**SEER Distribution for Non-Carriers**
+
+If the random draw exceeds the relationship probability, the age is
+drawn from the SEER data using the inverse CDF method. In that case, we
+assume the individual is not a carrier of the PV.
+
+1.  Generate a uniform random variable $u \sim Uniform(0, 1)$.
+2.  Interpolate the SEER cumulative probability distribution to find the
+    corresponding age: $$
+    \text{age} = \text{approx}(\text{seer\_data\$cum\_prob}, \text{seer\_data\$age}, \text{xout} = u)
+    $$
+3.  Return the interpolated age value.
+
+**Empirical Density for Non-Affected Individuals**
+
+To calculate the empirical density for non-affected individuals, we
+filter the dataset to include only non-affected individuals and estimate
+the density of their ages. Then we randomly draw an age from this
+distribution for ages of non-affected individuals.
+
+1.  Filter the data to include only non-affected individuals $aff=0$.
+
+2.  Estimate the empirical density of the age data using a kernel
+    density estimation method.
+
+3.  Draw a random age from the empirical distribution using the inverse
+    CDF method.
+
+**Initialization of Ages Using Uniform Distribution**
+
+Before the imputation process, ages are initialized for missing values
+using a uniform distribution between a threshold and the maximum age:
+
+1.  Identify missing ages in the dataset.
+
+2.  Initialize these missing ages using a uniform distribution.
+$$
+age\_{init} \sim Uniform(threshold,
+max\_age)
+$$
+
+
+This ensures that all missing ages have initial values that fall within
+the specified range.
+
+# Estimation - City of Hope
+
+Here we estimate the penetrance curve for CRC and MLH1 from the 130
+families in the CoH dataset. This is based on the very rudimentary
+imputation for ages as described in the section above.
+
+This version of the algorithm uses:
+
+-   10k iterations of the adpative MH algorithm
+
+-   PanelPRODatabase defaults for the allele frequency (af) of MLH1
+
+-   The adapted mcmcPenetrance function reflects the asymptote values
+    that are out of bounds back into the parameter space (0,1)
+
+```{r est1, echo=TRUE, cache=FALSE}
+# Data Prep
+for (i in seq_along(dat)) {
+    if ("ID" %in% colnames(dat[[i]])) {
+        colnames(dat[[i]])[colnames(dat[[i]]) == "PedigreeID"] <- "FamilyID"
+    }
+}
+
+
+for (i in seq_along(dat)) {
+    # Add a new column "PedigreeID" with the list number
+    dat[[i]]$PedigreeID <- i
+}
+
+# Exploring different priors 
+prior_params <- list(
+    asymptote = list(g1 = 1, g2 = 1),
+    threshold = list(min = 5, max = 30),
+    median = list(m1 = 2, m2 = 2),
+    first_quartile = list(q1 = 6, q2 = 3)
+)
+
+ #Run Estimation procedure with default prior setting 
+ #Main Estimation for Female
+system.time(out_sim_COL_v11 <- PenEstim(
+    data = dat,
+    cancer_type = "Colorectal", gene_input = "MLH1", n_chains = 1, n_iter_per_chain = 10000, 
+    prior_params = prior_params, burn_in = 0.1, median_max = TRUE,  ageImputation = TRUE
+))
+save(out_sim_COL_v11, file = "out_sim_COL_v11.Rdata")
+# print summary stats
+out_sim_COL_v11$summary_stats
+
+```
+
+# Analysis
+
+## Penetrance Cuves
+
+### All Samples (excl. burn-in)
+
+```{r p1, echo=TRUE, cache=FALSE}
+plot_penetrance(out_sim_COL_v11$combined_chains, 0.95, 94)
+plot_penetrance(out_sim_COL_vTest1$combined_chains, 0.95, 94)
+
+```
+
+### Second half Samples Only (excl. burn-in)
+
+```{r p2, echo=TRUE, cache=FALSE}
+# Define a function to extract the second half of the samples
+extract_second_half <- function(samples) {
+  half_length <- length(samples) / 2
+  samples[(half_length + 1):length(samples)]
+}
+
+# Apply the function to each element in the list
+second_half_samples <- lapply(out_sim_COL_v11$combined_chains, extract_second_half)
+plot_penetrance(second_half_samples, 0.95, 94)
+```
+
+## Trace Plots
+
+```{r t1, echo=TRUE, cache=FALSE}
+plot_traceSingle(out_sim_COL_v11$results[[1]])
+plot_traceSingle(out_sim_COL_vTest1$results[[1]])
+```
+
+## ACF Plots
+
+```{r acf2, echo=TRUE, cache=FALSE}
+## ACF Plots 
+acf(out_sim_COL_v11$results[[1]]$first_quartile_male_samples, main = "ACF of First Quartile - Male")
+acf(out_sim_COL_v11$results[[1]]$first_quartile_female_samples, main = "ACF of First Quartile - Female")
+acf(out_sim_COL_v11$results[[1]]$median_male_samples, main = "ACF of Median - Male")
+acf(out_sim_COL_v11$results[[1]]$median_female_samples, main = "ACF of Median - Female")
+acf(out_sim_COL_v11$results[[1]]$threshold_male_samples, main = "ACF of Threshold - Male")
+acf(out_sim_COL_v11$results[[1]]$threshold_female_samples, main = "ACF of Threshold - Female")
+```
+
+## Trace Plots for Greek-Letter Parameters (standard Weibull parameters)
+
+```{r t2, echo=TRUE, cache=FALSE}
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Adding alpha and beta parameters to the out object
+calculate_and_add_params <- function(out) {
+  alphas_male <- numeric(length(out$median_male_results))
+  betas_male <- numeric(length(out$median_male_results))
+  alphas_female <- numeric(length(out$median_female_results))
+  betas_female <- numeric(length(out$median_female_results))
+  
+  for (i in seq_along(out$median_male_results)) {
+    male_params <- calculate_weibull_parameters(out$median_male_results[i], out$first_quartile_male_results[i], out$threshold_male_results[i])
+    alphas_male[i] <- male_params$alpha
+    betas_male[i] <- male_params$beta
+    
+    female_params <- calculate_weibull_parameters(out$median_female_results[i], out$first_quartile_female_results[i], out$threshold_female_results[i])
+    alphas_female[i] <- female_params$alpha
+    betas_female[i] <- female_params$beta
+  }
+  
+  out$alpha_male <- alphas_male
+  out$beta_male <- betas_male
+  out$alpha_female <- alphas_female
+  out$beta_female <- betas_female
+  
+  return(out)
+}
+
+# Example usage:
+out_sim_COL_v11_paras <- calculate_and_add_params(out_sim_COL_v11$combined_chains)
+
+
+# Creating the trace plot function
+create_trace_plot <- function(parameter_values, parameter_name, gender) {
+  data <- data.frame(iteration = 1:length(parameter_values), value = parameter_values)
+  ggplot(data, aes(x = iteration, y = value)) +
+    geom_line() +
+    labs(title = paste("Trace Plot for", parameter_name), x = "Iteration", y = parameter_name) +
+    theme_minimal()
+}
+
+# Trace plots for male parameters
+trace_alpha_male <- create_trace_plot(out_sim_COL_v11_paras$alpha_male, "Alpha (Shape) - Male")
+trace_beta_male <- create_trace_plot(out_sim_COL_v11_paras$beta_male, "Beta (Scale) - Male")
+trace_gamma_male <- create_trace_plot(out_sim_COL_v11_paras$asymptote_male_results, "Gamma (Asymptote) - Male")
+trace_delta_male <- create_trace_plot(out_sim_COL_v11_paras$threshold_male_results, "Delta (Threshold) - Male")
+
+# Trace plots for female parameters
+trace_alpha_female <- create_trace_plot(out_sim_COL_v11_paras$alpha_female, "Alpha (Shape) - Female")
+trace_beta_female <- create_trace_plot(out_sim_COL_v11_paras$beta_female, "Beta (Scale) - Female")
+trace_gamma_female <- create_trace_plot(out_sim_COL_v11_paras$asymptote_female_results, "Gamma (Asymptote) - Female")
+trace_delta_female <- create_trace_plot(out_sim_COL_v11_paras$threshold_female_results, "Delta (Threshold) - Female")
+
+# Arrange plots in a grid
+grid.arrange(trace_alpha_male, trace_beta_male, trace_gamma_male, trace_delta_male, ncol = 2)
+grid.arrange(trace_alpha_female, trace_beta_female, trace_gamma_female, trace_delta_female, ncol = 2)
+
+```
+
+## Pair Plots of Parameters
+
+```{r a2, echo=TRUE, cache=FALSE}
+
+# Pairwise plots
+
+# Load necessary library
+library(ggplot2)
+
+# Calculate correlation coefficients
+corr_median_male_quartile_male <- cor(out_sim_COL_v11$combined_chains$median_male_results, out_sim_COL_v11$combined_chains$first_quartile_male_results)
+corr_median_female_quartile_female <- cor(out_sim_COL_v11$combined_chains$median_female_results, out_sim_COL_v11$combined_chains$first_quartile_female_results)
+corr_median_male_asymptote_male <- cor(out_sim_COL_v11$combined_chains$median_male_results, out_sim_COL_v11$combined_chains$asymptote_male_results)
+corr_median_female_asymptote_female <- cor(out_sim_COL_v11$combined_chains$median_female_results, out_sim_COL_v11$combined_chains$asymptote_female_results)
+corr_median_male_median_female <- cor(out_sim_COL_v11$combined_chains$median_male_results, out_sim_COL_v11$combined_chains$median_female_results)
+corr_quartile_male_quartile_female <- cor(out_sim_COL_v11$combined_chains$first_quartile_male_results, out_sim_COL_v11$combined_chains$first_quartile_female_results)
+corr_asymptote_female_asymptote_male <- cor(out_sim_COL_v11$combined_chains$asymptote_female_results, out_sim_COL_v11$combined_chains$asymptote_male_results)
+corr_threshold_female_threshold_male <- cor(out_sim_COL_v11$combined_chains$threshold_female_results, out_sim_COL_v11$combined_chains$threshold_male_results)
+
+# Plot 1
+plot(out_sim_COL_v11$combined_chains$median_male_results, 
+     out_sim_COL_v11$combined_chains$first_quartile_male_results, 
+     xlim = c(1, 100), ylim = c(1, 100), 
+     xlab = "Median Male Results", ylab = "First Quartile Male Results",
+     main = paste("Correlation: ", round(corr_median_male_quartile_male, 2)))
+abline(a = 0, b = 1, col = "red")
+
+# Plot 2
+plot(out_sim_COL_v11$combined_chains$median_female_results, 
+     out_sim_COL_v11$combined_chains$first_quartile_female_results, 
+     xlim = c(1, 100), ylim = c(1, 100), 
+     xlab = "Median Female Results", ylab = "First Quartile Female Results",
+     main = paste("Correlation: ", round(corr_median_female_quartile_female, 2)))
+abline(a = 0, b = 1, col = "red")
+
+# Plot 3
+plot(out_sim_COL_v11$combined_chains$median_male_results, 
+     out_sim_COL_v11$combined_chains$asymptote_male_results, 
+     xlim = c(1, 100), ylim = c(0, 1), 
+     xlab = "Median Male Results", ylab = "Asymptote Male Results",
+     main = paste("Correlation: ", round(corr_median_male_asymptote_male, 2)))
+
+# Plot 4
+plot(out_sim_COL_v11$combined_chains$median_female_results, 
+     out_sim_COL_v11$combined_chains$asymptote_female_results, 
+     xlim = c(1, 100), ylim = c(0, 1), 
+     xlab = "Median Female Results", ylab = "Asymptote Female Results",
+     main = paste("Correlation: ", round(corr_median_female_asymptote_female, 2)))
+
+# Plot 5
+plot(out_sim_COL_v11$combined_chains$median_male_results, 
+     out_sim_COL_v11$combined_chains$median_female_results, 
+     xlim = c(40, 65), ylim = c(40, 80), 
+     xlab = "Median Male Results", ylab = "Median Female Results",
+     main = paste("Correlation: ", round(corr_median_male_median_female, 2)))
+
+# Plot 6
+plot(out_sim_COL_v11$combined_chains$first_quartile_male_results, 
+     out_sim_COL_v11$combined_chains$first_quartile_female_results, 
+     xlim = c(30, 50), ylim = c(40, 60), 
+     xlab = "First Quartile Male Results", ylab = "First Quartile Female Results",
+     main = paste("Correlation: ", round(corr_quartile_male_quartile_female, 2)))
+
+
+# Plot 7
+plot(out_sim_COL_v11$combined_chains$asymptote_female_results, 
+     out_sim_COL_v11$combined_chains$asymptote_male_results, 
+     xlim = c(0,1), ylim = c(0, 1), 
+     xlab = "Asymptote Female Results", ylab = "Asymptote Male Results",
+     main = paste("Correlation: ", round(corr_asymptote_female_asymptote_male, 2)))
+
+# Plot 8
+plot(out_sim_COL_v11$combined_chains$threshold_female_results, 
+     out_sim_COL_v11$combined_chains$threshold_male_results, 
+     xlim = c(0, 30), ylim = c(0, 30), 
+     xlab = "Threshold Female Results", ylab = "Threshold Male Results",
+     main = paste("Correlation: ", round(corr_threshold_female_threshold_male, 2)))
+
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Function to create pair plots from MCMC chain results for males
+plot_mcmc_results_male <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_male_results, 
+                           given_first_quartile = mcmc_results$first_quartile_male_results, 
+                           delta = mcmc_results$threshold_male_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_male <- sapply(weibull_params, function(x) x$alpha)
+  beta_male <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for males
+  mcmc_df_male <- data.frame(
+    asymptote_male = mcmc_results$asymptote_male_results, 
+    threshold_male = mcmc_results$threshold_male_results, 
+    median_male = mcmc_results$median_male_results, 
+    first_quartile_male = mcmc_results$first_quartile_male_results,
+    alpha_male = alpha_male,
+    beta_male = beta_male
+  )
+  
+  # Create pair plots with smaller dot sizes for males
+  pairs_plot_male <- ggpairs(mcmc_df_male, 
+                             columns = c("alpha_male", "beta_male", "threshold_male", "asymptote_male", "median_male", "first_quartile_male"),
+                             title = "Pair Plot of MCMC Results (Male)",
+                             lower = list(continuous = wrap("points", size = 0.5)))
+                             
+  
+  # Display the plot
+  print(pairs_plot_male)
+}
+
+# Function to create pair plots from MCMC chain results for females
+plot_mcmc_results_female <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_female_results, 
+                           given_first_quartile = mcmc_results$first_quartile_female_results, 
+                           delta = mcmc_results$threshold_female_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_female <- sapply(weibull_params, function(x) x$alpha)
+  beta_female <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for females
+  mcmc_df_female <- data.frame(
+    asymptote_female = mcmc_results$asymptote_female_results, 
+    threshold_female = mcmc_results$threshold_female_results, 
+    median_female = mcmc_results$median_female_results, 
+    first_quartile_female = mcmc_results$first_quartile_female_results,
+    alpha_female = alpha_female,
+    beta_female = beta_female
+  )
+  
+  # Create pair plots with smaller dot sizes for females
+  pairs_plot_female <- ggpairs(mcmc_df_female, 
+                               columns = c("alpha_female", "beta_female", "threshold_female", "asymptote_female", "median_female", "first_quartile_female"),
+                               title = "Pair Plot of MCMC Results (Female)",
+                               lower = list(continuous = wrap("points", size = 0.5)))
+                               
+  
+  # Display the plot
+  print(pairs_plot_female)
+}
+
+# Example usage
+# Assuming out_sim_COL_v11$combined_chains contains the MCMC results as described
+plot_mcmc_results_male(out_sim_COL_v11$combined_chains)
+plot_mcmc_results_female(out_sim_COL_v11$combined_chains)
+```

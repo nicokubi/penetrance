@@ -1,0 +1,271 @@
+    upper_prob <- 1 - lower_prob
+    lower_ci <- apply(distributions_matrix, 1, quantile, probs = lower_prob)
+    upper_ci <- apply(distributions_matrix, 1, quantile, probs = upper_prob)
+
+    list(mean_density = mean_density, lower_ci = lower_ci, upper_ci = upper_ci)
+  }
+
+  # Calc4ulate Weibull cumulative densities for both data sets
+  main_density <- calculate_cumulative_density(data, sex)
+  additional_density <- calculate_cumulative_density(additional_data, sex)
+
+  # Extract cumulative data from the Panelpro Database
+  dim_names <- attr(db_sim$Penetrance, "dimnames")
+  cancer_index <- which(dim_names[[1]] == cancer)
+  gene_index <- which(dim_names[[2]] == gene)
+  race_index <- which(dim_names[[3]] == race)
+  sex_index <- which(dim_names[[4]] == sex)
+  type_index <- which(dim_names[[6]] == type)
+
+  density_data <- db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index]
+  cumulative_density_panelpro <- cumsum(density_data)
+
+  # Create data frame for plotting
+  age_values <- seq_along(density_data)
+  min_length <- min(length(cumulative_density_panelpro), length(main_density$mean_density), length(additional_density$mean_density))
+
+  plot_df <- data.frame(
+    age = age_values[1:min_length],
+    cumulative_density_panelpro = cumulative_density_panelpro[1:min_length],
+    main_mean_density = main_density$mean_density[1:min_length],
+    main_lower_ci = main_density$lower_ci[1:min_length],
+    main_upper_ci = main_density$upper_ci[1:min_length],
+    additional_mean_density = additional_density$mean_density[1:min_length],
+    additional_lower_ci = additional_density$lower_ci[1:min_length],
+    additional_upper_ci = additional_density$upper_ci[1:min_length]
+  )
+
+  # Plot the cumulative densities with credible intervals
+ ggplot(plot_df, aes(x = age)) +
+    geom_line(aes(y = cumulative_density_panelpro, color = "PanelPro Cumulative Density (for reference only)"), linewidth = 1, linetype = "solid", na.rm = TRUE) +
+    geom_line(aes(y = main_mean_density, color = "Weibull Mean Density (without Proband)"), linewidth = 1, linetype = "dotted", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = main_lower_ci, ymax = main_upper_ci), alpha = 0.2, fill = "red", na.rm = TRUE) +
+    geom_line(aes(y = additional_mean_density, color = "Weibull Mean Density (with Proband)"), linewidth = 1, linetype = "dashed", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = additional_lower_ci, ymax = additional_upper_ci), alpha = 0.2, fill = "green", na.rm = TRUE) +
+    labs(title = paste("Cumulative Density Comparison for", sex, "in", race),
+         x = "Age",
+         y = "Cumulative Density",$
+    theme_minimal() +
+    scale_color_manual(values = c("PanelPro Cumulative Density (for reference only)" = "blue", 
+                                  "Weibull Mean Density (without Proband)" = "red",
+                                  "Weibull Mean Density (with Proband)"= "green")) +
+    scale_y_continuous(labels = scales::percent)
+}
+
+
+
+plot_penetrance_comparison(
+  data = out_sim_COL$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "MLH1_hetero_anyPV", 
+  race = "All_Races",
+  sex = "Male",
+  type = "Net",
+  additional_data = out_sim_COL_woP$combined_chains
+)
+
+plot_penetrance_comparison(
+  data = out_sim_COL$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+
+  gene = "MLH1_hetero_anyPV", 
+  race = "All_Races",
+  sex = "Female",
+  type = "Net",
+  additiona
+)
+
+
+ $\theta $
+```
+
+
+# Appedix
+
+## Details on Age Imputation
+
+The imputation of ages is performed based on the individual's affected status ($aff$), sex ($sex$), and their degree of relationship to the proband who is a carrier of the PV.
+
+**Calculating Degrees of Relationship**
+
+To calculate the degree of relationship to the proband, we use the kinship matrix from the pedigree data. The degree of relationship between two individuals is twice the kinship coefficient.
+
+```{=tex}
+\begin{enumerate}
+    \item Construct the pedigree object using individual, father, mother, sex, affected status, and family ID data.
+    \item Calculate the kinship matrix for the pedigree.
+    \item For each family, determine the degrees of relationship using the kinship matrix.
+\end{enumerate}
+```
+**Weibull Distribution for Carriers**
+
+For affected individuals $aff = 1$ and if a randomly drawn value is less than the relationship probability, the age is drawn from a Weibull distribution. The Weibull distribution parameters for males and females are $(\alpha, \beta, \delta)$. We use the quantile function of the Weibull to draw the ages (separately for males and females).
+
+$$
+age = \delta + \beta ( -\log(1 - u))^{\frac{1}{\alpha}} 
+$$
+
+Here, $u$ is a uniform random variable: 
+$$ 
+u \sim \text{Uniform}(0, 1) 
+$$
+
+**SEER Distribution for Non-Carriers**
+
+If the random draw exceeds the relationship probability, the age is drawn from the SEER data using the inverse CDF method. In that case, we assume the individual is not a carrier of the PV.
+
+1.  Generate a uniform random variable $u \sim Uniform(0, 1)$.
+2.  Interpolate the SEER cumulativ_vF2.1e probability distribution to find the
+    corresponding age: $$_vF2.1
+    \text{age} = \text{approx}(\text{seer\_data\$cum\_prob}, \text{seer\_data\$age}, \text{xout} = u)
+**Empirical Density for Non-Affecte
+To calculate the empirical density for non-affected individuals, we filter the dataset to include only non-affected individuals and estimate the density of their ages. Then we randomly draw an age from this distribution for ages of non-affected individuals.
+
+1.  Filter the data to include only non-affected individuals $aff=0$.
+
+2.  Estimate the empirical density of the age data using a kernel
+    density estimation method.
+
+3.  Draw a random age from the empirical distribution using the inverse
+    CDF method.
+
+**Initialization of Ages Using Uniform Distribution**
+
+Before the imputation process, ages are initialized for missing values using a uniform distribution between a threshold and the maximum age:
+
+1.  Identify missing ages in the dataset.
+
+2.  Initialize these missing ages using a uniform distribution.
+$$
+age\_{init} \sim Uniform(threshold,
+max\_age)
+$$
+
+## Trace Plots
+
+Trace plots help us visualize the stability of our estimates over the iterations of the MCMC procedure.
+
+```{r t1, echo=TRUE, cache=FALSE}
+plot_traceSingle(out_sim_COL_vF2.1$results[[1]])
+```
+
+## ACF Plots
+
+Auto-correlation function (ACF) plots show how our estimates are correlated with each other at different points in time, helping us understand the consistency of our model.
+
+```{r acf2, echo=TRUE, cache=FALSE}
+## ACF Plots 
+acf(out_sim_COL_vF2.1$results[[1]]$first_quartile_male_samples, main = "ACF of First Quartile - Male")
+acf(out_sim_COL_vF2.1$results[[1]]$first_quartile_female_samples, main = "ACF of First Quartile - Female")
+acf(out_sim_COL_vF2.1$results[[1]]$median_male_samples, main = "ACF of Median - Male")
+acf(out_sim_COL_vF2.1$results[[1]]$median_female_samples, main = "ACF of Median - Female")
+acf(out_sim_COL_vF2.1$results[[1]]$threshold_male_samples, main = "ACF of Threshold - Male")
+acf(out_sim_COL_vF2.1$results[[1]]$threshold_female_samples, main = "ACF of Threshold - Female")
+```
+
+
+## Pair Plots of Parameters
+
+Pair plots help us see the relationships between different parameters in our model.
+
+```{r a2, echo=TRUE, cache=FALSE}
+# Load necessary library
+library(ggplot2)
+
+# Calculate correlation coefficients
+corr_median_male_quartile_male <- cor(out_sim_COL_vF2.1$combined_chains$median_male_results, out_sim_COL_vF2.1$combined_chains$first_quartile_male_results)
+corr_median_female_quartile_female <- cor(out_sim_COL_vF2.1$combined_chains$median_female_results, out_sim_COL_vF2.1$combined_chains$first_quartile_female_results)
+corr_median_male_asymptote_male <- cor(out_sim_COL_vF2.1$combined_chains$median_male_results, out_sim_COL_vF2.1$combined_chains$asymptote_male_results)
+corr_median_female_asymptote_female <- cor(out_sim_COL_vF2.1$combined_chains$median_female_results, out_sim_COL_vF2.1$combined_chains$asymptote_female_results)
+corr_median_male_median_female <- cor(out_sim_COL_vF2.1$combined_chains$median_male_results, out_sim_COL_vF2.1$combined_chains$median_female_results)
+corr_quartile_male_quartile_female <- cor(out_sim_COL_vF2.1$combined_chains$first_quartile_male_results, out_sim_COL_vF2.1$combined_chains$first_quartile_female_results)
+corr_asymptote_female_asymptote_male <- cor(out_sim_COL_vF2.1$combined_chains$asymptote_female_results, out_sim_COL_vF2.1$combined_chains$asymptote_male_results)
+corr_threshold_female_threshold_male <- cor(out_sim_COL_vF2.1$combined_chains$threshold_female_results, out_sim_COL_vF2.1$combined_chains$threshold_male_results)
+
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Function to create pair plots from MCMC chain results for males
+plot_mcmc_results_male <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_male_results, 
+                           given_first_quartile = mcmc_results$first_quartile_male_results, 
+    out_sim_COL      delta = mcmc_results$threshold_male_results, 
+    out_sim_COL      SIMPLIFY = FALSE)
+  out_sim_COL
+  alout_sim_COLy(weibull_params, function(x) x$alpha)
+  beout_sim_COL(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for males
+  mcmc_df_male <- data.frame(
+    asymptote_male = mcmc_results$asymptote_male_results, 
+    threshold_male = mcmc_results$threshold_male_results, 
+    median_male = mcmc_results$median_male_results, 
+    first_quartile_male = mcmc_results$first_quartile_male_results,
+    alpha_male = alpha_male,
+    beta_male = beta_male
+  )
+  
+  # Create pair plots with smaller dot sizes for males
+  pairs_plot_male <- ggpairs(mcmc_df_mout_sim_COL
+                             columns = c("alpha_male", "beta_male", "threshold_male", "asymptote_male", "median_male", "first_quartile_male"),
+                             title = "Pair Plot of MCMC Results (Male)",
+                             lower = list(continuous = wrap("points", size = 0.5)))
+                             
+  
+  # Display the plot
+  print(pairs_plot_male)
+}
+
+# Function to create pair plots from MCMC chain results for females
+plot_mcmc_results_female <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_female_results, 
+                           given_first_quartile = mcmc_results$first_quartile_female_results, 
+                           delta = mcmc_results$threshold_female_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_female <- sapply(weibull_params, function(x) x$alpha)
+  beta_female <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for females
+  mcmc_df_female <- data.frame(
+    asymptote_female = mcmc_results$asymptote_female_results, 
+    threshold_female = mcmc_results$threshold_female_results, 
+    median_female = mcmc_results$median_female_results, 
+    first_quartile_female = mcmc_results$first_quartile_female_results,
+    alpha_female = alpha_female,
+    beta_female = beta_female
+  )
+  
+  # Create pair plots with smaller dot sizes for females
+  pairs_plot_female <- ggpairs(mcmc_df_female, 
+                               columns = c("alpha_female", "beta_female", "threshold_female", "asymptote_female", "median_female", "first_quartile_female"),
+                               title = "Pair Plot of MCMC Results (Female)",
+                               lower = list(continuous = wrap("points", size = 0.5)))
+                               
+  
+  # Display the plot
+  print(pairs_plot_female)
+}
+
+# Example usage
+# Assuming out_sim_COL_vF2.1$combined_chains contains the MCMC results as described
+plot_mcmc_results_male(out_sim_COL_vF2.1$combined_chains)
+plot_mcmc_results_female(out_sim_COL_vF2.1$combined_chains)
+```

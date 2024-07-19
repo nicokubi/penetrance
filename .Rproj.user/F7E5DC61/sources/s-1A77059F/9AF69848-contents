@@ -1,0 +1,305 @@
+---
+title: "PenEstim"
+subtitle: "Application CoH Data - MLH1 and CRC"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 6-21-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(clipp)
+library(survival)
+library(plyr) #need to load plyr before dply
+library(tidyverse)
+library(stringr)
+library(PedUtils)
+library(survival)
+library(MASS)
+library(profvis)
+library(survminer)
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(rlang)
+library(GGally)
+library(gridExtra)
+library(kinship2)
+
+
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/helpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/outputHelpers.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/mhLoglikehood.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/PenEstimMain.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/InternalVars.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/PenEstim_vF/R/imputeAges.R")
+source("/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/Submission/Additional Scripts/describeFamilies.R")
+
+set.seed(2024)
+```
+
+# Descriptive Statistics - CoH MLH1 Families
+
+We apply our  approach to a recent data set from the Clinical Cancer Genomics Community Research Network (CCGCRN). 
+For this application we focus on the specific association between MLH1 and Colorectal Cancer. We analyse a subset of the study data with 4551 individuals from 130 families, where the proband is a carrier of the pathogentic variant of MLH1 without conditioning on any other demographic data. The dataset contains 486 CRC diagnoses among the 130 pedigrees.
+
+```{r fam4, echo=TRUE, cache=TRUE}
+
+# Load data
+load("/Users/nicolaskubista/Dropbox (Partners HealthCare)/CCGCRN Hispanic Cohort Data/PenEstim/Data/carrierProbandFamilies_cohPedigree_MLH1.RData")
+
+dat <- carrierProbandFamilies_cohPedigree_MLH1
+
+describeFamilies(dat,"Colorectal","MLH1")
+```
+
+# Age Imputation
+
+The dataset contains missing ages for both affected and non-affected individuals. We apply an age imputation as part of the MCMC routine.
+
+The imputation of ages is performed based on the individual's affected status ($aff$), sex ($sex$), and their degree of relationship to the proband who is a carrier of the PV.
+
+**Calculating Degrees of Relationship**
+
+To calculate the degree of relationship to the proband, we use the kinship matrix from the pedigree data. The degree of relationship between two individuals is twice the kinship coefficient.
+
+```{=tex}
+\begin{enumerate}
+    \item Construct the pedigree object using individual, father, mother, sex, affected status, and family ID data.
+    \item Calculate the kinship matrix for the pedigree.
+    \item For each family, determine the degrees of relationship using the kinship matrix.
+\end{enumerate}
+```
+**Weibull Distribution for Carriers**
+
+For affected individuals $aff = 1$ and if a randomly drawn value is less than the relationship probability, the age is drawn from a Weibull distribution. The Weibull distribution parameters for males and females are $(\alpha, \beta, \delta)$. We use the quantile function of the Weibull to draw the ages (separately for males and females).
+
+$$
+age = \delta + \beta ( -\log(1 - u))^{\frac{1}{\alpha}} 
+$$
+
+Here, $u$ is a uniform random variable: 
+$$ 
+u \sim \text{Uniform}(0, 1) 
+$$
+
+**SEER Distribution for Non-Carriers**
+
+If the random draw exceeds the relationship probability, the age is drawn from the SEER data using the inverse CDF method. In that case, we assume the individual is not a carrier of the PV.
+
+1.  Generate a uniform random variable $u \sim Uniform(0, 1)$.
+2.  Interpolate the SEER cumulative probability distribution to find the
+    corresponding age: $$
+    \text{age} = \text{approx}(\text{seer\_data\$cum\_prob}, \text{seer\_data\$age}, \text{xout} = u)
+    $$
+3.  Return the interpolated age value.
+
+**Empirical Density for Non-Affected Individuals**
+
+To calculate the empirical density for non-affected individuals, we filter the dataset to include only non-affected individuals and estimate the density of their ages. Then we randomly draw an age from this distribution for ages of non-affected individuals.
+
+1.  Filter the data to include only non-affected individuals $aff=0$.
+
+2.  Estimate the empirical density of the age data using a kernel
+    density estimation method.
+
+3.  Draw a random age from the empirical distribution using the inverse
+    CDF method.
+
+**Initialization of Ages Using Uniform Distribution**
+
+Before the imputation process, ages are initialized for missing values using a uniform distribution between a threshold and the maximum age:
+
+1.  Identify missing ages in the dataset.
+
+2.  Initialize these missing ages using a uniform distribution.
+$$
+age\_{init} \sim Uniform(threshold,
+max\_age)
+$$
+
+
+This ensures that all missing ages have initial values that fall within the specified range.
+
+# Estimation Approach
+
+## Weibull Distribution
+
+To model the penetrance curve we choose the Weibull distribution which is widely used in reliability engineering and survival analysis. To provide further flexibility we extend the standard Weibull distribution to four parameters with an additional threshold parameter ($\delta$) to move the distribution along the age axis and an asymptote parameter ($0 < \gamma < 1$) which allows for incomplete penetrance and is interpreted as the lifetime probability of developing cancer. Hence, we have a vector of parameters $\theta = (\alpha, \beta, \gamma, \delta)$. Specifically, we model the density $f$ and corresponding cumulative distribution functions $F$ as: 
+\begin{equation}    
+f(x; \alpha, \beta, \delta, \gamma) = \begin{cases} 
+\gamma \left( \frac{\alpha}{\beta} \left( \frac{x - \delta}{\beta} \right)^{\alpha - 1} e^{ -\left( \frac{x - \delta}{\beta} \right)^\alpha } \right) & x \geq \delta \\
+0 & x < \delta
+\end{cases}
+
+## Bayesian Estimation using MCMC 
+
+Our estimation approach employs a Bayesian estimation technique. Markov Chains Monte Carlo (MCMC) methods involve constructing a Markov chain that can be efficiently simulated and has the desired posterior distribution as its stationary distribution. Once we obtain independent samples from this distribution, we can use Monte Carlo sampling to generate an unbiased estimate of the expectation for our parameters of interest. 
+
+The Adaptive Metropolis-Hastings (MH) algorithm improves the efficiency of the standard Metropolis-Hastings algorithm by adapting the proposal distribution based on the history of the accepted samples. This adaptation involves updating the covariance matrix according to a specific rule based on the chain's history. The algorithm we implemented is based on Haario et al. (2001).
+
+They choose the proposal density $N(X(t), \Sigma(t))$. Since $X(t)$ is multivariate, we have a multivariate proposal distribution. In the Adaptive Metropolis (AM) sampler, at each iteration of the chain, a candidate value $X^*$ is sampled from a proposal distribution $N(X(t), s_d* \Sigma(t))$, aiming to tune the covariance matrix $\Sigma(t)$ to improve the acceptance rate.
+
+The crucial aspect of the adaptation is how the covariance of the proposal distribution depends on the chain's history. In the AM algorithm, this is addressed by setting $\Sigma(t) \approx s_d \text{cov}(X_0, ..., X_{t-1}) + s_d \epsilon_0 I_d$ after an initial period, where $s_d$ is a parameter that depends only on dimension $d$ and $\epsilon_0$ is a small constant relative to the size of $S$. Here, $I_d$ denotes the $d$-dimensional identity matrix. To begin, we select an arbitrary, strictly positive definite initial covariance $\Sigma_0$, based on our best prior knowledge (which may be quite poor). We select an index $t_0 > 0$ for the length of an initial period and define:
+
+$$
+\Sigma_t = 
+\begin{cases} 
+\Sigma_0 & \text{for } t < t_0, \\
+s_d \text{cov}(X_0, ..., X_{t-1}) + s_d \epsilon_0 I_d & \text{for } t \geq t_0.
+\end{cases}
+$$
+
+The choice for the length of the initial segment $t_0 > 0$ is free, but the bigger it is chosen, the more slowly the effect of the adaptation is felt. In a sense, the size of $t_0$ reflects our trust in the initial covariance $\Sigma_0$.
+
+# Results
+
+For the estimation using the PenEstim application we  use the default priors available in PenEstim. We run a chain for 20,000 iterations, discarding the first 2000 samples as burn-in. Trace plots suggest that the posterior sampling converges well (see Appendix). 
+The cumulative probabilities of developing cancer by age for males and females, along with their 95% confidence intervals, are as follows: For males, the probability is 14% (with a confidence interval of 10% to 17%) at age 35, 40% (with a confidence interval of 34% to 46%) at age 50, and 65% (with a confidence interval of 57% to 74%) at age 70. For females, the probability is 6% (with a confidence interval of 4% to 8%) at age 35, 25% (with a confidence interval of 21% to 30%) at age 50, and 56% (with a confidence interval of 49% to 64%) at age 70.
+Here we show the estimated penetrances curves (with a 95% CI), showing the probability of developing cancer across ages. 
+
+```{r p1, echo=TRUE, cache=FALSE}
+load("/Users/nicolaskubista/Documents/Master Statistics/PenEstim - App/Application - CoH/out_sim_COL.Rdata")
+plot_penetrance(out_sim_COL$combined_chains, 0.95, 94)
+```
+
+# Appedix
+
+## Trace Plots
+
+Trace plots help us visualize the stability of our estimates over the iterations of the MCMC procedure.
+
+```{r t1, echo=TRUE, cache=FALSE}
+plot_traceSingle(out_sim_COL$results[[1]])
+```
+
+## ACF Plots
+
+Auto-correlation function (ACF) plots show how our estimates are correlated with each other at different points in time, helping us understand the consistency of our model.
+
+```{r acf2, echo=TRUE, cache=FALSE}
+## ACF Plots 
+acf(out_sim_COL$results[[1]]$first_quartile_male_samples, main = "ACF of First Quartile - Male")
+acf(out_sim_COL$results[[1]]$first_quartile_female_samples, main = "ACF of First Quartile - Female")
+acf(out_sim_COL$results[[1]]$median_male_samples, main = "ACF of Median - Male")
+acf(out_sim_COL$results[[1]]$median_female_samples, main = "ACF of Median - Female")
+acf(out_sim_COL$results[[1]]$threshold_male_samples, main = "ACF of Threshold - Male")
+acf(out_sim_COL$results[[1]]$threshold_female_samples, main = "ACF of Threshold - Female")
+```
+
+
+## Pair Plots of Parameters
+
+Pair plots help us see the relationships between different parameters in our model.
+
+```{r a2, echo=TRUE, cache=FALSE}
+# Load necessary library
+library(ggplot2)
+
+# Calculate correlation coefficients
+corr_median_male_quartile_male <- cor(out_sim_COL$combined_chains$median_male_results, out_sim_COL$combined_chains$first_quartile_male_results)
+corr_median_female_quartile_female <- cor(out_sim_COL$combined_chains$median_female_results, out_sim_COL$combined_chains$first_quartile_female_results)
+corr_median_male_asymptote_male <- cor(out_sim_COL$combined_chains$median_male_results, out_sim_COL$combined_chains$asymptote_male_results)
+corr_median_female_asymptote_female <- cor(out_sim_COL$combined_chains$median_female_results, out_sim_COL$combined_chains$asymptote_female_results)
+corr_median_male_median_female <- cor(out_sim_COL$combined_chains$median_male_results, out_sim_COL$combined_chains$median_female_results)
+corr_quartile_male_quartile_female <- cor(out_sim_COL$combined_chains$first_quartile_male_results, out_sim_COL$combined_chains$first_quartile_female_results)
+corr_asymptote_female_asymptote_male <- cor(out_sim_COL$combined_chains$asymptote_female_results, out_sim_COL$combined_chains$asymptote_male_results)
+corr_threshold_female_threshold_male <- cor(out_sim_COL$combined_chains$threshold_female_results, out_sim_COL$combined_chains$threshold_male_results)
+
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Function to create pair plots from MCMC chain results for males
+plot_mcmc_results_male <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_male_results, 
+                           given_first_quartile = mcmc_results$first_quartile_male_results, 
+                           delta = mcmc_results$threshold_male_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_male <- sapply(weibull_params, function(x) x$alpha)
+  beta_male <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for males
+  mcmc_df_male <- data.frame(
+    asymptote_male = mcmc_results$asymptote_male_results, 
+    threshold_male = mcmc_results$threshold_male_results, 
+    median_male = mcmc_results$median_male_results, 
+    first_quartile_male = mcmc_results$first_quartile_male_results,
+    alpha_male = alpha_male,
+    beta_male = beta_male
+  )
+  
+  # Create pair plots with smaller dot sizes for males
+  pairs_plot_male <- ggpairs(mcmc_df_male, 
+                             columns = c("alpha_male", "beta_male", "threshold_male", "asymptote_male", "median_male", "first_quartile_male"),
+                             title = "Pair Plot of MCMC Results (Male)",
+                             lower = list(continuous = wrap("points", size = 0.5)))
+                             
+  
+  # Display the plot
+  print(pairs_plot_male)
+}
+
+# Function to create pair plots from MCMC chain results for females
+plot_mcmc_results_female <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_female_results, 
+                           given_first_quartile = mcmc_results$first_quartile_female_results, 
+                           delta = mcmc_results$threshold_female_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_female <- sapply(weibull_params, function(x) x$alpha)
+  beta_female <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for females
+  mcmc_df_female <- data.frame(
+    asymptote_female = mcmc_results$asymptote_female_results, 
+    threshold_female = mcmc_results$threshold_female_results, 
+    median_female = mcmc_results$median_female_results, 
+    first_quartile_female = mcmc_results$first_quartile_female_results,
+    alpha_female = alpha_female,
+    beta_female = beta_female
+  )
+  
+  # Create pair plots with smaller dot sizes for females
+  pairs_plot_female <- ggpairs(mcmc_df_female, 
+                               columns = c("alpha_female", "beta_female", "threshold_female", "asymptote_female", "median_female", "first_quartile_female"),
+                               title = "Pair Plot of MCMC Results (Female)",
+                               lower = list(continuous = wrap("points", size = 0.5)))
+                               
+  
+  # Display the plot
+  print(pairs_plot_female)
+}
+
+# Example usage
+# Assuming out_sim_COL$combined_chains contains the MCMC results as described
+plot_mcmc_results_male(out_sim_COL$combined_chains)
+plot_mcmc_results_female(out_sim_COL$combined_chains)
+```
