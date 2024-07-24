@@ -36,6 +36,7 @@ PenEstim(
 \arguments{
 \item{pedigree}{A data frame containing the pedigree data in the required format. It should include the following columns:
 \itemize{
+\item \code{PedigreeID}:  A numeric value representing the unique identifier for each family There should be no duplicated entries.
 \item \code{ID}: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
 \item \code{Sex}: A numeric value where \code{0} indicates female and \code{1} indicates male. Missing entries are not currently supported.
 \item \code{MotherID}: A numeric value representing the unique identifier for an individual's mother.
@@ -44,7 +45,6 @@ PenEstim(
 \item \code{CurAge}: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from \code{1} to \code{94}.
 \item \code{isAff}: A numeric value indicating the affection status of cancer, with \code{1} for diagnosed individuals and \code{0} otherwise. Missing entries are not supported.
 \item \code{Age}: A numeric value indicating the age of cancer diagnosis, encoded as \code{NA} if the individual was not diagnosed. Allowed ages range from \code{1} to \code{94}.
-\item \code{isDead}: A numeric value where \code{1} indicates the individual is deceased and \code{0} indicates the individual is alive. Missing entries are assumed to be \code{0}.
 \item \code{Geno}: A column for germline testing or tumor marker testing results. Positive results should be coded as \code{1}, negative results as \code{0}, and unknown results as \code{NA} or left empty.
 }}
 

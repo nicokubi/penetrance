@@ -17,33 +17,40 @@
 #' @return The data frame with imputed ages.
 #' @export
 imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_male, beta_male, delta_male,
-                       alpha_female, beta_female, delta_female, empirical_density) {
+                       alpha_female, beta_female, delta_female, empirical_density, max_age) {
   for (i in na_indices) {
-    if (is.na(data$age[i])) {
-      u <- runif(1)
-      relationship_prob <- as.numeric(data$degree_of_relationship[i])
-
-      if (data$aff[i] == 1) {
-        # Use Weibull distribution for carriers
-        if (runif(1) < relationship_prob) {
-          if (data$sex[i] == 1) { # Male
-            age <- delta_male + beta_male * (-log(1 - u))^(1 / alpha_male)
-          } else if (data$sex[i] == 2) { # Female
-            age <- delta_female + beta_female * (-log(1 - u))^(1 / alpha_female)
-          }
-        } else {
-          # Use baseline distribution for non-carriers
-          age <- ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female))
+    valid_age <- FALSE
+    while (!valid_age) {
+    u <- runif(1)
+    relationship_prob <- as.numeric(data$degree_of_relationship[i])
+    data$age[i] <- min(max_age, max(1, round(data$age[i])))
+    
+    if (data$aff[i] == 1) {
+      # Use Weibull distribution for carriers
+      if (runif(1) < relationship_prob) {
+        if (data$sex[i] == 1) { # Male
+          data$age[i] <-  round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
+        } else if (data$sex[i] == 2) { # Female
+          data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
         }
       } else {
-        # Use empirical distribution for unaffected individuals
-        age <- drawEmpirical(empirical_density)
+        # Use baseline distribution for non-carriers
+        data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
       }
-      data$age[i] <- max(1, round(age))
+    } else {
+      # Use empirical distribution for unaffected individuals
+      data$age[i] <- round(drawEmpirical(empirical_density))
+    }
+    
+    if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i]  <= max_age) {
+      data$age[i] <- data$age[i] 
+      valid_age <- TRUE
+    }
     }
   }
   return(data)
 }
+
 
 #' Initialize Ages Using a Uniform Distribution
 #'
@@ -186,3 +193,4 @@ drawEmpirical <- function(empirical_density) {
   age <- approx(cumsum(empirical_density$y) / sum(empirical_density$y), empirical_density$x, xout = u)$y
   return(age)
 }
+

@@ -3,7 +3,7 @@ title: "Penetrance Estimation with PenEstim"
 author: "BayesMendel Lab"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Age Imputation and Penetrance Estimation with PenEstim}
+  %\VignetteIndexEntry{Penetrance Estimation with PenEstim}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -37,7 +37,7 @@ family data (see test_family_1). The family data must be in the correct format w
  Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
 
 ```{r dat, include=FALSE}
-dat <- test_fam_1
+dat <- test_fam
 ```
 
 
@@ -154,16 +154,7 @@ Available options are:
 
 ### Example
 
-```{r estimation, include=FALSE}
-output <- out_sim_COL <- PenEstim(
-    pedigree  = dat, twins = NULL, n_chains = 1, n_iter_per_chain = 10000, 
-    ncores = 4, baseline_data = baseline_data_default, af  = 0.0001, 
-    prior_params = prior_params_test, burn_in = 0.1, median_max = TRUE,  
-    ageImputation = TRUE
-)
-```
-
-The version of the algorithm show as an example above includes:
+The version of the algorithm show as an example below includes:
 
 - A single chain with 10k iterations of the adaptive MH algorithm. 
 The number of cores for the paralellization is set to `ncores = 4`. 
@@ -205,6 +196,7 @@ baseline_data_default <- data.frame(
   )
 )
 ```
+
 - The specified parameters for the prior distributions are as per the specification 
 in the `prior_params_test` object (see above).
 - The burn-in is set to `burn_in = 0.1`, which means the first 1000 iterations of 
@@ -213,6 +205,15 @@ the chain will be discarded (given 10k iterations of the algorithm).
 upper bound for the proposed median, given that `median_max = TRUE`. 
 - The automatic age imputation `AgeImputation` is performed (see above),
 given that `ageImputation = TRUE`. 
+
+```{r estimation, include=FALSE}
+output <- out_sim_COL <- PenEstim(
+    pedigree  = dat, twins = NULL, n_chains = 1, n_iter_per_chain = 10000, 
+    ncores = 4, baseline_data = baseline_data_default, af  = 0.0001, 
+    prior_params = prior_params_test, burn_in = 0.1, median_max = TRUE,  
+    ageImputation = TRUE
+)
+```
 
 ## References
 

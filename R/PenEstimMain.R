@@ -47,9 +47,22 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     data$age[is.na(data$age)] <- 1
   }
   
+  # Calculate indices of the probands before removing them
+  proband_indices <- which(data$isProband == 1)
+  
   # Option to remove the proband after age imputation
   if (removeProband) {
     data <- data[data$isProband != 1, ]
+    
+    # Adjust na_indices to account for removed probands
+    if (exists("na_indices")) {
+      original_na_indices <- na_indices
+      for (proband_index in proband_indices) {
+        original_na_indices <- original_na_indices[original_na_indices != proband_index]
+        original_na_indices[original_na_indices > proband_index] <- original_na_indices[original_na_indices > proband_index] - 1
+      }
+      na_indices <- original_na_indices
+    }
   }
   
   # Process baseline risk data
@@ -79,7 +92,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   
   # Function to initialize the Weibull parameters using empirical data
   draw_initial_params <- function(data, prior_distributions) {
-    browser()
+
     # Filter data by sex and affected status
     data_male_affected <- data[data$sex == 1 & data$aff == 1, ]
     data_female_affected <- data[data$sex == 2 & data$aff == 1, ]
@@ -160,7 +173,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     logprior_proposal = numeric(n_iter),
     acceptance_ratio = numeric(n_iter),
     rejection_rate = numeric(n_iter),
-    C = vector("list", n_iter)
+    C = vector("list", n_iter),
+    data = vector("list", n_iter)
   )
   
   num_rejections <- 0
@@ -206,138 +220,155 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   
   # Run n_iter iterations of the adaptive Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
-    # Calculate Weibull parameters from current parameters
-    weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
-    alpha_male <- weibull_params_male$alpha
-    beta_male <- weibull_params_male$beta
-    delta_male <- params_current$threshold_male
-    
-    weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
-    alpha_female <- weibull_params_female$alpha
-    beta_female <- weibull_params_female$beta
-    delta_female <- params_current$threshold_female
-    
-    # Impute ages at each iteration based on current parameters
-    if (ageImputation) {
-      data <- imputeAges(
-        data, na_indices, baseline_male_df, baseline_female_df, alpha_male, beta_male, delta_male,
-        alpha_female, beta_female, delta_female
-      )
-    }
-    
-    # Store the current parameter values
-    params_vector <- c(
-      params_current$asymptote_male, params_current$asymptote_female,
-      params_current$threshold_male, params_current$threshold_female,
-      params_current$median_male, params_current$median_female,
-      params_current$first_quartile_male, params_current$first_quartile_female
-    )
-    
-    # Generate the proposal parameters from a multivariate normal distribution centered around current parameters
-    proposal_vector <- mvrnorm(1, mu = params_vector, Sigma = C)
-    
-    # Ensure the proposals for the asymptote fall within the 0 to 1 range
-    proposal_vector[1] <- ifelse(proposal_vector[1] < 0, -proposal_vector[1],
-                                 ifelse(proposal_vector[1] > 1, 2 - proposal_vector[1], proposal_vector[1])
-    )
-    proposal_vector[2] <- ifelse(proposal_vector[2] < 0, -proposal_vector[2],
-                                 ifelse(proposal_vector[2] > 1, 2 - proposal_vector[2], proposal_vector[2])
-    )
-    
-    out$asymptote_male_proposals[i] <- proposal_vector[1]
-    out$asymptote_female_proposals[i] <- proposal_vector[2]
-    out$threshold_male_proposals[i] <- proposal_vector[3]
-    out$threshold_female_proposals[i] <- proposal_vector[4]
-    out$median_male_proposals[i] <- proposal_vector[5]
-    out$median_female_proposals[i] <- proposal_vector[6]
-    out$first_quartile_male_proposals[i] <- proposal_vector[7]
-    out$first_quartile_female_proposals[i] <- proposal_vector[8]
-    
-    params_proposal <- list(
-      asymptote_male = proposal_vector[1],
-      asymptote_female = proposal_vector[2],
-      threshold_male = proposal_vector[3],
-      threshold_female = proposal_vector[4],
-      median_male = proposal_vector[5],
-      median_female = proposal_vector[6],
-      first_quartile_male = proposal_vector[7],
-      first_quartile_female = proposal_vector[8]
-    )
-    
-    # Evaluate the current set of parameters
-    loglikelihood_current <- mhLogLikelihood_clipp(
-      params_current, data, twins, max_age,
-      baseline_data, af, BaselineNC, ncores
-    )
-    logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
-    # Record the outputs of the evaluation for the current set of parameters
-    out$loglikelihood_current[i] <- loglikelihood_current
-    out$logprior_current[i] <- logprior_current
-    
-    out$loglikelihood_proposal[i] <- NA
-    out$logprior_proposal[i] <- NA
-    out$acceptance_ratio[i] <- NA
-    
-    # Check that the proposed parameters satisfy the basic requirements
-    is_rejected <- FALSE
-    if (
-      proposal_vector[1] < 0 || proposal_vector[1] > 1 ||
-      proposal_vector[2] < 0 || proposal_vector[2] > 1 ||
-      proposal_vector[3] < 0 || proposal_vector[3] > 100 ||
-      proposal_vector[4] < 0 || proposal_vector[4] > 100 ||
-      proposal_vector[5] < proposal_vector[7] ||
-      (median_max && proposal_vector[5] > baseline_mid_male) ||
-      (!median_max && proposal_vector[5] > max_age) ||
-      proposal_vector[6] < proposal_vector[8] ||
-      (median_max && proposal_vector[6] > baseline_mid_female) ||
-      (!median_max && proposal_vector[6] > max_age) ||
-      proposal_vector[7] < proposal_vector[3] || proposal_vector[7] > proposal_vector[5] ||
-      proposal_vector[8] < proposal_vector[4] || proposal_vector[8] > proposal_vector[6]) {
-      is_rejected <- TRUE
-      num_rejections <- num_rejections + 1
-    } else {
-      loglikelihood_proposal <- mhLogLikelihood_clipp(
-        params_proposal, data, twins, max_age,
-        baseline_data, af, BaselineNC, ncores
-      )
-      logprior_proposal <- calculate_log_prior(params_proposal, prior_distributions, max_age)
+    tryCatch({
+      print(i)
       
-      log_acceptance_ratio <- (loglikelihood_proposal + logprior_proposal) - (loglikelihood_current + logprior_current)
+      # Calculate Weibull parameters from current parameters
+      weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
+      alpha_male <- weibull_params_male$alpha
+      beta_male <- weibull_params_male$beta
+      delta_male <- params_current$threshold_male
       
-      if (log(runif(1)) < log_acceptance_ratio) {
-        params_current <- params_proposal
-      } else {
-        num_rejections <- num_rejections + 1
+      weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
+      alpha_female <- weibull_params_female$alpha
+      beta_female <- weibull_params_female$beta
+      delta_female <- params_current$threshold_female
+      
+      # Impute ages at each iteration based on current parameters
+      if (ageImputation) {
+        data <- imputeAges(
+          data, na_indices, baseline_male_df, baseline_female_df, alpha_male, beta_male, delta_male,
+          alpha_female, beta_female, delta_female, age_density, max_age
+        )
+        # Save imputed data for debugging
+        out$data[[i]] <- data
       }
       
-      out$loglikelihood_proposal[i] <- loglikelihood_proposal
-      out$logprior_proposal[i] <- logprior_proposal
-      out$acceptance_ratio[i] <- log_acceptance_ratio
-    }
-    
-    current_states[[i]] <- c(
-      params_current$asymptote_male, params_current$asymptote_female,
-      params_current$threshold_male, params_current$threshold_female,
-      params_current$median_male, params_current$median_female,
-      params_current$first_quartile_male, params_current$first_quartile_female
-    )
-    
-    if (i > max(burn_in * n_iter, 3)) {
-      C <- sd * cov(do.call(rbind, current_states)) + eps * sd * diag(num_pars)
-    }
-    
-    out$asymptote_male_samples[i] <- params_current$asymptote_male
-    out$asymptote_female_samples[i] <- params_current$asymptote_female
-    out$threshold_male_samples[i] <- params_current$threshold_male
-    out$threshold_female_samples[i] <- params_current$threshold_female
-    out$median_male_samples[i] <- params_current$median_male
-    out$median_female_samples[i] <- params_current$median_female
-    out$first_quartile_male_samples[i] <- params_current$first_quartile_male
-    out$first_quartile_female_samples[i] <- params_current$first_quartile_female
-    out$C[[i]] <- C
+      # Store the current parameter values
+      params_vector <- c(
+        params_current$asymptote_male, params_current$asymptote_female,
+        params_current$threshold_male, params_current$threshold_female,
+        params_current$median_male, params_current$median_female,
+        params_current$first_quartile_male, params_current$first_quartile_female
+      )
+      
+      # Generate the proposal parameters from a multivariate normal distribution centered around current parameters
+      proposal_vector <- mvrnorm(1, mu = params_vector, Sigma = C)
+      
+      # Ensure the proposals for the asymptote fall within the 0 to 1 range
+      proposal_vector[1] <- ifelse(proposal_vector[1] < 0, -proposal_vector[1],
+                                   ifelse(proposal_vector[1] > 1, 2 - proposal_vector[1], proposal_vector[1])
+      )
+      proposal_vector[2] <- ifelse(proposal_vector[2] < 0, -proposal_vector[2],
+                                   ifelse(proposal_vector[2] > 1, 2 - proposal_vector[2], proposal_vector[2])
+      )
+      
+      out$asymptote_male_proposals[i] <- proposal_vector[1]
+      out$asymptote_female_proposals[i] <- proposal_vector[2]
+      out$threshold_male_proposals[i] <- proposal_vector[3]
+      out$threshold_female_proposals[i] <- proposal_vector[4]
+      out$median_male_proposals[i] <- proposal_vector[5]
+      out$median_female_proposals[i] <- proposal_vector[6]
+      out$first_quartile_male_proposals[i] <- proposal_vector[7]
+      out$first_quartile_female_proposals[i] <- proposal_vector[8]
+      
+      params_proposal <- list(
+        asymptote_male = proposal_vector[1],
+        asymptote_female = proposal_vector[2],
+        threshold_male = proposal_vector[3],
+        threshold_female = proposal_vector[4],
+        median_male = proposal_vector[5],
+        median_female = proposal_vector[6],
+        first_quartile_male = proposal_vector[7],
+        first_quartile_female = proposal_vector[8]
+      )
+      
+      # Evaluate the current set of parameters
+      loglikelihood_current <- mhLogLikelihood_clipp(
+        params_current, data, twins, max_age,
+        baseline_data, af, BaselineNC, ncores
+      )
+      logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
+      # Record the outputs of the evaluation for the current set of parameters
+      out$loglikelihood_current[i] <- loglikelihood_current
+      out$logprior_current[i] <- logprior_current
+      
+      out$loglikelihood_proposal[i] <- NA
+      out$logprior_proposal[i] <- NA
+      out$acceptance_ratio[i] <- NA
+      
+      # Check that the proposed parameters satisfy the basic requirements
+      is_rejected <- FALSE
+      if (
+        is.na(proposal_vector[1]) || proposal_vector[1] < 0 || proposal_vector[1] > 1 ||
+        is.na(proposal_vector[2]) || proposal_vector[2] < 0 || proposal_vector[2] > 1 ||
+        is.na(proposal_vector[3]) || proposal_vector[3] < 0 || proposal_vector[3] > 100 || 
+        proposal_vector[3] < prior_distributions$prior_params$threshold$min || proposal_vector[3] > prior_distributions$prior_params$threshold$max ||
+        is.na(proposal_vector[4]) || proposal_vector[4] < 0 || proposal_vector[4] > 100 ||
+        proposal_vector[4] < prior_distributions$prior_params$threshold$min || proposal_vector[4] > prior_distributions$prior_params$threshold$max ||
+        is.na(proposal_vector[5]) || proposal_vector[5] < proposal_vector[7] ||
+        is.na(proposal_vector[6]) || proposal_vector[6] < proposal_vector[8] ||
+        is.na(proposal_vector[7]) || proposal_vector[7] < proposal_vector[3] || proposal_vector[7] > proposal_vector[5] ||
+        is.na(proposal_vector[8]) || proposal_vector[8] < proposal_vector[4] || proposal_vector[8] > proposal_vector[6] ||
+        (median_max && proposal_vector[5] > baseline_mid_male) ||
+        (!median_max && proposal_vector[5] > max_age) ||
+        (median_max && proposal_vector[6] > baseline_mid_female) ||
+        (!median_max && proposal_vector[6] > max_age)
+      ) {
+        is_rejected <- TRUE
+        num_rejections <- num_rejections + 1
+      } else {
+        loglikelihood_proposal <- mhLogLikelihood_clipp(
+          params_proposal, data, twins, max_age,
+          baseline_data, af, BaselineNC, ncores
+        )
+        logprior_proposal <- calculate_log_prior(params_proposal, prior_distributions, max_age)
+        
+        log_acceptance_ratio <- (loglikelihood_proposal + logprior_proposal) - (loglikelihood_current + logprior_current)
+        
+        if (log(runif(1)) < log_acceptance_ratio) {
+          params_current <- params_proposal
+        } else {
+          num_rejections <- num_rejections + 1
+        }
+        
+        out$loglikelihood_proposal[i] <- loglikelihood_proposal
+        out$logprior_proposal[i] <- logprior_proposal
+        out$acceptance_ratio[i] <- log_acceptance_ratio
+      }
+      
+      current_states[[i]] <- c(
+        params_current$asymptote_male, params_current$asymptote_female,
+        params_current$threshold_male, params_current$threshold_female,
+        params_current$median_male, params_current$median_female,
+        params_current$first_quartile_male, params_current$first_quartile_female
+      )
+      
+      if (i > max(burn_in * n_iter, 3)) {
+        C <- sd * cov(do.call(rbind, current_states)) + eps * sd * diag(num_pars)
+      }
+      
+      out$asymptote_male_samples[i] <- params_current$asymptote_male
+      out$asymptote_female_samples[i] <- params_current$asymptote_female
+      out$threshold_male_samples[i] <- params_current$threshold_male
+      out$threshold_female_samples[i] <- params_current$threshold_female
+      out$median_male_samples[i] <- params_current$median_male
+      out$median_female_samples[i] <- params_current$median_female
+      out$first_quartile_male_samples[i] <- params_current$first_quartile_male
+      out$first_quartile_female_samples[i] <- params_current$first_quartile_female
+      out$C[[i]] <- C
+    }, error = function(e) {
+      # Save output up to the point of error
+      cat("Error at iteration", i, ": ", conditionMessage(e), "\n")
+      save(out, file = paste0("mhChain_output_", chain_id, "_iter_", i, ".RData"))
+      stop(e) # Re-throw the error after saving the output
+    })
   }
   
   out$rejection_rate <- num_rejections / n_iter
+  
+  # Save the final output
+  save(out, file = paste0("mhChain_output_", chain_id, "_final.RData"))
   
   return(out)
 }
@@ -389,7 +420,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 #' @importFrom stats rbeta runif
 #' @importFrom parallel makeCluster stopCluster parLapply
 #' @export
-PenEstim <- function(pedigree, twins, n_chains = 1,
+PenEstim <- function(pedigree, 
+                     twins = NULL, 
+                     n_chains = 1,
                      n_iter_per_chain = 10000,
                      ncores = 6,
                      max_age = 94,
@@ -413,7 +446,7 @@ PenEstim <- function(pedigree, twins, n_chains = 1,
                      density_plots = TRUE,
                      penetrance_plot = TRUE,
                      probCI = 0.95) {
-  
+  browser()
   # Validate inputs
   if (missing(pedigree)) {
     stop("Error: 'pedigree' parameter is missing. Please provide a valid list of pedigrees.")
@@ -463,7 +496,7 @@ PenEstim <- function(pedigree, twins, n_chains = 1,
   parallel::clusterExport(cl, c(
     "mhChain", "mhLogLikelihood_clipp", "calculate_weibull_parameters", "validate_weibull_parameters", "prior_params",
     "transformDF", "lik.fn", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data", "calcPedDegree",
-    "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", "drawBaseline", "calculateNCPen",
+    "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", "drawBaseline", "calculateNCPen", "drawEmpirical",
     "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores", "removeProband"
   ), envir = environment())
 
