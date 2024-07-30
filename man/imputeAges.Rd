@@ -15,7 +15,8 @@ imputeAges(
   alpha_female,
   beta_female,
   delta_female,
-  empirical_density
+  empirical_density,
+  max_age
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ imputeAges(
 \item{delta_female}{Location parameter for the Weibull distribution for females.}
 
 \item{empirical_density}{A density object containing the empirical density of ages.}
+
+\item{max_age}{Integer, the maximum age considered in the analysis.}
 }
 \value{
 The data frame with imputed ages.

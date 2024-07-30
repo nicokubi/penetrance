@@ -13,7 +13,6 @@
 #' @return A list containing the cumulative risk (`cumulative_risk`) and the total
 #' probability (`total_prob`) of developing the specified cancer.
 #'
-#' @export
 calculate_lifetime_risk <- function(cancer_type, gene, race, sex, type, db) {
   # Find the indices for the respective attributes
   dim_names <- attr(db$Penetrance, "dimnames")
@@ -58,7 +57,6 @@ calculate_lifetime_risk <- function(cancer_type, gene, race, sex, type, db) {
 #'
 #' @return A list containing the calculated Weibull parameters, \code{alpha} and \code{beta}.
 #
-#' @export
 calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
   # Calculate alpha
   alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
@@ -80,7 +78,6 @@ calculate_weibull_parameters <- function(given_median, given_first_quartile, del
 #'
 #' @return Boolean indicating whether the parameters are valid (TRUE) or not (FALSE).
 #'
-#' @export
 validate_weibull_parameters <- function(given_first_quartile, given_median, threshold, asymptote) {
   # Check for negative or zero values
   if (given_median <= 0 || given_first_quartile <= 0 || threshold < 0) {
@@ -115,7 +112,6 @@ validate_weibull_parameters <- function(given_first_quartile, given_median, thre
 #'
 #' @return The transformed data frame in the format required for clipp.
 #'
-#' @export
 transformDF <- function(df) {
   # Rename and transform columns
   df$individual <- df$ID

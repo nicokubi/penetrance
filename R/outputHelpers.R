@@ -4,7 +4,7 @@
 #' @param results A list of MCMC chain results.
 #'
 #' @return A list with combined results, including median, threshold, first quartile, and asymptote values.
-#'
+#' 
 combine_chains <- function(results) {
   list(
     median_male_results = do.call(c, lapply(results, function(x) x$median_male_samples)),
@@ -35,7 +35,7 @@ combine_chains <- function(results) {
 #' @param data A list with combined results.
 #'
 #' @return A summary data frame containing Median, threshold, First Quartile, and Asymptote Value.
-#'
+#' @export
 generate_summary <- function(data) {
   summary_data <- data.frame(
     Median_Male = data$median_male_results,
@@ -55,7 +55,7 @@ generate_summary <- function(data) {
 #' Generates histograms of the posterior samples for the different parameters
 #'
 #' @param data A list with combined results.
-#'
+#' 
 generate_density_plots <- function(data) {
   # Set the plotting parameters
   par(mfrow = c(3, 2), las = 1, mar = c(5, 4, 4, 2) + 0.1) # Adjust grid for 5 plots, now 3 rows and 2 columns
@@ -106,13 +106,18 @@ generate_density_plots <- function(data) {
   par(mfrow = c(1, 1))
 }
 
-
 #' Plot Trace
 #' @param results A list of MCMC chain results.
 #' @param n_chains The number of chains.
-#'
+#' @export
 plot_trace <- function(results, n_chains) {
-  par(mfrow = c(n_chains, 4)) # Set up a grid for the plots
+  # Set up a grid for the plots based on the number of chains
+  if (n_chains <= 3) {
+    par(mfrow = c(n_chains*2, 2)) # Up to 3 chains: 3 rows, 4 columns
+  } else {
+    par(mfrow = c(ceiling(n_chains), 4)) # More than 3 chains: 2 rows, 8 columns
+  }
+  
   for (chain_id in 1:n_chains) {
     # Extract results for the current chain
     median_male_results <- results[[chain_id]]$median_male_samples
@@ -135,6 +140,8 @@ plot_trace <- function(results, n_chains) {
     plot(asymptote_male_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Asymptote Male"), xlab = "Iteration", ylab = "Asymptote")
     plot(asymptote_female_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Asymptote Female"), xlab = "Iteration", ylab = "Asymptote")
   }
+  # Reset the plotting layout
+  par(mfrow = c(1, 1))
 }
 
 # Trace for just a single chain
@@ -184,7 +191,7 @@ running_variance <- function(res) {
 
 #' Print Rejection Rates
 #' @param results A list of MCMC chain results.
-#'
+#' @export
 printRejectionRates <- function(results) {
   rejection_rates <- sapply(results, function(x) x$rejection_rate)
   cat("Rejection rates: ", rejection_rates, "\n")
@@ -272,7 +279,7 @@ apply_thinning <- function(results, thinning_factor) {
 #' @param sex Character, specifying the sex of the individuals for the plot ("Male", "Female", or "NA" for not applicable). Default is "NA".
 #'
 #' @return A plot showing the Weibull distribution with credible intervals.
-#'
+#' @export
 plot_penetrance <- function(data, prob, max_age, sex = "NA") {
   if (prob <= 0 || prob >= 1) {
     stop("prob must be between 0 and 1")
@@ -359,7 +366,7 @@ plot_penetrance <- function(data, prob, max_age, sex = "NA") {
 #' @param sex Character, specifying the sex of the individuals for the plot ("Male", "Female", or "NA" for not applicable). Default is "NA".
 #'
 #' @return A plot showing the Weibull PDF with credible intervals.
-#'
+#' @export
 plot_pdf <- function(data, prob, max_age, sex = "NA") {
   if (prob <= 0 || prob >= 1) {
     stop("prob must be between 0 and 1")

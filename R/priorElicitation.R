@@ -74,7 +74,7 @@ distribution_data_default <- data.frame(
 #' @return A list of functions representing the prior distributions for asymptote, threshold, median, and first quartile.
 #'
 #' @seealso \code{\link{qbeta}}, \code{\link{runif}}
-#' @export
+#' 
 makePriors <- function(data, sample_size, cancer, ratio, prior_params, risk_proportion, baseline_data) {
   # Helper function definitions
   normalize_median <- function(x) {

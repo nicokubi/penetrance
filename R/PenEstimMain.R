@@ -23,11 +23,10 @@
 #' @param removeProband Logical, indicates if the proband should be removed from the analysis.
 #'
 #' @return A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.
-#' @export
+#' 
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
                     ageImputation, removeProband) {
-  browser()
   # Set seed for the chain
   set.seed(seed)
   
@@ -173,8 +172,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     logprior_proposal = numeric(n_iter),
     acceptance_ratio = numeric(n_iter),
     rejection_rate = numeric(n_iter),
-    C = vector("list", n_iter),
-    data = vector("list", n_iter)
+    C = vector("list", n_iter)
   )
   
   num_rejections <- 0
@@ -220,8 +218,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   
   # Run n_iter iterations of the adaptive Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
-    tryCatch({
-      print(i)
       
       # Calculate Weibull parameters from current parameters
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
@@ -240,8 +236,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           data, na_indices, baseline_male_df, baseline_female_df, alpha_male, beta_male, delta_male,
           alpha_female, beta_female, delta_female, age_density, max_age
         )
-        # Save imputed data for debugging
-        out$data[[i]] <- data
       }
       
       # Store the current parameter values
@@ -357,12 +351,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       out$first_quartile_male_samples[i] <- params_current$first_quartile_male
       out$first_quartile_female_samples[i] <- params_current$first_quartile_female
       out$C[[i]] <- C
-    }, error = function(e) {
-      # Save output up to the point of error
-      cat("Error at iteration", i, ": ", conditionMessage(e), "\n")
-      save(out, file = paste0("mhChain_output_", chain_id, "_iter_", i, ".RData"))
-      stop(e) # Re-throw the error after saving the output
-    })
   }
   
   out$rejection_rate <- num_rejections / n_iter
@@ -415,6 +403,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 #' @param rejection_rates Boolean indicating whether to include rejection rates in the output. Default is TRUE.
 #' @param density_plots Boolean indicating whether to include density plots in the output. Default is TRUE.
 #' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
+#' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.
+#' @param plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
 #' @return A list containing combined results from all chains, along with optional statistics and plots.
 #' @importFrom stats rbeta runif
@@ -445,8 +435,9 @@ PenEstim <- function(pedigree,
                      rejection_rates = TRUE,
                      density_plots = TRUE,
                      penetrance_plot = TRUE,
+                     plot_trace = TRUE,
+                     plot_pdf = TRUE,
                      probCI = 0.95) {
-  browser()
   # Validate inputs
   if (missing(pedigree)) {
     stop("Error: 'pedigree' parameter is missing. Please provide a valid list of pedigrees.")
@@ -460,13 +451,13 @@ PenEstim <- function(pedigree,
   if (n_chains > parallel::detectCores()) {
     stop("Error: 'n_chains' exceeds the number of available CPU cores.")
   }
-
+  
   # Create the seeds for the individual chains
   seeds <- sample.int(1000, n_chains)
-
+  
   # Apply the transformation to adjust the format for the clipp package
   data <- do.call(rbind, lapply(pedigree, transformDF))
-
+  
   # Create the prior distributions
   prop <- makePriors(
     data = distribution_data,
@@ -476,14 +467,14 @@ PenEstim <- function(pedigree,
     risk_proportion = risk_proportion, 
     baseline_data = baseline_data
   )
-
+  
   cores <- parallel::detectCores()
-
+  
   if (n_chains > cores) {
     stop("Error: 'n_chains exceeds the number of available CPU cores.")
   }
   cl <- parallel::makeCluster(n_chains)
-
+  
   # Load required packages to the clusters
   parallel::clusterEvalQ(cl, {
     library(clipp)
@@ -492,14 +483,14 @@ PenEstim <- function(pedigree,
     library(parallel)
     library(kinship2)
   })
-
+  
   parallel::clusterExport(cl, c(
     "mhChain", "mhLogLikelihood_clipp", "calculate_weibull_parameters", "validate_weibull_parameters", "prior_params",
     "transformDF", "lik.fn", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data", "calcPedDegree",
     "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", "drawBaseline", "calculateNCPen", "drawEmpirical",
     "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores", "removeProband"
   ), envir = environment())
-
+  
   results <- parallel::parLapply(cl, 1:n_chains, function(i) {
     mhChain(
       seed = seeds[i],
@@ -521,13 +512,13 @@ PenEstim <- function(pedigree,
       removeProband = removeProband
     )
   })
-
+  
   # Check rejection rates and issue a warning if they are all above 90%
   all_high_rejections <- all(sapply(results, function(x) x$rejection_rate > 0.9))
   if (all_high_rejections) {
     warning("Low acceptance rate. Please consider running the chain longer.")
   }
-
+  
   # Apply burn-in and thinning
   if (burn_in > 0) {
     results <- apply_burn_in(results, burn_in)
@@ -535,33 +526,43 @@ PenEstim <- function(pedigree,
   if (thinning_factor > 1) {
     results <- apply_thinning(results, thinning_factor)
   }
-
+  
   # Extract samples from the chains
   combined_chains <- combine_chains(results)
-
+  
   # Initialize variables
   output <- list()
-
+  
   tryCatch(
     {
       if (rejection_rates) {
         # Generate rejection rates
         output$rejection_rates <- printRejectionRates(results)
       }
-
+      
       if (summary_stats) {
         # Generate summary statistics
         output$summary_stats <- generate_summary(combined_chains)
       }
-
+      
       if (density_plots) {
         # Generate density plots
         output$density_plots <- generate_density_plots(combined_chains)
       }
-
+      
       if (penetrance_plot) {
         # Generate penetrance plot
         output$penetrance_plot <- plot_penetrance(combined_chains, prob = probCI, max_age = max_age)
+      }
+      
+      if (plot_trace) {
+        # Generate trace plots
+        output$trace_plots <- plot_trace(results, n_chains)
+      }
+      
+      if (plot_pdf) {
+        # Generate PDF plots
+        output$pdf_plots <- plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
       }
     },
     error = function(e) {
@@ -569,11 +570,10 @@ PenEstim <- function(pedigree,
       cat("An error occurred in the output display: ", e$message, "\n")
     }
   )
-
+  
   output$combined_chains <- combined_chains
   output$results <- results
   output$data <- data
-
+  
   return(output)
 }
-

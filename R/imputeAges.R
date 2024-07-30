@@ -14,8 +14,9 @@
 #' @param beta_female Scale parameter for the Weibull distribution for females.
 #' @param delta_female Location parameter for the Weibull distribution for females.
 #' @param empirical_density A density object containing the empirical density of ages.
+#' @param max_age Integer, the maximum age considered in the analysis.
 #' @return The data frame with imputed ages.
-#' @export
+#' 
 imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_male, beta_male, delta_male,
                        alpha_female, beta_female, delta_female, empirical_density, max_age) {
   for (i in na_indices) {
@@ -42,6 +43,7 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
       data$age[i] <- round(drawEmpirical(empirical_density))
     }
     
+    # Checks that the imputed age is in between 1 and max_age. If not, another imputation loop starts.
     if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i]  <= max_age) {
       data$age[i] <- data$age[i] 
       valid_age <- TRUE
@@ -51,7 +53,6 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
   return(data)
 }
 
-
 #' Initialize Ages Using a Uniform Distribution
 #'
 #' This function initializes ages for individuals in a dataset using a uniform distribution.
@@ -60,7 +61,7 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
 #' @param threshold The minimum age value for the uniform distribution.
 #' @param max_age The maximum age value for the uniform distribution.
 #' @return A list containing the updated data frame and the indices of the rows where ages were initialized.
-#' @export
+#' 
 imputeAgesInit <- function(data, threshold, max_age) {
   na_indices <- which(is.na(data$age))
   data$age[na_indices] <- runif(length(na_indices), threshold, max_age)
@@ -73,7 +74,7 @@ imputeAgesInit <- function(data, threshold, max_age) {
 #'
 #' @param data A data frame containing the data with columns 'individual', 'father', 'mother', 'sex', 'aff', 'family', and 'isProband'.
 #' @return The data frame with an additional column 'degree_of_relationship' indicating the degree of relationship for each individual.
-#' @export
+#' 
 calcPedDegree <- function(data) {
   # Create a copy of the data to avoid modifying the original data directly
   data_copy <- data
@@ -154,7 +155,7 @@ calcPedDegree <- function(data) {
 #' @param age_column The name of the column indicating ages (default is "age").
 #' @param n_points The number of points to use in the density estimation (default is 10000).
 #' @return A density object representing the empirical density of ages.
-#' @export
+#' 
 calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", n_points = 10000) {
   # Filter the data to include only non-affected individuals (aff == 0)
   non_affected_data <- subset(data, data[[aff_column]] == 0)
@@ -174,7 +175,7 @@ calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "ag
 #'
 #' @param baseline_data A data frame containing baseline data with columns 'cum_prob' and 'age'.
 #' @return A single age value drawn from the baseline data.
-#' @export
+#' 
 drawBaseline <- function(baseline_data) {
   u <- runif(1)
   age <- approx(baseline_data$cum_prob, baseline_data$age, xout = u)$y
@@ -187,10 +188,9 @@ drawBaseline <- function(baseline_data) {
 #'
 #' @param empirical_density A density object containing the empirical density of ages.
 #' @return A single age value drawn from the empirical density data.
-#' @export
+#' 
 drawEmpirical <- function(empirical_density) {
   u <- runif(1)
   age <- approx(cumsum(empirical_density$y) / sum(empirical_density$y), empirical_density$x, xout = u)$y
   return(age)
 }
-
