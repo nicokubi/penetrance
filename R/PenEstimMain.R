@@ -172,7 +172,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     logprior_proposal = numeric(n_iter),
     acceptance_ratio = numeric(n_iter),
     rejection_rate = numeric(n_iter),
-    C = vector("list", n_iter)
+    C = vector("list", n_iter),
+    data = vector("list", n_iter)
   )
   
   num_rejections <- 0
@@ -218,6 +219,11 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   
   # Run n_iter iterations of the adaptive Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
+<<<<<<< HEAD
+=======
+    tryCatch({
+      print(i)
+>>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
       
       # Calculate Weibull parameters from current parameters
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
@@ -236,6 +242,11 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           data, na_indices, baseline_male_df, baseline_female_df, alpha_male, beta_male, delta_male,
           alpha_female, beta_female, delta_female, age_density, max_age
         )
+<<<<<<< HEAD
+=======
+        # Save imputed data for debugging
+        out$data[[i]] <- data
+>>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
       }
       
       # Store the current parameter values
@@ -351,6 +362,15 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       out$first_quartile_male_samples[i] <- params_current$first_quartile_male
       out$first_quartile_female_samples[i] <- params_current$first_quartile_female
       out$C[[i]] <- C
+<<<<<<< HEAD
+=======
+    }, error = function(e) {
+      # Save output up to the point of error
+      cat("Error at iteration", i, ": ", conditionMessage(e), "\n")
+      save(out, file = paste0("mhChain_output_", chain_id, "_iter_", i, ".RData"))
+      stop(e) # Re-throw the error after saving the output
+    })
+>>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
   }
   
   out$rejection_rate <- num_rejections / n_iter
@@ -438,6 +458,10 @@ PenEstim <- function(pedigree,
                      plot_trace = TRUE,
                      plot_pdf = TRUE,
                      probCI = 0.95) {
+<<<<<<< HEAD
+=======
+  browser()
+>>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
   # Validate inputs
   if (missing(pedigree)) {
     stop("Error: 'pedigree' parameter is missing. Please provide a valid list of pedigrees.")
