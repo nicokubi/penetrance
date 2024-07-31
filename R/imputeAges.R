@@ -43,10 +43,7 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
       data$age[i] <- round(drawEmpirical(empirical_density))
     }
     
-<<<<<<< HEAD
     # Checks that the imputed age is in between 1 and max_age. If not, another imputation loop starts.
-=======
->>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
     if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i]  <= max_age) {
       data$age[i] <- data$age[i] 
       valid_age <- TRUE
@@ -197,9 +194,4 @@ drawEmpirical <- function(empirical_density) {
   u <- runif(1)
   age <- approx(cumsum(empirical_density$y) / sum(empirical_density$y), empirical_density$x, xout = u)$y
   return(age)
-<<<<<<< HEAD
 }
-=======
-}
-
->>>>>>> 11e4b91cee773820ae54eab94c43894ce97c52fe
