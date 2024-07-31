@@ -1,5 +1,0 @@
-"0","describeFamilies(dat,""Colorectal"",""MLH1"")
-"
-"2","Error in cancer %in% CANCER_NAME_MAP$long : 
-  object 'CANCER_NAME_MAP' not found
-"
