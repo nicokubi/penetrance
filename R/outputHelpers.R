@@ -47,7 +47,8 @@ generate_summary <- function(data) {
     Asymptote_Male = data$asymptote_male_results,
     Asymptote_Female = data$asymptote_female_results
   )
-  summary(summary_data)
+  print(summary(summary_data))
+  return(summary_data)
 }
 
 #' Generate Posterior Density Plots

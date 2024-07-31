@@ -550,14 +550,14 @@ PenEstim <- function(pedigree,
         output$density_plots <- generate_density_plots(combined_chains)
       }
       
-      if (penetrance_plot) {
-        # Generate penetrance plot
-        output$penetrance_plot <- plot_penetrance(combined_chains, prob = probCI, max_age = max_age)
-      }
-      
       if (plot_trace) {
         # Generate trace plots
         output$trace_plots <- plot_trace(results, n_chains)
+      }
+      
+      if (penetrance_plot) {
+        # Generate penetrance plot
+        output$penetrance_plot <- plot_penetrance(combined_chains, prob = probCI, max_age = max_age)
       }
       
       if (plot_pdf) {

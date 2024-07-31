@@ -62,6 +62,17 @@ There are a few ways in which a user can specify how the estimation approach is 
 Available options are: 
 
 ```{r}
+#' @param pedigree A data frame containing the pedigree data in the required format. It should include the following columns:
+#'   - `PedigreeID`:  A numeric value representing the unique identifier for each family There should be no duplicated entries.
+#'   - `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
+#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. Missing entries are not currently supported.
+#'   - `MotherID`: A numeric value representing the unique identifier for an individual's mother.
+#'   - `FatherID`: A numeric value representing the unique identifier for an individual's father.
+#'   - `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
+#'   - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`.
+#'   - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals and `0` otherwise. Missing entries are not supported.
+#'   - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`.
+#'   - `Geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
 #' @param twins Identical twins or triplets in the family can be specifed. For example, to indicate that `ora024` and `ora027` are identical twins, and so are `aey063` and `aey064`, 
 #' then we can use the following as the twins arguement: twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))
 #' @param n_chains Number of chains for parallel computation. Default is 1.
@@ -87,6 +98,8 @@ Available options are:
 #' @param rejection_rates Boolean indicating whether to include rejection rates in the output. Default is TRUE.
 #' @param density_plots Boolean indicating whether to include density plots in the output. Default is TRUE.
 #' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
+#' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.
+#' @param plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
 ```
 
