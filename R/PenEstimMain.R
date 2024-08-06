@@ -400,9 +400,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 #' @param summary_stats Boolean indicating whether to include summary statistics in the output. Default is TRUE.
 #' @param rejection_rates Boolean indicating whether to include rejection rates in the output. Default is TRUE.
 #' @param density_plots Boolean indicating whether to include density plots in the output. Default is TRUE.
-#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
 #' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.
-#' @param plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
+#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
+#' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
 #' @return A list containing combined results from all chains, along with optional statistics and plots.
 #' @importFrom stats rbeta runif
@@ -432,9 +432,9 @@ PenEstim <- function(pedigree,
                      summary_stats = TRUE,
                      rejection_rates = TRUE,
                      density_plots = TRUE,
-                     penetrance_plot = TRUE,
                      plot_trace = TRUE,
-                     plot_pdf = TRUE,
+                     penetrance_plot = TRUE,
+                     penetrance_plot_pdf = TRUE,
                      probCI = 0.95) {
 
   # Validate inputs
@@ -559,9 +559,9 @@ PenEstim <- function(pedigree,
         output$penetrance_plot <- plot_penetrance(combined_chains, prob = probCI, max_age = max_age)
       }
       
-      if (plot_pdf) {
+      if (penetrance_plot_pdf) {
         # Generate PDF plots
-        output$pdf_plots <- plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
+        output$penetrance_plot_pdf <- penetrance_plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
       }
     },
     error = function(e) {
