@@ -56,7 +56,7 @@ calculate_lifetime_risk <- function(cancer_type, gene, race, sex, type, db) {
 #' @param delta A constant offset value.
 #'
 #' @return A list containing the calculated Weibull parameters, \code{alpha} and \code{beta}.
-#
+#' @export
 calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
   # Calculate alpha
   alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))

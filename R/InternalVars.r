@@ -9,6 +9,7 @@
 #'   \item{Female}{Penetrance rate for females}
 #'   \item{Male}{Penetrance rate for males}
 #' }
+#' @export
 baseline_data_default <- data.frame(
   Age = 1:94,
   Female = c(

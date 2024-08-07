@@ -1,2 +1,9 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.git$
+^\.gitignore$
+^README\.Rmd$
+^README_files$
+^vignettes/README.Rmd$
+^inst/docs$
+^docs$

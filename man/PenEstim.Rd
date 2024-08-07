@@ -29,9 +29,9 @@ PenEstim(
   summary_stats = TRUE,
   rejection_rates = TRUE,
   density_plots = TRUE,
-  penetrance_plot = TRUE,
   plot_trace = TRUE,
-  plot_pdf = TRUE,
+  penetrance_plot = TRUE,
+  penetrance_plot_pdf = TRUE,
   probCI = 0.95
 )
 }
@@ -97,11 +97,11 @@ then we can use the following as the twins arguement: twins <- list(c("ora024", 
 
 \item{density_plots}{Boolean indicating whether to include density plots in the output. Default is TRUE.}
 
-\item{penetrance_plot}{Boolean indicating whether to include penetrance plots in the output. Default is TRUE.}
-
 \item{plot_trace}{Boolean indicating whether to include trace plots in the output. Default is TRUE.}
 
-\item{plot_pdf}{Boolean indicating whether to include PDF plots in the output. Default is TRUE.}
+\item{penetrance_plot}{Boolean indicating whether to include penetrance plots in the output. Default is TRUE.}
+
+\item{penetrance_plot_pdf}{Boolean indicating whether to include PDF plots in the output. Default is TRUE.}
 
 \item{probCI}{Probability level for confidence intervals in penetrance plots. Default is 0.95.}
 }

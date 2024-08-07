@@ -17,6 +17,6 @@ baseline_data_default
 }
 \description{
 This dataset contains age-specific cancer penetrance rates for both females and males.
-As an example, the data is derived from the SEER program for breast cancer in females (for both males and females)
+As an example, the data is derived from the SEER program for colorectal cancer females and males.
 }
 \keyword{datasets}
