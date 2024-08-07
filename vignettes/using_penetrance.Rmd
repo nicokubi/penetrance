@@ -1,23 +1,23 @@
 ---
-title: "Penetrance Estimation with PenEstim"
+title: "Penetrance Estimation with penetrance"
 author: "BayesMendel Lab"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Penetrance Estimation with PenEstim}
+  %\VignetteIndexEntry{Penetrance Estimation with penetrance}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(PenEstim)
+library(penetrance)
 ```
 
-The R package `PenEstim` provides an estimation of age-specific penetrance for complex 
+The R package `penetrance` provides an estimation of age-specific penetrance for complex 
 family-based studies in a format compatible with with the PanelPRO R package. 
 
 This vignette demonstrates the process of age imputation and penetrance estimation 
-using the PenEstim package based on family data and user-specified inputs. 
+using the`penetrance` package based on family data and user-specified inputs. 
 
 ### Data 
 
@@ -92,7 +92,7 @@ in an efficient way in order to infer the estimates of the parameters from the W
 ## Prior Specification
 
 To run the MCMC algorithm, the prior distributions for $\theta = (\alpha, \beta, \gamma, \delta)$ 
-need to be specified. PenEstim provides the user with a flexible approach to prior 
+need to be specified. The package provides the user with a flexible approach to prior 
 specification, balancing customization with an easy-to-use workflow.
 The following settings for the prior distribution specification are available:
 - Default: The default setting employs pre-specified, uninformative priors.
@@ -118,7 +118,7 @@ distribution_data_test <- data.frame(
 )
 ```
 
-## Estimation using PenEstim
+## Estimation using penetrance
 
 There are a few ways in which a user can specify how the estimation approach is run. 
 Available options are: 
