@@ -7,3 +7,5 @@
 ^vignettes/README.Rmd$
 ^inst/docs$
 ^docs$
+^doc$
+^Meta$

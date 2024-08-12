@@ -77,7 +77,7 @@ The families were simulated using the PedUtils Rpackage.
 
 ```{r}
 
-dat <- test_fam
+dat <- test_fam1
 
 ```
   
@@ -230,4 +230,3 @@ plot_penetrance_comparison(
   sex = "Male"
 )
 ```
-

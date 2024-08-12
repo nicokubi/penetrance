@@ -37,7 +37,7 @@ family data (see test_family_1). The family data must be in the correct format w
  Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
 
 ```{r dat, include=FALSE}
-dat <- test_fam
+dat <- test_fam1
 ```
 
 
@@ -148,9 +148,9 @@ Available options are:
 #' @param summary_stats Boolean indicating whether to include summary statistics in the output. Default is TRUE.
 #' @param rejection_rates Boolean indicating whether to include rejection rates in the output. Default is TRUE.
 #' @param density_plots Boolean indicating whether to include density plots in the output. Default is TRUE.
-#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
 #' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.
-#' @param plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
+#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
+#' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
 ```
 
