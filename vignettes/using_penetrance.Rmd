@@ -79,13 +79,12 @@ interpreted as the lifetime probability of developing cancer. Hence, we have a v
 of parameters $\theta = (\alpha, \beta, \gamma, \delta)$. Specifically, we model 
 the density $f$ and corresponding cumulative distribution functions $F$ as: 
 
-\begin{equation}    
+$$
 f(x; \alpha, \beta, \delta, \gamma) = \begin{cases} 
 \gamma \left( \frac{\alpha}{\beta} \left( \frac{x - \delta}{\beta} \right)^{\alpha - 1} e^{ -\left( \frac{x - \delta}{\beta} \right)^\alpha } \right) & x \geq \delta \\
 0 & x < \delta
 \end{cases}
-\end{equation}
-
+$$
 The MCMC estimation approach allows us to sample from the posterior distribution 
 in an efficient way in order to infer the estimates of the parameters from the Weibull distribution. 
 
@@ -209,7 +208,7 @@ upper bound for the proposed median, given that `median_max = TRUE`.
 given that `ageImputation = TRUE`. 
 
 ```{r, eval=FALSE}
-output <- out_sim_COL <- PenEstim(
+output<- PenEstim(
     pedigree  = dat, twins = NULL, n_chains = 1, n_iter_per_chain = 20000, 
     ncores = 2, baseline_data = baseline_data_default, af  = 0.0001, 
     prior_params = prior_params_test, burn_in = 0.1, median_max = TRUE,  

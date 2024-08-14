@@ -29,9 +29,7 @@ variant in MLH1 from the PanelPRO Database.
 The families were simulated using the PedUtils Rpackage.   
 
 ```{r}
-
 dat <- test_fam2
-
 ```
   
 ## Simple simulation
@@ -46,7 +44,7 @@ set.seed(2024)
 # Set the prior
 prior_params <- list(
     asymptote = list(g1 = 1, g2 = 1),
-    threshold = list(min = 5, max = 40),
+    threshold = list(min = 5, max = 30),
     median = list(m1 = 2, m2 = 2),
     first_quartile = list(q1 = 6, q2 = 3)
 )
