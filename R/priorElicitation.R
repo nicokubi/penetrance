@@ -12,7 +12,7 @@
 #' @export
 prior_params_default <- list(
   asymptote = list(g1 = 1, g2 = 1),
-  threshold = list(min = 15, max = 25),
+  threshold = list(min = 15, max = 35),
   median = list(m1 = 2, m2 = 2),
   first_quartile = list(q1 = 6, q2 = 3)
 )

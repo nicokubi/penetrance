@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# PenEstim R package
+# Penetrance R package
 
 An R package for the estimation of age-specific penetrance for complex
 family-based studies in a format compatible with with the PanelPRO R
@@ -11,7 +11,7 @@ package.
 
 To install, use
 
-    git clone git@github.com:bayesmendel/PenEstim.git
+    git clone git@github.com:bayesmendel/penetrance.git
 
 Open the source directory as new R project and install the package with
 
@@ -21,7 +21,7 @@ Open the source directory as new R project and install the package with
 
 This following is a quick-start guide for basic usage of the package.
 For greater detail on options, please refer to the other vignettes
-[using_PenEstim](https://github.com/nicokubi/PenEstim/blob/main/vignettes/using_PenEstim.Rmd) and documentation.
+[using_penetrance](https://github.com/nicokubi/penetrance/blob/main/vignettes/using_penetrance.Rmd) and documentation.
 
 The primary function in the package is `PenEstim`. The package workflow
 includes three main parts: user input, including family data in the form
@@ -32,7 +32,7 @@ approximated posterior distribution, i.e. the estimated penetrance
 function.
 
 ``` r
-library(PenEstim)
+library(penetrance)
 ```
 
 ### Pedigree
@@ -95,7 +95,7 @@ approach is run. Available options are:
 
 ### Prior Specification
 
-PenEstim provides the user with a flexible approach to prior
+Penetrance provides the user with a flexible approach to prior
 specification, balancing customization with an easy-to-use workflow. In
 addition to providing default prior distributions, the package allows
 users to customize the priors by including existing penetrance estimates

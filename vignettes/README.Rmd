@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 ```
 
 
-# PenEstim R package
+# Penetrance R package
 
 An R package for the estimation of age-specific penetrance for complex family-based studies in a format compatible with with the PanelPRO R package.
 
@@ -25,7 +25,7 @@ An R package for the estimation of age-specific penetrance for complex family-ba
 To install, use
 
 ```
-git clone git@github.com:bayesmendel/PenEstim.git
+git clone git@github.com:bayesmendel/penetrance.git
 ```
 Open the source directory as new R project and install the package with 
 
@@ -34,27 +34,29 @@ devtools::install()
 ```
 
 ## Quick-start guide
-This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other vignettes [using_PenEstim]() and documentation.
+This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other vignettes [using_penetrance]() and documentation.
 
 The primary function in the package is `PenEstim`. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function. 
 
 ```{r}
-library(PenEstim)
+library(penetrance)
 ```
 
 
 ### Pedigree 
 
-The user must specify the `pedigree` argument as a data frame with the following columns: 
- - `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
- - `Sex`: A numeric value where `0` indicates female and `1` indicates male. Missing entries are not currently supported.
- - `MotherID`: A numeric value representing the unique identifier for an individual's mother.
- - `FatherID`: A numeric value representing the unique identifier for an individual's father.
- - `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
- - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`.
- - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals and `0` otherwise. Missing entries are not supported.
- - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`.
- - `Geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
+The user must specify the `pedigree` argument as a data frame with the following columns:
+
+- `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
+- `Sex`: A numeric value where `0` indicates female and `1` indicates male. Missing entries are not currently supported.
+- `MotherID`: A numeric value representing the unique identifier for an individual's mother.
+- `FatherID`: A numeric value representing the unique identifier for an individual's father.
+- `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
+- `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`.
+- `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals and `0` otherwise. Missing entries are not supported.
+- `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`.
+- `Geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
+
 
 ### Model specification
 
@@ -106,7 +108,7 @@ Available options are:
 
 ### Prior Specification
 
-PenEstim provides the user with a flexible approach to prior specification, balancing customization with an easy-to-use workflow. In addition to providing default prior distributions, the package allows users to customize the priors by including existing penetrance estimates or prior knowledge. The following settings for the prior distribution specification are available: 
+Penetrance provides the user with a flexible approach to prior specification, balancing customization with an easy-to-use workflow. In addition to providing default prior distributions, the package allows users to customize the priors by including existing penetrance estimates or prior knowledge. The following settings for the prior distribution specification are available: 
 \begin{enumerate}
     \item \textbf{Default:} The default setting employs pre-specified, uninformative priors. 
     \item \textbf{Custom Parameters:} The user has the option to tune the parameters of the default setting directly by overwriting the parameters in the $prior\_dist\_default$ object.

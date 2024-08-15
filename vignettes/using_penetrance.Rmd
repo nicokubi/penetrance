@@ -102,10 +102,10 @@ penetrance studies to automatically elicit customized priors. The default settin
 adjusted to reflect the additional information based on the provided inputs.
 
 ```{r}
-# Set the prior
-prior_params_test <- list(
+# The default prior 
+prior_params_default <- list(
     asymptote = list(g1 = 1, g2 = 1),
-    threshold = list(min = 5, max = 40),
+    threshold = list(min = 15, max = 35),
     median = list(m1 = 2, m2 = 2),
     first_quartile = list(q1 = 6, q2 = 3)
 )
@@ -169,8 +169,10 @@ twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))
 cancer as as input `baseline_data`. In the default setting with `BaselineNC = TRUE` 
 this baseline is assumed to reflect the non-carrier penetrance. 
 For rare mutations this is considered a reasonable assumption. 
-The baseline_data must be a data frame with baseline data for females and males. 
+The baseline_data must be a data frame with baseline penetrance for females and males. 
+
 ```{r}
+# This is exemplary SEER penetrance data for Colorectal Cancer. 
 baseline_data_default <- data.frame(
   Age = 1:94,
   Female = c(
@@ -199,7 +201,7 @@ baseline_data_default <- data.frame(
 ```
 
 - The specified parameters for the prior distributions are as per the specification 
-in the `prior_params_test` object (see above).
+in the `prior_params_default` object (see above).
 - The burn-in is set to `burn_in = 0.1`, which means the first 1000 iterations of 
 the chain will be discarded (given 10k iterations of the algorithm). 
 - The median age of onset of the baseline (non-carrier) penentrance is set as the 
@@ -208,10 +210,10 @@ upper bound for the proposed median, given that `median_max = TRUE`.
 given that `ageImputation = TRUE`. 
 
 ```{r, eval=FALSE}
-output<- PenEstim(
+output <- PenEstim(
     pedigree  = dat, twins = NULL, n_chains = 1, n_iter_per_chain = 20000, 
     ncores = 2, baseline_data = baseline_data_default, af  = 0.0001, 
-    prior_params = prior_params_test, burn_in = 0.1, median_max = TRUE,  
+    prior_params = prior_params_default, burn_in = 0.1, median_max = TRUE,  
     ageImputation = TRUE
 )
 ```
