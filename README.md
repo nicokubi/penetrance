@@ -11,11 +11,15 @@ package.
 
 To install, use
 
-    git clone git@github.com:bayesmendel/penetrance.git
+    git clone git@github.com:nicokubi/penetrance.git
 
 Open the source directory as new R project and install the package with
 
     devtools::install()
+    
+or directly in R studio
+
+    devtools::install_github("https://github.com/nicokubi/penetrance")
 
 ## Quick-start guide
 

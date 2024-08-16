@@ -160,10 +160,6 @@ The version of the algorithm show as an example below includes:
 - A single chain with 10k iterations of the adaptive MH algorithm. 
 The number of cores for the paralellization is set to `ncores = 4`. 
 - The pedigree data are the test family 1. 
-- For the likelihood calculation monozygous twins can be specified using the `twins` arguement. 
-```{r}
-twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))
-```
 - The allele frequency for the pathogenic variant is set at `af = 0.0001`. 
 - The `PenEstim` function takes baseline age-specific probabilitie of developing 
 cancer as as input `baseline_data`. In the default setting with `BaselineNC = TRUE` 
