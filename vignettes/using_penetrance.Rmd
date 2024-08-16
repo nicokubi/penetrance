@@ -1,5 +1,5 @@
 ---
-title: "Penetrance Estimation with penetrance"
+title: "Using penetrance"
 author: "BayesMendel Lab"
 output: rmarkdown::html_vignette
 vignette: >
@@ -155,7 +155,7 @@ Available options are:
 
 ### Example
 
-The version of the algorithm show as an example below includes:
+To run the algorithm, we require the user to input: 
 
 - A single chain with 10k iterations of the adaptive MH algorithm. 
 The number of cores for the paralellization is set to `ncores = 4`. 

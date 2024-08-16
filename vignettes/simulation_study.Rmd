@@ -121,7 +121,6 @@ defined above and the penetrance curves (including credible intervals) from
 the estimation procedure. 
 
 ```{r}
-
 # Function to calculate Weibull cumulative density
 weibull_cumulative <- function(x, alpha, beta, threshold, asymptote) {
   pweibull(x - threshold, shape = alpha, scale = beta) * asymptote

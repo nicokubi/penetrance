@@ -40,7 +40,7 @@ devtools::install_github("https://github.com/nicokubi/penetrance")
 ```
 
 ## Quick-start guide
-This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other vignettes [using_penetrance]() and documentation.
+This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other articles. 
 
 The primary function in the package is `PenEstim`. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function. 
 

@@ -8,6 +8,7 @@ Authors@R: c(
     person("Nicolas", "Kubista", role = "aut"))
 Description: An R package for Penetrance Estimation.
 License: GPL-3
+URL: https://github.com/nicokubi/penetrance, https://nicokubi.github.io/penetrance/
 Encoding: UTF-8
 LazyData: true
 LazyDataCompression: xz
