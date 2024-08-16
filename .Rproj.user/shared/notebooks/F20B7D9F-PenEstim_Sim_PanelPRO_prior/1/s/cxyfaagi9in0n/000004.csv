@@ -1,0 +1,36 @@
+"0","# Simulation
+ suppressMessages(suppressWarnings(capture.output(for(i in 1:numberFamilies){
+  # Cancers
+  cancers = ""Colorectal""
+  # Genes
+  genes = ""MLH1""
+  #family members
+  # Paternal aunts, paternal uncles
+  nSibsPatern =floor(rtruncnorm(n=2, mean=1, 3))
+  # Maternal aunts, maternal uncles
+  nSibsMatern = floor(rtruncnorm(n=2, mean=1, 3))
+  # Sisters and brothers
+  nSibs = floor(rtruncnorm(n=2, mean=1, 1))
+  # We make the assumption that the number of sons and daughters for the
+  # proband and all siblings, is the same. Nieces and nephews of the proband
+  # are not sampled separately1
+  nGrandchild = floor(rtruncnorm(n=2, mean=0, 1))
+  nChild = floor(rtruncnorm(n=2, mean=1, 1))
+  
+  # Simulate family using `PedUtils` code
+  fam = sim.runSimFam(nSibsPatern, nSibsMatern, nSibs, nChild,
+                      db_sim, genes, cancers,
+                      includeGeno = TRUE, includeBiomarkers = FALSE, 
+                      censoring = TRUE)
+  
+  famDF = as.data.frame(fam)
+  proband = famDF %>% filter(isProband==1)
+  probandIDS = c(probandIDS, proband$ID)
+  probandMLH1Status = c(probandMLH1Status, proband$MLH1)
+  probandAffectionStatus = c(probandAffectionStatus, proband$isAffCOL)
+  families_MLH1[[i]] = famDF
+  
+})))
+"
+"1","character(0)
+"

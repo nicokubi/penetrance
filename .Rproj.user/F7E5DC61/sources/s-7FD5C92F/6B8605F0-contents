@@ -1,0 +1,442 @@
+---
+title: "PenEstim"
+subtitle: "Paper Output Figures"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 8-01-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+---
+
+```{r 0}
+# Load necessary libraries
+library(plyr) #need to load plyr before dplyr
+library(PanelPRO)
+library(profvis)
+library(survminer)
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(GGally)
+
+# Load the .Rdata file
+loaded_objects <- load("/Users/nicolaskubista/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/3_Code/out_sim_COL.Rdata")
+# Assuming the .Rdata file contains only one object, we assign it to dat
+dat <- get(loaded_objects[1])
+```
+
+# Pair Plots
+
+```{r 2}
+library(GGally)
+library(ggplot2)
+
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Function to create pair plots from MCMC chain results for males
+plot_mcmc_results_male <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_male_results, 
+                           given_first_quartile = mcmc_results$first_quartile_male_results, 
+                           delta = mcmc_results$threshold_male_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_male <- sapply(weibull_params, function(x) x$alpha)
+  beta_male <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for males
+  mcmc_df_male <- data.frame(
+    asymptote_male = mcmc_results$asymptote_male_results, 
+    threshold_male = mcmc_results$threshold_male_results, 
+    median_male = mcmc_results$median_male_results, 
+    first_quartile_male = mcmc_results$first_quartile_male_results,
+    alpha_male = alpha_male,
+    beta_male = beta_male
+  )
+  
+  # Create pair plots with smaller dot sizes for males
+  pairs_plot_male <- ggpairs(mcmc_df_male, 
+                             columns = c("alpha_male", "beta_male", "threshold_male", "asymptote_male", "median_male", "first_quartile_male"),
+                             title = "Pair Plot of MCMC Results (Male)",
+                             lower = list(continuous = wrap("points", size = 0.5)))
+                             
+  
+  # Display the plot
+  print(pairs_plot_male)
+}
+
+# Function to create pair plots from MCMC chain results for females
+plot_mcmc_results_female <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_female_results, 
+                           given_first_quartile = mcmc_results$first_quartile_female_results, 
+                           delta = mcmc_results$threshold_female_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_female <- sapply(weibull_params, function(x) x$alpha)
+  beta_female <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for females
+  mcmc_df_female <- data.frame(
+    asymptote_female = mcmc_results$asymptote_female_results, 
+    threshold_female = mcmc_results$threshold_female_results, 
+    median_female = mcmc_results$median_female_results, 
+    first_quartile_female = mcmc_results$first_quartile_female_results,
+    alpha_female = alpha_female,
+    beta_female = beta_female
+  )
+  
+  # Create pair plots with smaller dot sizes for females
+  pairs_plot_female <- ggpairs(mcmc_df_female, 
+                               columns = c("alpha_female", "beta_female", "threshold_female", "asymptote_female", "median_female", "first_quartile_female"),
+                               title = "Pair Plot of MCMC Results (Female)",
+                               lower = list(continuous = wrap("points", size = 0.5)))
+                               
+  
+  # Display the plot
+  print(pairs_plot_female)
+}
+
+# Example usage
+plot_mcmc_results_male(dat$combined_chains)
+
+
+```
+
+
+```{r 3}
+# Function to calculate penetrance with confidence intervals
+calculate_penetrance <- function(data, ages = c(30, 40, 50, 60, 65, 70), sex = "NA") {
+  params_male <- calculate_weibull_parameters(
+    data$median_male_results,
+    data$first_quartile_male_results,
+    data$threshold_male_results
+  )
+
+  params_female <- calculate_weibull_parameters(
+    data$median_female_results,
+    data$first_quartile_female_results,
+    data$threshold_female_results
+  )
+
+  alphas_male <- params_male$alpha
+  betas_male <- params_male$beta
+  thresholds_male <- data$threshold_male_results
+  alphas_female <- params_female$alpha
+  betas_female <- params_female$beta
+  thresholds_female <- data$threshold_female_results
+
+  asymptotes_male <- data$asymptote_male_results
+  asymptotes_female <- data$asymptote_female_results
+
+  cumulative_prob <- function(alphas, betas, thresholds, asymptotes, age) {
+    probs <- mapply(function(alpha, beta, threshold, asymptote) {
+      pweibull(age - threshold, shape = alpha, scale = beta) * asymptote
+    }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+    mean_prob <- mean(unlist(probs), na.rm = TRUE)
+    ci_lower <- quantile(unlist(probs), probs = 0.025, na.rm = TRUE)
+    ci_upper <- quantile(unlist(probs), probs = 0.975, na.rm = TRUE)
+    return(list(mean = mean_prob, lower = ci_lower, upper = ci_upper))
+  }
+
+  results <- list()
+
+  if (sex == "Male" || sex == "NA") {
+    results$Male <- sapply(ages, function(age) cumulative_prob(alphas_male, betas_male, thresholds_male, asymptotes_male, age))
+  }
+
+  if (sex == "Female" || sex == "NA") {
+    results$Female <- sapply(ages, function(age) cumulative_prob(alphas_female, betas_female, thresholds_female, asymptotes_female, age))
+  }
+
+  return(results)
+}
+
+
+# Calculate penetrance results
+penetrance_results <- calculate_penetrance(dat$combined_chains)
+
+# Format results for LaTeX
+ages <- c(30, 40, 50, 60, 65, 70)
+results_male <- penetrance_results$Male
+results_female <- penetrance_results$Female
+print(results_female)
+print(results_male)
+
+```
+
+# Plots for comparing cumulative penetrance vs. SEER 
+
+```{r 4}
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+    # Calculate alpha
+    alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+
+    # Calculate beta using the median (M)
+    beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+
+    return(list(alpha = alpha, beta = beta))
+}
+
+
+# Function to calculate Weibull cumulative density
+weibull_cumulative <- function(x, alpha, beta, threshold, asymptote) {
+  pweibull(x - threshold, shape = alpha, scale = beta) * asymptote
+}
+
+
+# Function to plot the penetrance and compare with Panelpro Database
+plot_penetrance_comparison <- function(data, db_sim, prob, max_age, cancer, gene, sex, race, type) {
+  if (prob <= 0 || prob >= 1) {
+    stop("prob must be between 0 and 1")
+  }
+
+  # Calculate Weibull parameters for the given sex
+  params <- if (sex == "Male") {
+    calculate_weibull_parameters(
+      data$median_male_results,
+      data$first_quartile_male_results,
+      data$threshold_male_results
+    )
+  } else if (sex == "Female") {
+    calculate_weibull_parameters(
+      data$median_female_results,
+      data$first_quartile_female_results,
+      data$threshold_female_results
+    )
+  } else {
+    stop("Invalid sex. Please choose 'Male' or 'Female'.")
+  }
+
+  alphas <- params$alpha
+  betas <- params$beta
+  thresholds <- if (sex == "Male") data$threshold_male_results else data$threshold_female_results
+  asymptotes <- if (sex == "Male") data$asymptote_male_results else data$asymptote_female_results
+
+  x_values <- seq(1, max_age)
+
+  # Calculate cumulative densities for the specified sex
+  cumulative_density <- mapply(function(alpha, beta, threshold, asymptote) {
+    pweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
+  }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+
+  distributions_matrix <- matrix(unlist(cumulative_density), nrow = length(x_values), byrow = FALSE)
+  mean_density <- rowMeans(distributions_matrix, na.rm = TRUE)
+
+  # Calculate credible intervals
+  lower_prob <- (1 - prob) / 2
+  upper_prob <- 1 - lower_prob
+  lower_ci <- apply(distributions_matrix, 1, quantile, probs = lower_prob)
+  upper_ci <- apply(distributions_matrix, 1, quantile, probs = upper_prob)
+
+  # Extract cumulative data from the Panelpro Database
+  dim_names <- attr(db_sim$Penetrance, "dimnames")
+  cancer_index <- which(dim_names[[1]] == cancer)
+  gene_index <- which(dim_names[[2]] == gene)
+  race_index <- which(dim_names[[3]] == race)
+  sex_index <- which(dim_names[[4]] == sex)
+  type_index <- which(dim_names[[6]] == type)
+
+  density_data <- db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index]
+  cumulative_density_panelpro <- cumsum(density_data)
+
+  # Create data frame for plotting
+  age_values <- seq_along(density_data)
+  min_length <- min(length(cumulative_density_panelpro), length(mean_density))
+
+  plot_df <- data.frame(
+    age = age_values[1:min_length],
+    cumulative_density_panelpro = cumulative_density_panelpro[1:min_length],
+    mean_density = mean_density[1:min_length],
+    lower_ci = lower_ci[1:min_length],
+    upper_ci = upper_ci[1:min_length]
+  )
+
+  # Plot the cumulative densities with credible intervals
+  ggplot(plot_df, aes(x = age)) +
+    geom_line(aes(y = cumulative_density_panelpro, color = "Panelpro Cumulative Density"), linewidth = 1, linetype = "solid", na.rm = TRUE) +
+    geom_line(aes(y = mean_density, color = "Weibull Mean Density"), linewidth = 1, linetype = "dotted", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, fill = "red", na.rm = TRUE) +
+    labs(title = paste("Cumulative Density Comparison for", sex, "in", race),
+         x = "Age",
+         y = "Cumulative Density") +
+    theme_minimal() +
+    scale_color_manual(values = c("Panelpro Cumulative Density" = "blue", 
+                                  "Weibull Mean Density" = "red")) +
+    scale_y_continuous(labels = scales::percent) +
+    theme(legend.title = element_blank())
+}
+
+# Plot
+plot_penetrance_comparison(
+  data = dat$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "SEER",
+  sex = "Female",
+  race = "All_Races",
+  type = "Net"
+)
+
+plot_penetrance_comparison(
+  data = dat$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "SEER",
+  sex = "Male",
+  race = "All_Races",
+  type = "Net"
+)
+```
+
+# Plotting absolute probabilities vs. SEER 
+
+```{r 5}
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+    # Calculate alpha
+    alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+
+    # Calculate beta using the median (M)
+    beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+
+    return(list(alpha = alpha, beta = beta))
+}
+
+# Function to calculate Weibull probability density
+weibull_pdf <- function(x, alpha, beta, threshold, asymptote) {
+  dweibull(x - threshold, shape = alpha, scale = beta) * asymptote
+}
+
+# Function to plot the penetrance and compare with Panelpro Database
+plot_penetrance_comparison <- function(data, db_sim, prob, max_age, cancer, gene, sex, race, type) {
+  if (prob <= 0 || prob >= 1) {
+    stop("prob must be between 0 and 1")
+  }
+
+  # Calculate Weibull parameters for the given sex
+  params <- if (sex == "Male") {
+    calculate_weibull_parameters(
+      data$median_male_results,
+      data$first_quartile_male_results,
+      data$threshold_male_results
+    )
+  } else if (sex == "Female") {
+    calculate_weibull_parameters(
+      data$median_female_results,
+      data$first_quartile_female_results,
+      data$threshold_female_results
+    )
+  } else {
+    stop("Invalid sex. Please choose 'Male' or 'Female'.")
+  }
+
+  alphas <- params$alpha
+  betas <- params$beta
+  thresholds <- if (sex == "Male") data$threshold_male_results else data$threshold_female_results
+  asymptotes <- if (sex == "Male") data$asymptote_male_results else data$asymptote_female_results
+
+  x_values <- seq(1, max_age)
+
+  # Calculate probability densities for the specified sex
+  density_values <- mapply(function(alpha, beta, threshold, asymptote) {
+    weibull_pdf(x_values, alpha, beta, threshold, asymptote)
+  }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+
+  distributions_matrix <- matrix(unlist(density_values), nrow = length(x_values), byrow = FALSE)
+  mean_density <- rowMeans(distributions_matrix, na.rm = TRUE)
+
+  # Calculate credible intervals
+  lower_prob <- (1 - prob) / 2
+  upper_prob <- 1 - lower_prob
+  lower_ci <- apply(distributions_matrix, 1, quantile, probs = lower_prob)
+  upper_ci <- apply(distributions_matrix, 1, quantile, probs = upper_prob)
+
+  # Extract cumulative data from the Panelpro Database
+  dim_names <- attr(db_sim$Penetrance, "dimnames")
+  cancer_index <- which(dim_names[[1]] == cancer)
+  gene_index <- which(dim_names[[2]] == gene)
+  race_index <- which(dim_names[[3]] == race)
+  sex_index <- which(dim_names[[4]] == sex)
+  type_index <- which(dim_names[[6]] == type)
+
+  density_data <- db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index]
+
+  # Create data frame for plotting
+  age_values <- seq_along(density_data)
+  min_length <- min(length(density_data), length(mean_density))
+
+  plot_df <- data.frame(
+    age = age_values[1:min_length],
+    panelpro_density = density_data[1:min_length],
+    mean_density = mean_density[1:min_length],
+    lower_ci = lower_ci[1:min_length],
+    upper_ci = upper_ci[1:min_length]
+  )
+
+  # Plot the probability densities with credible intervals
+  ggplot(plot_df, aes(x = age)) +
+    geom_line(aes(y = panelpro_density, color = "SEER Baseline"), linewidth = 1, linetype = "solid", na.rm = TRUE) +
+    geom_line(aes(y = mean_density, color = "Weibull Mean Density"), linewidth = 1, linetype = "dotted", na.rm = TRUE) +
+    geom_ribbon(aes(ymin = lower_ci, ymax = upper_ci), alpha = 0.2, fill = "red", na.rm = TRUE) +
+    labs(title = paste("Density Comparison for", sex, "in", race),
+         x = "Age",
+         y = "Density") +
+    theme_minimal() +
+    scale_color_manual(values = c("SEER Baseline" = "blue", 
+                                  "Weibull Mean Density" = "red")) +
+    theme(legend.title = element_blank())
+}
+
+# Plot
+plot_penetrance_comparison(
+  data = dat$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "SEER",
+  sex = "Female",
+  race = "All_Races",
+  type = "Net"
+)
+
+plot_penetrance_comparison(
+  data = dat$combined_chains,
+  db_sim = PanelPRODatabase,
+  prob = 0.95,
+  max_age = 94,
+  cancer = "Colorectal",
+  gene = "SEER",
+  sex = "Male",
+  race = "All_Races",
+  type = "Net"
+)
+```

@@ -1,0 +1,26 @@
+{
+    "id": "ED755A40",
+    "path": "~/Documents/Master Statistics/Master Thesis/Code/penetrance.Rcheck/00_pkg_src/penetrance/R/outputHelpers.R",
+    "project_path": null,
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1723570976450.0,
+    "source_on_save": false,
+    "relative_order": 18,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "53,0",
+        "scrollLine": "30"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1723571068,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1723571068636,
+    "read_only": false,
+    "read_only_alternatives": []
+}

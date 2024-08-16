@@ -1,0 +1,36 @@
+#combining AJ estimates from three studies; 
+#Hartge, 
+nh<-5318
+brca1h<-61
+brca2h<-59
+f1h<-brca1h/nh
+f2h<-brca2h/nh
+var1h<-nh*f1h*(1-f1h)
+var2h<-nh*f2h*(1-f2h)
+
+#Roa, 
+nr<-3116
+brca1r<-38
+nr2<-3085
+brca2r<-47
+f1r<-brca1r/nr
+f2r<-brca2r/nr2
+var1r<-nr*f1r*(1-f1r)
+var2r<-nr2*f2r*(1-f2r)
+
+#Bahar
+nb<-1200
+brca1b<-18
+brca2b<-13
+f1b<-brca1b/nb
+f2b<-brca2b/nb
+var1b<-nb*f1b*(1-f1b)
+var2b<-nb*f2b*(1-f2b)
+
+#inverse variance weighting 
+brca1_freq<-(f1h/var1h+f1r/var1r+f1b/var1b)/(1/var1h+1/var1r+1/var1b)
+brca2_freq<-(f2h/var2h+f2r/var2r+f2b/var2b)/(1/var2h+1/var2r+1/var2b)
+
+#raw estimates
+altf1<-(brca1b+brca1h+brca1r)/(nh+nb+nr)
+altf2<-(brca2b+brca2h+brca2r)/(nh+nb+nr2)

@@ -1,0 +1,42 @@
+"1","debug at #4: "
+"1","carriers <- data[data[[gene]] == 1 & data$isProband == 1, ]
+"
+"1","debug at #5: "
+"1","carrier_families <- data[data$PedigreeID %in% carriers$PedigreeID, 
+"
+"1","    ]
+"
+"1","debug at #8: "
+"1","affected <- carrier_families[rowSums(carrier_families[lynch_cancers] == 
+"
+"1","    1) > 0, ]
+"
+"1","debug at #11: "
+"1","num_individuals <- nrow(carrier_families)
+"
+"1","debug at #12: "
+"1","num_families <- n_distinct(carrier_families$PedigreeID)
+"
+"1","debug at #13: "
+"1","num_females <- sum(carrier_families$Sex == 0)
+"
+"1","debug at #14: "
+"1","num_males <- sum(carrier_families$Sex == 1)
+"
+"1","debug at #15: "
+"1","num_geno_1 <- sum(carrier_families$gene == 1)
+"
+"1","debug at #18: "
+"1","cat(""### Summary for gene:"", gene, ""\n"")
+"
+"0","num_males"
+"1","[1]"
+"1"," 1019"
+"1","
+"
+"0","num_geno_1"
+"1","[1]"
+"1"," 0"
+"1","
+"
+"0","Q"

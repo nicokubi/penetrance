@@ -1,0 +1,238 @@
+---
+title: "PenEstim"
+subtitle: "Simulation Study - PanelPRO Database Simulation - Non-Default Prior"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 8-01-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(rlang)
+library(gridExtra)
+library(GGally)
+
+
+load("/Users/nicolaskubista/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/3_Code/Simulations/out_sim_COL_MLH1_simPP_130p.Rdata")
+```
+
+## Single Trace Plots
+
+```{r trace1, echo=FALSE, cache=FALSE}
+# Trace for just a single chain
+plot_traceSingle <- function(results) {
+  par(mfrow = c(2, 2)) # Set up a grid for the plots
+  # Extract results for the current chain
+  median_male_results <- results$median_male_samples
+  median_female_results <- results$median_female_samples
+  threshold_male_results <- results$threshold_male_samples
+  threshold_female_results <- results$threshold_female_samples
+  first_quartile_male_results <- results$first_quartile_male_samples
+  first_quartile_female_results <- results$first_quartile_female_samples
+  asymptote_male_results <- results$asymptote_male_samples
+  asymptote_female_results <- results$asymptote_female_samples
+
+  # Create trace plots for the current chain
+
+  plot(median_male_results, type = "l", main = "Trace plot of Median - Male", xlab = "Iteration", ylab = "Median")
+  plot(median_female_results, type = "l", main = "Trace plot of Median - Female", xlab = "Iteration", ylab = "Median")
+  plot(threshold_male_results, type = "l", main = "Trace plot of Threshold - Male", xlab = "Iteration", ylab = "Threshold")
+  plot(threshold_female_results, type = "l", main = "Trace plot of Threshold - Female", xlab = "Iteration", ylab = "Threshold")
+  plot(first_quartile_male_results, type = "l", main = "Trace plot of First Quartile - Male", xlab = "Iteration", ylab = "First Quartile")
+  plot(first_quartile_female_results, type = "l", main = "Trace plot of First Quartile - Female", xlab = "Iteration", ylab = "First Quartile")
+  plot(asymptote_male_results, type = "l", main = "Trace plot of Asymptote - Male", xlab = "Iteration", ylab = "Asymptote")
+  plot(asymptote_female_results, type = "l", main = "Trace plot of Asymptote - Female", xlab = "Iteration", ylab = "Asymptote")
+}
+
+plot_traceSingle(out_sim_COL_MLH1_simPP_130p$results[[1]])
+
+```
+
+## ACF Plots
+
+
+```{r acf2, echo=FALSE, cache=FALSE}
+## ACF Plots 
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$first_quartile_male_samples, main = "ACF of First Quartile - Male")
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$first_quartile_female_samples, main = "ACF of First Quartile - Female")
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$median_male_samples, main = "ACF of Median - Male")
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$median_female_samples, main = "ACF of Median - Female")
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$threshold_male_samples, main = "ACF of Threshold - Male")
+acf(out_sim_COL_MLH1_simPP_130p$results[[1]]$threshold_female_samples, main = "ACF of Threshold - Female")
+```
+
+## Trace Plots for Greek-Letter Parameters (standard Weibull parameters)
+
+```{r t2, echo=FALSE, cache=FALSE}
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Adding alpha and beta parameters to the out object
+calculate_and_add_params <- function(out) {
+  alphas_male <- numeric(length(out$median_male_results))
+  betas_male <- numeric(length(out$median_male_results))
+  alphas_female <- numeric(length(out$median_female_results))
+  betas_female <- numeric(length(out$median_female_results))
+  
+  for (i in seq_along(out$median_male_results)) {
+    male_params <- calculate_weibull_parameters(out$median_male_results[i], out$first_quartile_male_results[i], out$threshold_male_results[i])
+    alphas_male[i] <- male_params$alpha
+    betas_male[i] <- male_params$beta
+    
+    female_params <- calculate_weibull_parameters(out$median_female_results[i], out$first_quartile_female_results[i], out$threshold_female_results[i])
+    alphas_female[i] <- female_params$alpha
+    betas_female[i] <- female_params$beta
+  }
+  
+  out$alpha_male <- alphas_male
+  out$beta_male <- betas_male
+  out$alpha_female <- alphas_female
+  out$beta_female <- betas_female
+  
+  return(out)
+}
+
+# Example usage:
+out_sim_COL_MLH1_simPP_130p_paras <- calculate_and_add_params(out_sim_COL_MLH1_simPP_130p$combined_chains)
+
+
+# Creating the trace plot function
+create_trace_plot <- function(parameter_values, parameter_name, gender) {
+  data <- data.frame(iteration = 1:length(parameter_values), value = parameter_values)
+  ggplot(data, aes(x = iteration, y = value)) +
+    geom_line() +
+    labs(title = paste("Trace Plot for", parameter_name), x = "Iteration", y = parameter_name) +
+    theme_minimal()
+}
+
+# Trace plots for male parameters
+trace_alpha_male <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$alpha_male, "Alpha (Shape) - Male")
+trace_beta_male <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$beta_male, "Beta (Scale) - Male")
+trace_gamma_male <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$asymptote_male_results, "Gamma (Asymptote) - Male")
+trace_delta_male <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$threshold_male_results, "Delta (Threshold) - Male")
+
+# Trace plots for female parameters
+trace_alpha_female <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$alpha_female, "Alpha (Shape) - Female")
+trace_beta_female <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$beta_female, "Beta (Scale) - Female")
+trace_gamma_female <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$asymptote_female_results, "Gamma (Asymptote) - Female")
+trace_delta_female <- create_trace_plot(out_sim_COL_MLH1_simPP_130p_paras$threshold_female_results, "Delta (Threshold) - Female")
+
+# Arrange plots in a grid
+grid.arrange(trace_alpha_male, trace_beta_male, trace_gamma_male, trace_delta_male, ncol = 2)
+grid.arrange(trace_alpha_female, trace_beta_female, trace_gamma_female, trace_delta_female, ncol = 2)
+
+```
+
+
+## Pair Plots of Parameters
+
+```{r a2, echo=FALSE, cache=FALSE}
+# Function to calculate Weibull parameters
+calculate_weibull_parameters <- function(given_median, given_first_quartile, delta) {
+  # Calculate alpha
+  alpha <- log(-log(0.5) / -log(0.75)) / log((given_median - delta) / (given_first_quartile - delta))
+  
+  # Calculate beta using the median (M)
+  beta <- (given_median - delta) / (-log(0.5))^(1 / alpha)
+  
+  return(list(alpha = alpha, beta = beta))
+}
+
+# Function to create pair plots from MCMC chain results for males
+plot_mcmc_results_male <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_male_results, 
+                           given_first_quartile = mcmc_results$first_quartile_male_results, 
+                           delta = mcmc_results$threshold_male_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_male <- sapply(weibull_params, function(x) x$alpha)
+  beta_male <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for males
+  mcmc_df_male <- data.frame(
+    asymptote_male = mcmc_results$asymptote_male_results, 
+    threshold_male = mcmc_results$threshold_male_results, 
+    median_male = mcmc_results$median_male_results, 
+    first_quartile_male = mcmc_results$first_quartile_male_results,
+    alpha_male = alpha_male,
+    beta_male = beta_male
+  )
+  
+  # Create pair plots with smaller dot sizes for males
+  pairs_plot_male <- ggpairs(mcmc_df_male, 
+                             columns = c("alpha_male", "beta_male", "threshold_male", "asymptote_male", "median_male", "first_quartile_male"),
+                             title = "Pair Plot of MCMC Results (Male)",
+                             lower = list(continuous = wrap("points", size = 0.5)))
+                             
+  # Display the plot
+  print(pairs_plot_male)
+}
+
+# Function to create pair plots from MCMC chain results for females
+plot_mcmc_results_female <- function(mcmc_results) {
+  # Calculate Weibull parameters for each sample in the MCMC chain
+  weibull_params <- mapply(calculate_weibull_parameters, 
+                           given_median = mcmc_results$median_female_results, 
+                           given_first_quartile = mcmc_results$first_quartile_female_results, 
+                           delta = mcmc_results$threshold_female_results, 
+                           SIMPLIFY = FALSE)
+  
+  alpha_female <- sapply(weibull_params, function(x) x$alpha)
+  beta_female <- sapply(weibull_params, function(x) x$beta)
+  
+  # Create a data frame with the MCMC chain results and calculated Weibull parameters for females
+  mcmc_df_female <- data.frame(
+    asymptote_female = mcmc_results$asymptote_female_results, 
+    threshold_female = mcmc_results$threshold_female_results, 
+    median_female = mcmc_results$median_female_results, 
+    first_quartile_female = mcmc_results$first_quartile_female_results,
+    alpha_female = alpha_female,
+    beta_female = beta_female
+  )
+  
+  # Create pair plots with smaller dot sizes for females
+  pairs_plot_female <- ggpairs(mcmc_df_female, 
+                               columns = c("alpha_female", "beta_female", "threshold_female", "asymptote_female", "median_female", "first_quartile_female"),
+                               title = "Pair Plot of MCMC Results (Female)",
+                               lower = list(continuous = wrap("points", size = 0.5)))
+                               
+  
+  # Display the plot
+  print(pairs_plot_female)
+}
+# Example usage
+# Assuming out_sim_COL_MLH1_simPP_130p$combined_chains contains the MCMC results as described
+plot_mcmc_results_male(out_sim_COL_MLH1_simPP_130p$combined_chains)
+plot_mcmc_results_female(out_sim_COL_MLH1_simPP_130p$combined_chains)
+
+
+
+
+
+```
+

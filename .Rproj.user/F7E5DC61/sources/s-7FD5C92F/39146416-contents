@@ -1,0 +1,193 @@
+---
+title: "Pedigree Simulation"
+author: "Nicolas Kubista"
+date: "6/14/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plyr) #need to load plyr before dplyr
+library(truncnorm)
+library(PanelPRO)
+library(tidyverse)
+library(stringr)
+library(PedUtils)
+
+```
+
+## R Simulaitons
+
+Simulate families with Breast cancer and one cancer gene, BRCA1. 
+We simulate a four-generation family with the proband in the third generation with  is "nonAJ" ancenstry and race is automatically set to "All_Races" (regardless of what prevalences/penetrances you feed in). 
+Age ranges are  hard-coded, with the first generation (the founders) being centered at 100 and everybody else simulated based on that.
+
+The net penetrance (which are used for simulations) for Breast Cancer, given the BRCA1 gene (BRCA1_hetero_anyPV) are drawn from a Weibull distribution with parameters alpha and beta. The penetrance is set for female, non-AJ, across all races. Furthermore,  since it is very rare to develop BC before 20 years of age, e to improve fit, we adjust the “breast age” AgeBC = CurAge − 20.
+
+```{r simulations, include=FALSE}
+# set seed 
+set.seed(2023)
+
+# Generate Families ----
+
+families = list()
+probandIDS = c()
+probandBRCA1Status = c()
+probandAffectionStatus = c()
+
+
+# Set number of families to be generates
+numberFamilies <- 10000
+
+# Setting BRCA1 freq, if not needed 
+# Chage the allele frequencies
+#PanelPRODatabase$AlleleFrequency[["BRCA1_anyPV",1]] <- BRCA1freq
+#PanelPRODatabase$AlleleFrequency[["BRCA1_anyPV",2]] <- BRCA1freq
+#PanelPRODatabase$AlleleFrequency[["BRCA1_anyPV",3]] <- BRCA1freq
+#save(PanelPRODatabase, file = "~/PanelPRO/data/PanelPRODatabase.rda")
+
+# change the penetrance
+# modify the penetrance for simulation
+alpha <- 3
+beta <- 40
+age <- seq(1,94,1) # same as in the panelpro db
+penetrance.mod <- dweibull(age-20,alpha, beta)
+
+# For now focus on just one vector of penetrance estimates
+gene <- "BRCA1_hetero_anyPV"
+cancer <- "Breast"
+race <- "All_Races"
+sex <- "Female"
+type <- "Net"
+
+# Find the indices for the resp. attributes 
+
+dim_names <- attr(PanelPRODatabase$Penetrance, "dimnames")
+gene_index <- which(dim_names$Gene == gene)
+cancer_index <- which(dim_names$Cancer == cancer)
+race_index <- which(dim_names$Race == race)
+sex_index <- which(dim_names$Sex == sex)
+type_index <- which(dim_names$PenetType == type)
+
+PanelPRODatabase$Penetrance[cancer_index, gene_index, race_index,sex_index , ,type_index] <- penetrance.mod
+
+for(i in 1:numberFamilies){
+  # Cancers
+  cancers = "Breast"
+  # Genes
+  genes = "BRCA1"
+  #family members
+  # Paternal aunts, paternal uncles
+  nSibsPatern =floor(rtruncnorm(n=2, mean=3, 3))
+  # Maternal aunts, maternal uncles
+  nSibsMatern = floor(rtruncnorm(n=2, mean=3, 3))
+  # Sisters and brothers
+  nSibs = floor(rtruncnorm(n=2, mean=3, 3))
+  # We make the assumption that the number of sons and daughters for the
+  # proband and all siblings, is the same. Nieces and nephews of the proband
+  # are not sampled separately.
+  nGrandchild = floor(rtruncnorm(n=2, mean=6, 2))
+  nChild = floor(rtruncnorm(n=2, mean=3, 2))
+  
+  # Simulate family using `PedUtils` code
+  fam = sim.runSimFam(nSibsPatern, nSibsMatern, nSibs, nChild,
+                      PanelPRODatabase, genes, cancers,
+                      includeGeno = TRUE, includeBiomarkers = FALSE, censoring = TRUE)
+  
+  famDF = as.data.frame(fam)
+  proband = famDF %>% filter(isProband==1)
+  probandIDS = c(probandIDS, proband$ID)
+  probandBRCA1Status = c(probandBRCA1Status, proband$BRCA1)
+  probandAffectionStatus = c(probandAffectionStatus, proband$isAffBC)
+  families[[i]] = famDF
+
+}
+
+print(families)
+
+```
+
+# Family Description 
+
+```{r desc}
+describeFamilies <- function(fams){
+  
+  affectedFamilies = 0 
+  affectedProbands = 0
+  famSizes = c()
+  BRCA1Families = 0
+  BRCA1Probands = 0 
+  curAges = 0
+  BCAges = 0
+
+  #affectedFamiliesList = list()
+  #j = 1
+  for(i in 1:length(fams)){
+    f = fams[[i]]
+    sizeOfFamily = nrow(f)
+    famSizes = c(famSizes, sizeOfFamily)
+    curAges <- c(curAges, f$CurAge)  
+    f = f %>% filter(isAffBC==1) %>% filter(isProband==0)
+    BCAges <- c(BCAges, f$AgeBC)  
+    if(nrow(f)>0){
+      affectedFamilies = affectedFamilies + 1
+      #affectedFamiliesList[[j]] = f
+      #j = j + 1
+    }
+    BRCA1fams = fams[[i]] %>% filter(isProband==0) %>% filter(BRCA1==1)
+    if(nrow(BRCA1fams) > 0){
+      BRCA1Families = BRCA1Families + 1
+    }
+    pb = fams[[i]] %>% filter(isProband==1)
+    if(pb$isAffBC == 1){
+      affectedProbands = affectedProbands + 1
+    }
+    if(!is.na(pb$BRCA1)){
+      if(pb$BRCA1 == 1){
+        BRCA1Probands = BRCA1Probands + 1
+      }}
+  }
+  
+  print(paste0("Number of families: ", length(fams)))
+  print(paste0("Number of families with affected (BC) individuals: ", affectedFamilies))
+  print(paste0("Number of families with affected (BC) probands: ", affectedProbands))
+  print(paste0("Average family size: ", mean(famSizes)))
+  print("Summary of family sizes")
+  print(summary(famSizes))
+  print("Summary of Current Age for all families")
+  print(summary(curAges))
+  print(paste0("Number of probands with BRCA1 gene: ", BRCA1Probands))
+  print(paste0("Number of families (non-proband) with BRCA1 gene: ", BRCA1Families))
+  print("Summary of BC Age in affected (non-proband) individuals")
+  print(summary(BCAges))
+}
+
+describeFamilies(families)
+
+
+```
+
+# Example
+
+```{r ex}
+
+# Initialize lists to store selected families
+selectedFamilies <- list()
+
+# Filter families with affected probands
+affectedProbandFamilies <- Filter(function(fam) any(fam$isProband == 1 & fam$isAffBC == 1), families)
+
+
+# Randomly select 
+n = 3
+selectedIndices <- sample(length(affectedProbandFamilies), n)
+for (i in selectedIndices) {
+  selectedFamilies[[length(selectedFamilies) + 1]] <- affectedProbandFamilies[[i]]
+}
+
+# Save the selected families
+print(selectedFamilies)
+save(selectedFamilies, file = "selected_families.RData")
+
+
+````
