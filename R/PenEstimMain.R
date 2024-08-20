@@ -27,6 +27,7 @@
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
                     ageImputation, removeProband) {
+  
   # Set seed for the chain
   set.seed(seed)
   

@@ -53,7 +53,6 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
   return(data)
 }
 
-
 #' Initialize Ages Using a Uniform Distribution
 #'
 #' This function initializes ages for individuals in a dataset using a uniform distribution.
@@ -121,6 +120,7 @@ calcPedDegree <- function(data) {
 
   # Iterate through each family to calculate the degree of relationship
   families <- unique(data_copy$family)
+  
   for (fam in families) {
     family_data <- data_copy[data_copy$family == fam, ]
     proband_actual_id <- family_data$individual[family_data$isProband == 1]
@@ -158,6 +158,7 @@ calcPedDegree <- function(data) {
 #' @return A density object representing the empirical density of ages.
 #' 
 calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", n_points = 10000) {
+  
   # Filter the data to include only non-affected individuals (aff == 0)
   non_affected_data <- subset(data, data[[aff_column]] == 0)
 

@@ -120,7 +120,7 @@ transformDF <- function(df) {
   df$mother <- df$MotherID
   df$father <- df$FatherID
   df$aff <- df$isAff
-  df$sex <- ifelse(df$Sex == 0, 2, df$Sex) # Convert 0s to 2s (female) in sex, keep 1s as is (male)
+  df$sex <- ifelse(df$Sex == 0, 2, df$Sex) # Convert 0s to 2s (female), keep 1s as is (male)
   
   # Apply row-wise logic to assign age based on aff column
   df$age <- apply(df, 1, function(row) {
@@ -132,8 +132,12 @@ transformDF <- function(df) {
     }
   })
   
-  # Process 'geno' column
-  df$geno <- ifelse(is.na(df$geno), "", ifelse(df$geno == 1, "1/2", ifelse(df$geno == 0, "1/1", df$geno)))
+  # Process 'geno' column, checking for both 'geno' and 'Geno'
+  if ("geno" %in% colnames(df)) {
+    df$geno <- ifelse(is.na(df$geno), "", ifelse(df$geno == 1, "1/2", ifelse(df$geno == 0, "1/1", df$geno)))
+  } else if ("Geno" %in% colnames(df)) {
+    df$geno <- ifelse(is.na(df$Geno), "", ifelse(df$Geno == 1, "1/2", ifelse(df$Geno == 0, "1/1", df$Geno)))
+  }
   
   # Select only the necessary columns
   df <- df[c("individual", "isProband", "family", "mother", "father", "aff", "sex", "age", "geno")]
