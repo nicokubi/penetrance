@@ -297,7 +297,7 @@ set as the upper bound for the proposed median, given that
 (see above), given that <code>ageImputation = TRUE</code>.</li>
 </ul>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">output</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PenEstim.html">PenEstim</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">output</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/penetrance.html">penetrance</a></span><span class="op">(</span></span>
 <span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>, </span>
 <span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span>, af  <span class="op">=</span> <span class="fl">0.0001</span>, </span>
 <span>    prior_params <span class="op">=</span> <span class="va">prior_params_default</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,  </span>
