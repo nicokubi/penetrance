@@ -52,15 +52,27 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   
   # Option to remove the proband after age imputation
   if (removeProband) {
-    data <- data[data$isProband != 1, ]
     
-    # Adjust na_indices to account for removed probands
+    # Sort proband_indices in descending order
+    # This ensures that removing rows doesn't affect the remaining indices
+    proband_indices <- sort(proband_indices, decreasing = TRUE)
+    
+    # Remove rows corresponding to the proband indices
+    data <- data[-proband_indices, ]
+    
+    # Adjust na_indices
     if (exists("na_indices")) {
       original_na_indices <- na_indices
+      
       for (proband_index in proband_indices) {
+        # Remove the current proband index from na_indices
         original_na_indices <- original_na_indices[original_na_indices != proband_index]
+        
+        # Decrement all indices greater than the current proband_index
         original_na_indices[original_na_indices > proband_index] <- original_na_indices[original_na_indices > proband_index] - 1
       }
+      
+      # Update na_indices with the adjusted indices
       na_indices <- original_na_indices
     }
   }
@@ -112,17 +124,17 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     threshold_female <- pmax(pmin(threshold_female, upper_bound, na.rm = TRUE), lower_bound, na.rm = TRUE)
     
     median_male <- ifelse(length(data_male_affected$age) > 0,
-                          median(data_male_affected$age, na.rm = TRUE), NA
+                          median(data_male_affected$age, na.rm = TRUE), 50
     )
     median_female <- ifelse(length(data_female_affected$age) > 0,
-                            median(data_female_affected$age, na.rm = TRUE), NA
+                            median(data_female_affected$age, na.rm = TRUE), 50
     )
     
     first_quartile_male <- ifelse(length(data_male_affected$age) > 0,
-                                  min(quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE), median_male - 1), NA
+                                  min(quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE), median_male - 1), 40
     )
     first_quartile_female <- ifelse(length(data_female_affected$age) > 0,
-                                    min(quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE), median_female - 1), NA
+                                    min(quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE), median_female - 1), 40
     )
     
     asymptote_male <- runif(1, max(baseline_male_cum), 1)
@@ -409,7 +421,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 #' @importFrom stats rbeta runif
 #' @importFrom parallel makeCluster stopCluster parLapply
 #' @export
-PenEstim <- function(pedigree, 
+#' 
+penetrance <- function(pedigree, 
                      twins = NULL, 
                      n_chains = 1,
                      n_iter_per_chain = 10000,
@@ -562,7 +575,7 @@ PenEstim <- function(pedigree,
       
       if (penetrance_plot_pdf) {
         # Generate PDF plots
-        output$penetrance_plot_pdf <- penetrance_plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
+        output$penetrance_plot_pdf <- plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
       }
     },
     error = function(e) {

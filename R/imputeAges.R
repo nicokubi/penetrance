@@ -19,35 +19,40 @@
 #' 
 imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_male, beta_male, delta_male,
                        alpha_female, beta_female, delta_female, empirical_density, max_age) {
+  
   for (i in na_indices) {
+    # Ensure 'i' is within the valid range
+    if (i > nrow(data) || i < 1) {
+      stop(paste("Index", i, "is out of bounds for the data frame."))
+    }
+    
     valid_age <- FALSE
     while (!valid_age) {
-    u <- runif(1)
-    relationship_prob <- as.numeric(data$degree_of_relationship[i])
-    data$age[i] <- min(max_age, max(1, round(data$age[i])))
-    
-    if (data$aff[i] == 1) {
-      # Use Weibull distribution for carriers
-      if (runif(1) < relationship_prob) {
-        if (data$sex[i] == 1) { # Male
-          data$age[i] <-  round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
-        } else if (data$sex[i] == 2) { # Female
-          data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
-        }
+      u <- runif(1)
+      relationship_prob <- as.numeric(data$degree_of_relationship[i])
+      
+      if (is.na(relationship_prob)) {
+        warning(paste("Invalid degree of relationship for individual at index", i, ". Using empirical distribution."))
+        data$age[i] <- round(drawEmpirical(empirical_density))
       } else {
-        # Use baseline distribution for non-carriers
-        data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
+        if (data$aff[i] == 1) {
+          if (runif(1) < relationship_prob) {
+            if (data$sex[i] == 1) { # Male
+              data$age[i] <- round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
+            } else if (data$sex[i] == 2) { # Female
+              data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
+            }
+          } else {
+            data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
+          }
+        } else {
+          data$age[i] <- round(drawEmpirical(empirical_density))
+        }
       }
-    } else {
-      # Use empirical distribution for unaffected individuals
-      data$age[i] <- round(drawEmpirical(empirical_density))
-    }
-    
-    # Checks that the imputed age is in between 1 and max_age. If not, another imputation loop starts.
-    if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i]  <= max_age) {
-      data$age[i] <- data$age[i] 
-      valid_age <- TRUE
-    }
+      
+      if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i] <= max_age) {
+        valid_age <- TRUE
+      }
     }
   }
   return(data)
@@ -78,15 +83,15 @@ imputeAgesInit <- function(data, threshold, max_age) {
 calcPedDegree <- function(data) {
   # Create a copy of the data to avoid modifying the original data directly
   data_copy <- data
-
+  
   # Replace 0 with NA in the mother and father columns in the copy
   data_copy$mother[data_copy$mother == 0] <- NA
   data_copy$father[data_copy$father == 0] <- NA
-
+  
   # Ensure both parents are NA if one is missing
   data_copy$father[is.na(data_copy$father) != is.na(data_copy$mother)] <- NA
   data_copy$mother[is.na(data_copy$father) != is.na(data_copy$mother)] <- NA
-
+  
   # Create the pedigree object
   ped <- pedigree(
     id = data_copy$individual,
@@ -96,10 +101,10 @@ calcPedDegree <- function(data) {
     affected = data_copy$aff,
     famid = data_copy$family
   )
-
+  
   # Calculate the kinship matrix
   kin_matrix <- kinship(ped)
-
+  
   # Function to calculate the degree of relationship
   calculate_degree <- function(proband_id, family_kin_matrix) {
     degrees <- rep(NA, nrow(family_kin_matrix))
@@ -114,36 +119,44 @@ calcPedDegree <- function(data) {
     }
     return(degrees)
   }
-
+  
   # Initialize a column for degrees of relationship in the copy
   data_copy$degree_of_relationship <- NA
-
+  
   # Iterate through each family to calculate the degree of relationship
   families <- unique(data_copy$family)
   
   for (fam in families) {
     family_data <- data_copy[data_copy$family == fam, ]
     proband_actual_id <- family_data$individual[family_data$isProband == 1]
-
+    
     if (length(proband_actual_id) == 1) {
       # Subset the kinship matrix for the current family
       family_ids <- family_data$individual
       family_kin_matrix <- kin_matrix[family_ids, family_ids]
-
-      # Find the row index of the proband in the family kinship matrix
-      proband_index <- which(family_ids == proband_actual_id)
-
-      # Calculate degrees of relationship for this family
-      degrees_of_relationship <- calculate_degree(proband_index, family_kin_matrix)
-
-      # Update the copy of the main data frame
-      data_copy$degree_of_relationship[data_copy$family == fam] <- degrees_of_relationship
+      
+      if (is.matrix(family_kin_matrix) && !is.null(nrow(family_kin_matrix))) {
+        # Find the row index of the proband in the family kinship matrix
+        proband_index <- which(family_ids == proband_actual_id)
+        
+        # Calculate degrees of relationship for this family
+        degrees_of_relationship <- calculate_degree(proband_index, family_kin_matrix)
+        
+        # Update the copy of the main data frame
+        data_copy$degree_of_relationship[data_copy$family == fam] <- degrees_of_relationship
+      } else {
+        # If the kinship matrix is invalid, set the degree_of_relationship to NA
+        data_copy$degree_of_relationship[data_copy$family == fam] <- NA
+      }
+    } else {
+      # If no unique proband is found, set the degree_of_relationship to NA
+      data_copy$degree_of_relationship[data_copy$family == fam] <- NA
     }
   }
-
+  
   # Add the new column to the original data
   data$degree_of_relationship <- data_copy$degree_of_relationship
-
+  
   return(data)
 }
 
