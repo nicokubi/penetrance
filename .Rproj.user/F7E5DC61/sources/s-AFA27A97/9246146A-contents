@@ -1,0 +1,209 @@
+---
+title: "PenEstim"
+subtitle: "Application CoH Data - PALB2 and OC"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 8-20-2024
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, echo=FALSE, include=FALSE}
+
+library(penetrance)
+library(ggplot2)
+library(ggridges)
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(GGally)
+
+set.seed(27)
+```
+
+# Descriptive Statistics - CoH MSH6 Families
+
+Here the NA in the current age and cancer age of the individuals is
+replaced by the median from the observed data. Seperate medians are
+calculated for Current Age (non-affected) and Cancer Age (affected) for
+both sexes.
+
+```{r fam4, echo=TRUE, cache=TRUE}
+
+# Load data
+load("/Users/nicolaskubista/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/5_Data/PALB2_carrier_families.RData")
+
+dat <- carrier_families_list
+```
+
+# Age Imputation
+
+The dataset contains missing ages for both affected and non-affected
+individuals. We apply an age imputation as part of the MCMC routine.
+
+The imputation of ages is performed based on the individual's affected
+status ($aff$), sex ($sex$), and their degree of relationship to the
+proband who is a carrier of the PV.
+
+**Calculating Degrees of Relationship**
+
+To calculate the degree of relationship to the proband, we use the
+kinship matrix from the pedigree data. The degree of relationship
+between two individuals is twice the kinship coefficient.
+
+```{=tex}
+\begin{enumerate}
+    \item Construct the pedigree object using individual, father, mother, sex, affected status, and family ID data.
+    \item Calculate the kinship matrix for the pedigree.
+    \item For each family, determine the degrees of relationship using the kinship matrix.
+\end{enumerate}
+```
+**Weibull Distribution for Carriers**
+
+For affected individuals $aff = 1$ and if a randomly drawn value is less
+than the relationship probability, the age is drawn from a Weibull
+distribution. The Weibull distribution parameters for males and females
+are $(\alpha, \beta, \delta)$. We use the quantile function of the
+Weibull to draw the ages (separately for males and females).
+
+$$
+age = \delta + \beta ( -\log(1 - u))^{\frac{1}{\alpha}} 
+$$
+
+Here, $u$ is a uniform random variable: $$ 
+u \sim \text{Uniform}(0, 1) 
+$$
+
+**SEER Distribution for Non-Carriers**
+
+If the random draw exceeds the relationship probability, the age is
+drawn from the SEER data using the inverse CDF method. In that case, we
+assume the individual is not a carrier of the PV.
+
+1.  Generate a uniform random variable $u \sim Uniform(0, 1)$.
+2.  Interpolate the SEER cumulative probability distribution to find the
+    corresponding age: $$
+    \text{age} = \text{approx}(\text{seer\_data\$cum\_prob}, \text{seer\_data\$age}, \text{xout} = u)
+    $$
+3.  Return the interpolated age value.
+
+**Empirical Density for Non-Affected Individuals**
+
+To calculate the empirical density for non-affected individuals, we
+filter the dataset to include only non-affected individuals and estimate
+the density of their ages. Then we randomly draw an age from this
+distribution for ages of non-affected individuals.
+
+1.  Filter the data to include only non-affected individuals $aff=0$.
+
+2.  Estimate the empirical density of the age data using a kernel
+    density estimation method.
+
+3.  Draw a random age from the empirical distribution using the inverse
+    CDF method.
+
+**Initialization of Ages Using Uniform Distribution**
+
+Before the imputation process, ages are initialized for missing values
+using a uniform distribution between a threshold and the maximum age:
+
+1.  Identify missing ages in the dataset.
+
+2.  Initialize these missing ages using a uniform distribution. 
+$$
+    age\_{init} \sim Uniform(threshold,
+    max\_age)
+    $$
+
+This ensures that all missing ages have initial values that fall within
+the specified range.
+
+# Estimation - City of Hope
+
+Here we estimate the penetrance curve for CRC and MSH6 from the 130
+families in the CoH dataset. This is based on the very rudimentary
+imputation for ages as described in the section above.
+
+This version of the algorithm uses:
+
+-   10k iterations of the adpative MH algorithm
+
+-   PanelPRODatabase defaults for the allele frequency (af) of MSH6
+
+-   The adapted mcmcPenetrance function reflects the asymptote values
+    that are out of bounds back into the parameter space (0,1)
+
+```{r est1, echo=TRUE, cache=FALSE}
+# Data Preperation in the right format
+for (i in seq_along(dat)) {
+  if ("ID" %in% colnames(dat[[i]])) {
+    colnames(dat[[i]])[colnames(dat[[i]]) == "PedigreeID"] <- "FamilyID"
+  }
+}
+for (i in seq_along(dat)) {
+  # Add a new column "PedigreeID" with the list number
+  dat[[i]]$PedigreeID <- i
+}
+
+# Change "isAffCOL" to "isAff" if "isAffCOL" is a column
+for (i in seq_along(dat)) {
+  if ("isAffOC" %in% colnames(dat[[i]])) {
+    colnames(dat[[i]])[colnames(dat[[i]]) == "isAffOC"] <- "isAff"
+  }
+}
+for (i in seq_along(dat)) {
+  if ("AgeOC" %in% colnames(dat[[i]])) {
+    colnames(dat[[i]])[colnames(dat[[i]]) == "AgeOC"] <- "Age"
+  }
+}
+for (i in seq_along(dat)) {
+  if ("PALB2" %in% colnames(dat[[i]])) {
+    colnames(dat[[i]])[colnames(dat[[i]]) == "PALB2"] <- "geno"
+  }
+}
+
+# Set the prior
+prior_params <- list(
+    asymptote = list(g1 = 3, g2 = 7),
+    threshold = list(min = 5, max = 40),
+    median = list(m1 = 2, m2 = 2),
+    first_quartile = list(q1 = 6, q2 = 3)
+)
+
+# Use the SEER baseline (imported seperately)
+baseline <- PPP::PanelPRODatabase$Penetrance["Ovarian","SEER","All_Races",,,"Net"]
+# Adjust Format
+baseline_df <- as.data.frame(t(baseline))
+colnames(baseline_df) <- c("Female", "Male")
+baseline_df$Age <- as.numeric(rownames(baseline_df))
+baseline_df <- baseline_df[, c("Female", "Male")]
+print(baseline_df)
+
+
+#Run Estimation procedure with default prior setting 
+#Main Estimation for Female
+system.time(out_COL_PALB2 <- penetrance(
+    pedigree  = dat, twins = NULL,n_chains = 1, n_iter_per_chain = 20000, ncores = 2, 
+    baseline_data = baseline_df , af  = 0.000057, 
+    prior_params = prior_params_default, burn_in = 0.1, median_max = TRUE,  
+    ageImputation = FALSE, removeProband = FALSE
+))
+
+save(out_COL_PALB2, file = "out_COL_PALB2.Rdata")
+# print summary stats
+out_COL_PALB2$summary_stats
+```

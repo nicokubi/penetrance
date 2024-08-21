@@ -1,0 +1,5 @@
+"0",""
+"0","# Load data"
+"0","load(""/Users/nicolaskubista/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/5_Data/PALB2_carrier_families.RData"")"
+"0",""
+"0","dat <- carrier_families_list"
