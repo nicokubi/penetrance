@@ -10,6 +10,7 @@
 <url><loc>https://nicokubi.github.io/penetrance/reference/CANCER_NAME_MAP.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/CANCER_TYPES.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/GENE_TYPES.html</loc></url>
+<url><loc>https://nicokubi.github.io/penetrance/reference/PenEstim.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/apply_burn_in.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/apply_thinning.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/baseline_data_default.html</loc></url>
@@ -33,7 +34,6 @@
 <url><loc>https://nicokubi.github.io/penetrance/reference/mhChain.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/mhLogLikelihood_clipp.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/out_sim.html</loc></url>
-<url><loc>https://nicokubi.github.io/penetrance/reference/penetrance.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/plot_pdf.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/plot_penetrance.html</loc></url>
 <url><loc>https://nicokubi.github.io/penetrance/reference/plot_trace.html</loc></url>

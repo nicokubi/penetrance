@@ -66,11 +66,10 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Simulation study from empirical data with penetrance</h1>
-                        <h4 data-toc-skip class="author">BayesMendel
-Lab</h4>
+                        <h4 data-toc-skip class="author">BayesMendel Lab</h4>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/main/vignettes/simulation_study_real.Rmd" class="external-link"><code>vignettes/simulation_study_real.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/HEAD/vignettes/simulation_study_real.Rmd" class="external-link"><code>vignettes/simulation_study_real.Rmd</code></a></small>
       <div class="d-none name"><code>simulation_study_real.Rmd</code></div>
     </div>
 
@@ -79,16 +78,12 @@ Lab</h4>
 <div class="section level2">
 <h2 id="goal">Goal<a class="anchor" aria-label="anchor" href="#goal"></a>
 </h2>
-<p>Here we apply the penetrance package to simulated families where the
-data-generating penetrance function is known and based on existing
-penetrance estimates.</p>
+<p>Here we apply the penetrance package to simulated families where the data-generating penetrance function is known and based on existing penetrance estimates.</p>
 </div>
 <div class="section level2">
 <h2 id="simulated-data">Simulated Data<a class="anchor" aria-label="anchor" href="#simulated-data"></a>
 </h2>
-<p>The data-generating distribution of the age-specific penetrances is
-based on existing penetrance estimates for Colorectal cancer in carriers
-of any pathogenic variant in MLH1 from the PanelPRO Database.</p>
+<p>The data-generating distribution of the age-specific penetrances is based on existing penetrance estimates for Colorectal cancer in carriers of any pathogenic variant in MLH1 from the PanelPRO Database.</p>
 <p>The families were simulated using the PedUtils Rpackage.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="va">test_fam2</span></span></code></pre></div>
@@ -116,7 +111,7 @@ of any pathogenic variant in MLH1 from the PanelPRO Database.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">baseline_data_default</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># We run the estimation procedure with one chain and 20k iterations  </span></span>
-<span><span class="va">out_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/penetrance.html">penetrance</a></span><span class="op">(</span></span>
+<span><span class="va">out_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/PenEstim.html">PenEstim</a></span><span class="op">(</span></span>
 <span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>, </span>
 <span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span> , af <span class="op">=</span> <span class="va">af_MLH1</span>, </span>
 <span>    prior_params <span class="op">=</span> <span class="va">prior_params</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,  </span>
@@ -126,10 +121,7 @@ of any pathogenic variant in MLH1 from the PanelPRO Database.</p>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<p>Lee G, Liang JW, Zhang Q, Huang T, Choirat C, Parmigiani G, Braun D.
-Multi-syndrome, multi-gene risk modeling for individuals with a family
-history of cancer with the novel R package PanelPRO. Elife.
-2021;10:e68699. <a href="doi:10.7554/eLife.6869" class="uri">doi:10.7554/eLife.6869</a></p>
+<p>Lee G, Liang JW, Zhang Q, Huang T, Choirat C, Parmigiani G, Braun D. Multi-syndrome, multi-gene risk modeling for individuals with a family history of cancer with the novel R package PanelPRO. Elife. 2021;10:e68699. <a href="doi:10.7554/eLife.6869" class="uri">doi:10.7554/eLife.6869</a></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
