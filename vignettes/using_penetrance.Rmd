@@ -64,7 +64,7 @@ Then randomly draw an age from this distribution for non-affected individuals.
 ## Estimation Approach
 
 The estimation assumes a Mendelian model with a single biallelic locus. 
-The main function `PenEstim` implements a Bayesian approach to estimate the 
+The main function `penetrance` implements a Bayesian approach to estimate the 
 parameters of the carrier penetrance function. The estimation routine employs 
 an Adaptive Metropolis Hastings (MH) algorithm based on Haario et al., (2001). 
 We build on existing software implementations of the Elston-Stewart peeling algorithm 
@@ -161,7 +161,7 @@ To run the algorithm, we require the user to input:
 The number of cores for the paralellization is set to `ncores = 4`. 
 - The pedigree data are the test family 1. 
 - The allele frequency for the pathogenic variant is set at `af = 0.0001`. 
-- The `PenEstim` function takes baseline age-specific probabilitie of developing 
+- The `penetrance` function takes baseline age-specific probabilitie of developing 
 cancer as as input `baseline_data`. In the default setting with `BaselineNC = TRUE` 
 this baseline is assumed to reflect the non-carrier penetrance. 
 For rare mutations this is considered a reasonable assumption. 
