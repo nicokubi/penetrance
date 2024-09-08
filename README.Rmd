@@ -20,6 +20,18 @@ knitr::opts_chunk$set(
 
 An R package for the estimation of age-specific penetrance for complex family-based studies in a format compatible with with the PanelPRO R package.
 
+## Motivation
+
+Accurate estimation of age-specific penetrance is essential for assessing cancer risk in individuals with pathogenic genetic variants (PGVs). Penetrance refers to the probability that an individual carrying a specific genetic variant will develop the associated trait, such as cancer. Estimating this probability is a crucial step in clinical decision-making and personalized risk assessment for hereditary (cancer) syndromes.
+
+The \textit{penetrance} package leverages Mendelian inheritance models, which are widely used in family-based genetic studies to assess how genetic variants are passed down through generations. These models typically involve a \textbf{proband}—an individual for whom family history and genetic data are collected. The proband serves as the starting point for mapping out the family’s genetic structure, including relationships and phenotypic traits, such as cancer diagnoses. Family data, including cancer occurrence, ages of diagnosis, and genetic test results, are collected for the proband and their relatives. Using this data, Mendelian models compute the likelihood of certain genetic configurations and disease outcomes based on inheritance patterns.
+
+The core methodology in the \textit{penetrance} package relies on a four-parameter Weibull distribution to model age-specific penetrance. Estimation is performed using a Bayesian framework with Markov Chain Monte Carlo (MCMC) methods, allowing the package to provide robust and flexible penetrance estimates. Through this approach, the package models the likelihood of cancer occurrence across family members, even when some genotypic information is missing or incomplete, which is common in real-world studies.
+
+The \textit{penetrance} package also incorporates prior knowledge into the estimation process, enabling users to specify default, custom, or study-based prior distributions. By employing the Elston-Stewart peeling algorithm, the package efficiently calculates likelihoods across family pedigrees, ensuring scalability and accuracy, even in large datasets.
+
+By providing user-friendly functions for data input, prior specification, and estimation, the \textit{penetrance} package equips researchers and clinicians with a powerful tool for estimating cancer risk in complex family-based studies. This empowers informed decision-making and preventive strategies in hereditary cancer syndromes, where understanding the genetic basis of risk is critical for patient care.
+
 ## Installation
 
 To install, use
