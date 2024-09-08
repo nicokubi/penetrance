@@ -46,20 +46,27 @@ body {
 <pre><code>devtools::install_github(&quot;https://github.com/nicokubi/penetrance&quot;)</code></pre>
 <h2 id="quick-start-guide">Quick-start guide</h2>
 <p>This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other articles.</p>
-<p>The primary function in the package is <code>PenEstim</code>. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(penetrance)</span></code></pre></div>
+<p>The primary function in the package is <code>penetrance</code>. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(penetrance)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: clipp</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: parallel</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: MASS</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: kinship2</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: package &#39;kinship2&#39; was built under R version 4.2.3</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: Matrix</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: quadprog</span></span></code></pre></div>
 <h3 id="pedigree">Pedigree</h3>
-<p>The user must specify the <code>pedigree</code> argument as a data frame with the following columns:</p>
+<p>The user must specify the <code>pedigree</code> argument as a data frame that contains the family data (see <code>test_family_1</code>). The family data must be in the correct format with the following columns:</p>
 <ul>
-<li><code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</li>
-<li><code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</li>
-<li><code>MotherID</code>: A numeric value representing the unique identifier for an individual’s mother.</li>
-<li><code>FatherID</code>: A numeric value representing the unique identifier for an individual’s father.</li>
-<li><code>isProband</code>: A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</li>
-<li><code>CurAge</code>: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</li>
-<li><code>isAff</code>: A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</li>
-<li><code>Age</code>: A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</li>
-<li><code>Geno</code>: A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</li>
+<li><p><code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></li>
+<li><p><code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</p></li>
+<li><p><code>MotherID</code>: A numeric value representing the unique identifier for an individual’s mother.</p></li>
+<li><p><code>FatherID</code>: A numeric value representing the unique identifier for an individual’s father.</p></li>
+<li><p><code>isProband</code>: A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</p></li>
+<li><p><code>CurAge</code>: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
+<li><p><code>isAff</code>: A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</p></li>
+<li><p><code>Age</code>: A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
+<li><p><code>Geno</code>: A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</p></li>
 </ul>
 <h3 id="model-specification">Model specification</h3>
 <p>There are a few ways in which a user can specify how the estimation approach is run. Available options are:</p>
