@@ -106,7 +106,7 @@ Available options are:
 #' @param n_chains Number of chains for parallel computation. Default is 1.
 #' @param n_iter_per_chain Number of iterations for each chain. Default is 10000.
 #' @param ncores Number of cores for parallel computation. Default is 6.
-#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.
+#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.
 #' @param max_age Maximum age considered for analysis. Default is 94.
 #' @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.
 #' @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.
