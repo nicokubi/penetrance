@@ -1,0 +1,26 @@
+{
+    "id": "9E436600",
+    "path": "~/Documents/Master Statistics/Master Thesis/Code/PenEstim/R/imputeAges.R",
+    "project_path": "R/imputeAges.R",
+    "type": "r_source",
+    "hash": "3346978978",
+    "contents": "",
+    "dirty": false,
+    "created": 1726691602982.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "246,2",
+        "scrollLine": "230"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1726691743,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1726691743147,
+    "read_only": false,
+    "read_only_alternatives": []
+}
