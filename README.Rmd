@@ -129,6 +129,7 @@ Available options are:
 #' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
 #' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
+#' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.
 ```
 
 

@@ -32,13 +32,14 @@ penetrance(
   plot_trace = TRUE,
   penetrance_plot = TRUE,
   penetrance_plot_pdf = TRUE,
-  probCI = 0.95
+  probCI = 0.95,
+  sex_specific = TRUE
 )
 }
 \arguments{
 \item{pedigree}{A data frame containing the pedigree data in the required format. It should include the following columns:
 \itemize{
-\item \code{PedigreeID}:  A numeric value representing the unique identifier for each family There should be no duplicated entries.
+\item \code{PedigreeID}: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
 \item \code{ID}: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
 \item \code{Sex}: A numeric value where \code{0} indicates female and \code{1} indicates male. Missing entries are not currently supported.
 \item \code{MotherID}: A numeric value representing the unique identifier for an individual's mother.
@@ -50,63 +51,64 @@ penetrance(
 \item \code{Geno}: A column for germline testing or tumor marker testing results. Positive results should be coded as \code{1}, negative results as \code{0}, and unknown results as \code{NA} or left empty.
 }}
 
-\item{twins}{Identical twins or triplets in the family can be specifed. For example, to indicate that \code{ora024} and \code{ora027} are identical twins, and so are \code{aey063} and \code{aey064},
-then we can use the following as the twins arguement: twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))}
+\item{twins}{A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: \code{twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))}.}
 
-\item{n_chains}{Number of chains for parallel computation. Default is 1.}
+\item{n_chains}{Integer, the number of chains for parallel computation. Default is 1.}
 
-\item{n_iter_per_chain}{Number of iterations for each chain. Default is 10000.}
+\item{n_iter_per_chain}{Integer, the number of iterations for each chain. Default is 10000.}
 
-\item{ncores}{Number of cores for parallel computation. Default is 6.}
+\item{ncores}{Integer, the number of cores for parallel computation. Default is 6.}
 
-\item{max_age}{Maximum age considered for analysis. Default is 94.}
+\item{max_age}{Integer, the maximum age considered for analysis. Default is 94.}
 
-\item{baseline_data}{Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.}
+\item{baseline_data}{Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.}
 
 \item{removeProband}{Logical, indicating whether to remove probands from the analysis. Default is FALSE.}
 
 \item{ageImputation}{Logical, indicating whether to perform age imputation. Default is FALSE.}
 
-\item{median_max}{Boolean indicating whether to use the baseline median age or max_age as an upper bound for the median proposal. Default is TRUE.}
+\item{median_max}{Logical, indicating whether to use the baseline median age or \code{max_age} as an upper bound for the median proposal. Default is TRUE.}
 
-\item{BaselineNC}{Boolean indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.}
+\item{BaselineNC}{Logical, indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.}
 
-\item{var}{Vector of variances for the proposal distribution. Default is c(0.1, 0.1, 2, 2, 5, 5, 5, 5).}
+\item{var}{Numeric vector, variances for the proposal distribution in the Metropolis-Hastings algorithm. Default is \code{c(0.1, 0.1, 2, 2, 5, 5, 5, 5)}.}
 
-\item{burn_in}{Fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).}
+\item{burn_in}{Numeric, the fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).}
 
-\item{thinning_factor}{Factor by which to thin the results. Default is 1 (no thinning).}
+\item{thinning_factor}{Integer, the factor by which to thin the results. Default is 1 (no thinning).}
 
 \item{distribution_data}{Data for generating prior distributions.}
 
-\item{af}{Allele frequency for the risk allele. Default is 0.0001.}
+\item{af}{Numeric, allele frequency for the risk allele. Default is 0.0001.}
 
-\item{max_penetrance}{Maximum penetrance considered for analysis. Default is 1.}
+\item{max_penetrance}{Numeric, the maximum penetrance considered for analysis. Default is 1.}
 
-\item{sample_size}{Optional sample size for distribution generation.}
+\item{sample_size}{Optional numeric, sample size for distribution generation.}
 
-\item{ratio}{Optional ratio parameter for distribution generation.}
+\item{ratio}{Optional numeric, ratio parameter for distribution generation.}
 
-\item{prior_params}{Parameters for prior distributions.}
+\item{prior_params}{List, parameters for prior distributions.}
 
-\item{risk_proportion}{Proportion of risk for distribution generation.}
+\item{risk_proportion}{Numeric, proportion of risk for distribution generation.}
 
-\item{summary_stats}{Boolean indicating whether to include summary statistics in the output. Default is TRUE.}
+\item{summary_stats}{Logical, indicating whether to include summary statistics in the output. Default is TRUE.}
 
-\item{rejection_rates}{Boolean indicating whether to include rejection rates in the output. Default is TRUE.}
+\item{rejection_rates}{Logical, indicating whether to include rejection rates in the output. Default is TRUE.}
 
-\item{density_plots}{Boolean indicating whether to include density plots in the output. Default is TRUE.}
+\item{density_plots}{Logical, indicating whether to include density plots in the output. Default is TRUE.}
 
-\item{plot_trace}{Boolean indicating whether to include trace plots in the output. Default is TRUE.}
+\item{plot_trace}{Logical, indicating whether to include trace plots in the output. Default is TRUE.}
 
-\item{penetrance_plot}{Boolean indicating whether to include penetrance plots in the output. Default is TRUE.}
+\item{penetrance_plot}{Logical, indicating whether to include penetrance plots in the output. Default is TRUE.}
 
-\item{penetrance_plot_pdf}{Boolean indicating whether to include PDF plots in the output. Default is TRUE.}
+\item{penetrance_plot_pdf}{Logical, indicating whether to include PDF plots in the output. Default is TRUE.}
 
-\item{probCI}{Probability level for confidence intervals in penetrance plots. Default is 0.95.}
+\item{probCI}{Numeric, probability level for credible intervals in penetrance plots. Must be between 0 and 1. Default is 0.95.}
+
+\item{sex_specific}{Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.}
 }
 \value{
-A list containing combined results from all chains, along with optional statistics and plots.
+A list containing combined results from all chains, including optional statistics and plots.
 }
 \description{
 This function implements the Independent Metropolis-Hastings algorithm for Bayesian

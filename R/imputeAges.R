@@ -3,22 +3,32 @@
 #' This function imputes ages for individuals in a dataset based on their affection
 #' status and sex using either Weibull, baseline, or empirical distribution.
 #'
-#' @param data A data frame containing the data.
+#' @param data A data frame containing the individual data, including columns for age, sex, and affection status.
 #' @param na_indices A vector of indices indicating the rows in the data where ages need to be imputed.
-#' @param baseline_male A data frame containing baseline data for males.
-#' @param baseline_female A data frame containing baseline data for females.
-#' @param alpha_male Shape parameter for the Weibull distribution for males.
-#' @param beta_male Scale parameter for the Weibull distribution for males.
-#' @param delta_male Location parameter for the Weibull distribution for males.
-#' @param alpha_female Shape parameter for the Weibull distribution for females.
-#' @param beta_female Scale parameter for the Weibull distribution for females.
-#' @param delta_female Location parameter for the Weibull distribution for females.
-#' @param empirical_density A density object containing the empirical density of ages.
+#' @param baseline_male A data frame containing baseline data for males, with columns 'cum_prob' and 'age'.
+#' @param baseline_female A data frame containing baseline data for females, with columns 'cum_prob' and 'age'.
+#' @param alpha_male Numeric, shape parameter for the Weibull distribution for males.
+#' @param beta_male Numeric, scale parameter for the Weibull distribution for males.
+#' @param delta_male Numeric, location parameter for the Weibull distribution for males.
+#' @param alpha_female Numeric, shape parameter for the Weibull distribution for females.
+#' @param beta_female Numeric, scale parameter for the Weibull distribution for females.
+#' @param delta_female Numeric, location parameter for the Weibull distribution for females.
+#' @param baseline A data frame containing baseline data (used for non-sex-specific analysis) with columns 'cum_prob' and 'age'.
+#' @param alpha Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).
+#' @param beta Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).
+#' @param delta Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).
+#' @param empirical_density A density object or list of density objects containing the empirical density of ages, 
+#'                          possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.
 #' @param max_age Integer, the maximum age considered in the analysis.
+#' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
+#'
 #' @return The data frame with imputed ages.
-#' 
-imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_male, beta_male, delta_male,
-                       alpha_female, beta_female, delta_female, empirical_density, max_age) {
+#'
+imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL, 
+                       alpha_male = NULL, beta_male = NULL, delta_male = NULL,
+                       alpha_female = NULL, beta_female = NULL, delta_female = NULL, 
+                       baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
+                       empirical_density, max_age, sex_specific = TRUE) {
   
   for (i in na_indices) {
     # Ensure 'i' is within the valid range
@@ -33,20 +43,40 @@ imputeAges <- function(data, na_indices, baseline_male, baseline_female, alpha_m
       
       if (is.na(relationship_prob)) {
         warning(paste("Invalid degree of relationship for individual at index", i, ". Using empirical distribution."))
-        data$age[i] <- round(drawEmpirical(empirical_density))
+        # Use drawEmpirical with sex if sex-specific
+        if (sex_specific) {
+          data$age[i] <- round(drawEmpirical(empirical_density, data$sex[i]))
+        } else {
+          data$age[i] <- round(drawEmpirical(empirical_density))
+        }
       } else {
         if (data$aff[i] == 1) {
           if (runif(1) < relationship_prob) {
-            if (data$sex[i] == 1) { # Male
-              data$age[i] <- round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
-            } else if (data$sex[i] == 2) { # Female
-              data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
+            if (sex_specific) {
+              if (data$sex[i] == 1) { # Male
+                data$age[i] <- round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
+              } else if (data$sex[i] == 2) { # Female
+                data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
+              }
+            } else {
+              # Non-sex-specific imputation
+              data$age[i] <- round(delta + beta * (-log(1 - u))^(1 / alpha))
             }
           } else {
-            data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
+            if (sex_specific) {
+              data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
+            } else {
+              # Non-sex-specific baseline imputation
+              data$age[i] <- round(drawBaseline(baseline)) # Use baseline directly
+            }
           }
         } else {
-          data$age[i] <- round(drawEmpirical(empirical_density))
+          # Use drawEmpirical with sex if sex-specific
+          if (sex_specific) {
+            data$age[i] <- round(drawEmpirical(empirical_density, data$sex[i]))
+          } else {
+            data$age[i] <- round(drawEmpirical(empirical_density))
+          }
         }
       }
       
@@ -165,24 +195,33 @@ calcPedDegree <- function(data) {
 #' This function calculates the empirical density for ages of non-affected individuals in a dataset.
 #'
 #' @param data A data frame containing the data.
-#' @param aff_column The name of the column indicating affection status (default is "aff").
-#' @param age_column The name of the column indicating ages (default is "age").
-#' @param n_points The number of points to use in the density estimation (default is 10000).
-#' @return A density object representing the empirical density of ages.
-#' 
-calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", n_points = 10000) {
+#' @param aff_column Character, the name of the column indicating affection status. Default is "aff".
+#' @param age_column Character, the name of the column indicating ages. Default is "age".
+#' @param sex_column Character, the name of the column indicating sex. Default is "sex".
+#' @param n_points Integer, the number of points to use in the density estimation. Default is 10000.
+#' @param sex_specific Logical, indicating whether to calculate separate densities for males and females. Default is TRUE.
+#'
+#' @return A density object or a list of density objects (if sex-specific) representing the empirical density of ages.
+#'
+calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", sex_column = "sex", 
+                                      n_points = 10000, sex_specific = TRUE) {
   
-  # Filter the data to include only non-affected individuals (aff == 0)
-  non_affected_data <- subset(data, data[[aff_column]] == 0)
-
-  # Remove NA values from the age column of the filtered data
-  cleaned_non_affected_ages <- na.omit(non_affected_data[[age_column]])
-
-  # Estimate the empirical density of the age data
-  age_density <- density(cleaned_non_affected_ages, n = n_points)
-
-  return(age_density)
+  if (sex_specific) {
+    # Calculate empirical density separately for males and females
+    empirical_density <- list(
+      male = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1)[[age_column]]), n = n_points),
+      female = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2)[[age_column]]), n = n_points)
+    )
+  } else {
+    # Calculate empirical density for the entire dataset (non-sex-specific)
+    non_affected_data <- subset(data, data[[aff_column]] == 0)
+    cleaned_non_affected_ages <- na.omit(non_affected_data[[age_column]])
+    empirical_density <- density(cleaned_non_affected_ages, n = n_points)
+  }
+  
+  return(empirical_density)
 }
+
 
 #' Draw Ages Using the Inverse CDF Method from the baseline data
 #'
@@ -201,11 +240,28 @@ drawBaseline <- function(baseline_data) {
 #'
 #' This function draws ages using the inverse CDF method from empirical density data.
 #'
-#' @param empirical_density A density object containing the empirical density of ages.
+#' @param empirical_density A density object or a list of density objects (if sex-specific) containing the empirical density of ages.
+#' @param sex Numeric, the sex of the individual (1 for male, 2 for female). Required if `empirical_density` is a list.
+#'
 #' @return A single age value drawn from the empirical density data.
-#' 
-drawEmpirical <- function(empirical_density) {
+#'
+drawEmpirical <- function(empirical_density, sex = NA) {
   u <- runif(1)
-  age <- approx(cumsum(empirical_density$y) / sum(empirical_density$y), empirical_density$x, xout = u)$y
+  
+  # Use the appropriate density based on the sex input
+  if (is.list(empirical_density) && !is.na(sex)) {
+    if (sex == 1) { # Male
+      density_data <- empirical_density$male
+    } else if (sex == 2) { # Female
+      density_data <- empirical_density$female
+    } else {
+      stop("Invalid sex value for sex-specific empirical density.")
+    }
+  } else {
+    # Use non-sex-specific density
+    density_data <- empirical_density
+  }
+  
+  age <- approx(cumsum(density_data$y) / sum(density_data$y), density_data$x, xout = u)$y
   return(age)
 }

@@ -7,42 +7,58 @@
 imputeAges(
   data,
   na_indices,
-  baseline_male,
-  baseline_female,
-  alpha_male,
-  beta_male,
-  delta_male,
-  alpha_female,
-  beta_female,
-  delta_female,
+  baseline_male = NULL,
+  baseline_female = NULL,
+  alpha_male = NULL,
+  beta_male = NULL,
+  delta_male = NULL,
+  alpha_female = NULL,
+  beta_female = NULL,
+  delta_female = NULL,
+  baseline = NULL,
+  alpha = NULL,
+  beta = NULL,
+  delta = NULL,
   empirical_density,
-  max_age
+  max_age,
+  sex_specific = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame containing the data.}
+\item{data}{A data frame containing the individual data, including columns for age, sex, and affection status.}
 
 \item{na_indices}{A vector of indices indicating the rows in the data where ages need to be imputed.}
 
-\item{baseline_male}{A data frame containing baseline data for males.}
+\item{baseline_male}{A data frame containing baseline data for males, with columns 'cum_prob' and 'age'.}
 
-\item{baseline_female}{A data frame containing baseline data for females.}
+\item{baseline_female}{A data frame containing baseline data for females, with columns 'cum_prob' and 'age'.}
 
-\item{alpha_male}{Shape parameter for the Weibull distribution for males.}
+\item{alpha_male}{Numeric, shape parameter for the Weibull distribution for males.}
 
-\item{beta_male}{Scale parameter for the Weibull distribution for males.}
+\item{beta_male}{Numeric, scale parameter for the Weibull distribution for males.}
 
-\item{delta_male}{Location parameter for the Weibull distribution for males.}
+\item{delta_male}{Numeric, location parameter for the Weibull distribution for males.}
 
-\item{alpha_female}{Shape parameter for the Weibull distribution for females.}
+\item{alpha_female}{Numeric, shape parameter for the Weibull distribution for females.}
 
-\item{beta_female}{Scale parameter for the Weibull distribution for females.}
+\item{beta_female}{Numeric, scale parameter for the Weibull distribution for females.}
 
-\item{delta_female}{Location parameter for the Weibull distribution for females.}
+\item{delta_female}{Numeric, location parameter for the Weibull distribution for females.}
 
-\item{empirical_density}{A density object containing the empirical density of ages.}
+\item{baseline}{A data frame containing baseline data (used for non-sex-specific analysis) with columns 'cum_prob' and 'age'.}
+
+\item{alpha}{Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).}
+
+\item{beta}{Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).}
+
+\item{delta}{Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).}
+
+\item{empirical_density}{A density object or list of density objects containing the empirical density of ages,
+possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.}
 
 \item{max_age}{Integer, the maximum age considered in the analysis.}
+
+\item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
 }
 \value{
 The data frame with imputed ages.

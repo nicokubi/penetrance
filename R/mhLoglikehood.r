@@ -249,3 +249,126 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     }
     return(loglik)
 }
+
+#' Calculate Log Likelihood without Sex Differentiation
+#'
+#' This function calculates the log likelihood for a set of parameters and data without considering sex differentiation using the clipp package.
+#'
+#' @param paras Numeric vector, the parameters for the Weibull distribution and scaling factors. 
+#'        Should contain in order: gamma, delta, given_median, given_first_quartile.
+#' @param families Data frame, containing pedigree information with columns for 'age', 'aff' (affection status), and 'geno' (genotype).
+#' @param twins Information on monozygous twins or triplets in the pedigrees.
+#' @param max_age Integer, maximum age considered in the analysis.
+#' @param baseline_data Numeric vector, baseline risk data for each age.
+#' @param af Numeric, allele frequency of the risk allele in the population.
+#' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.
+#' @param ncores Integer, number of cores to use for parallel computation.
+#'
+#' @return Numeric, the calculated log likelihood.
+#'
+#' @references
+#' Details about the clipp package and methods can be found in the package documentation.
+#'
+#' @export
+mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, af, BaselineNC, ncores) {
+  # Extract parameters
+  paras <- unlist(paras)
+  gamma <- paras[1]  # Asymptote
+  delta <- paras[2]  # Threshold
+  given_median <- paras[3]
+  given_first_quartile <- paras[4]
+  
+  # Calculate Weibull parameters
+  params <- calculate_weibull_parameters(given_median, given_first_quartile, delta)
+  alpha <- params$alpha
+  beta <- params$beta
+  
+  # Initialize the model
+  geno_freq <- c(1 - af, af)
+  trans <- matrix(
+    c(
+      1, 0,
+      0.5, 0.5,
+      0.5, 0.5,
+      1 / 3, 2 / 3
+    ),
+    nrow = 4, ncol = 2, byrow = TRUE
+  )
+  
+  # Use the baselineRisk vector directly
+  baselineRisk <- baseline_data
+  
+  # Calculate penetrance
+  lik <- t(sapply(1:nrow(families), function(i) {
+    lik_noSex(i, families, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC)
+  }))
+  
+  # Compute log-likelihood
+  loglik <- pedigree_loglikelihood(dat = families, geno_freq = geno_freq, trans = trans, penet = lik, monozyg = twins, ncores = ncores)
+  
+  # Handle -Inf values
+  if (is.infinite(loglik) && loglik == -Inf) {
+    loglik <- -50000
+  }
+  
+  return(loglik)
+}
+
+#' Likelihood Calculation without Sex Differentiation
+#'
+#' This function calculates the likelihood for an individual based on Weibull distribution parameters without considering sex differentiation.
+#'
+#' @param i Integer, index of the individual in the data set.
+#' @param data Data frame, containing individual demographic and genetic information. Must include columns for 'age', 'aff' (affection status), and 'geno' (genotype).
+#' @param alpha Numeric, Weibull distribution shape parameter.
+#' @param beta Numeric, Weibull distribution scale parameter.
+#' @param delta Numeric, shift parameter for the Weibull function.
+#' @param gamma Numeric, asymptote parameter (only scales the entire distribution).
+#' @param max_age Integer, maximum age considered in the analysis.
+#' @param baselineRisk Numeric vector, baseline risk for each age.
+#' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data or the calculated non-carrier penetrance.
+#'
+#' @return Numeric vector, containing likelihood values for unaffected and affected individuals.
+#'
+#' @export
+lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC) {
+  if (data$age[i] == 0 || data$age[i] == 1) {
+    lik.i <- c(1, 1)  # Assuming people aged 0 or 1 years are all unaffected
+  } else {
+    # Ensure age is within the valid range
+    age_index <- min(max_age, data$age[i])
+    
+    # Weibull parameters for penetrance, using a single set of parameters
+    survival_prob <- 1 - pweibull(max(age_index - delta, 1), shape = alpha, scale = beta) * gamma
+    c.pen <- (pweibull(max(age_index - delta, 1), shape = alpha, scale = beta)
+              - pweibull(max(age_index - 1 - delta, 1), shape = alpha, scale = beta)) * gamma
+    
+    # Extract the corresponding baseline risk for the age
+    SEER_baseline_max <- baselineRisk[1:age_index]
+    SEER_baseline_cum <- cumsum(baselineRisk)[age_index]
+    SEER_baseline_i <- baselineRisk[age_index]
+    
+    # Calculate cumulative risk for non-carriers based on SEER data or other model
+    if (BaselineNC == TRUE) {
+      nc.pen <- SEER_baseline_i
+      nc.pen.c <- prod(1 - SEER_baseline_i)
+    } else {
+      nc_pen_results <- calculateNCPen(
+        SEER_baseline = SEER_baseline_max, alpha = alpha,
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age
+      )
+      nc.pen <- nc_pen_results$weightedCarrierRisk[age_index]
+      nc.pen.c <- nc_pen_results$cumulativeProb[age_index]
+    }
+    
+    # Penetrance calculations based on genotype and affection status
+    lik.i <- c(nc.pen.c, survival_prob)  # For censored observations
+    if (data$aff[i] == 1) lik.i <- c(nc.pen * nc.pen.c, c.pen)  # For affected observations
+  }
+  
+  # Adjustment for observed genotypes
+  if (data$geno[i] == "1/1") lik.i[-1] <- 0
+  if (data$geno[i] == "1/2") lik.i[-2] <- 0
+  
+  return(lik.i)
+}

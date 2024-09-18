@@ -47,14 +47,7 @@ body {
 <h2 id="quick-start-guide">Quick-start guide</h2>
 <p>This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other articles.</p>
 <p>The primary function in the package is <code>penetrance</code>. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(penetrance)</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: clipp</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: parallel</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: MASS</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: kinship2</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Warning: package &#39;kinship2&#39; was built under R version 4.2.3</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: Matrix</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Loading required package: quadprog</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(penetrance)</span></code></pre></div>
 <h3 id="pedigree">Pedigree</h3>
 <p>The user must specify the <code>pedigree</code> argument as a data frame that contains the family data (see <code>test_family_1</code>). The family data must be in the correct format with the following columns:</p>
 <ul>
@@ -86,7 +79,7 @@ body {
 <span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param n_chains Number of chains for parallel computation. Default is 1.</span></span>
 <span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param n_iter_per_chain Number of iterations for each chain. Default is 10000.</span></span>
 <span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param ncores Number of cores for parallel computation. Default is 6.</span></span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.</span></span>
 <span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param max_age Maximum age considered for analysis. Default is 94.</span></span>
 <span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.</span></span>
 <span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.</span></span>
@@ -108,7 +101,8 @@ body {
 <span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.</span></span>
 <span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.</span></span>
 <span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.</span></span>
-<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span></code></pre></div>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.</span></span></code></pre></div>
 <h3 id="prior-specification">Prior Specification</h3>
 <p>Penetrance provides the user with a flexible approach to prior specification, balancing customization with an easy-to-use workflow. In addition to providing default prior distributions, the package allows users to customize the priors by including existing penetrance estimates or prior knowledge. The following settings for the prior distribution specification are available:</p>
 <h3 id="additional-user-inputs">Additional User Inputs</h3>

@@ -8,20 +8,26 @@ calculateEmpiricalDensity(
   data,
   aff_column = "aff",
   age_column = "age",
-  n_points = 10000
+  sex_column = "sex",
+  n_points = 10000,
+  sex_specific = TRUE
 )
 }
 \arguments{
 \item{data}{A data frame containing the data.}
 
-\item{aff_column}{The name of the column indicating affection status (default is "aff").}
+\item{aff_column}{Character, the name of the column indicating affection status. Default is "aff".}
 
-\item{age_column}{The name of the column indicating ages (default is "age").}
+\item{age_column}{Character, the name of the column indicating ages. Default is "age".}
 
-\item{n_points}{The number of points to use in the density estimation (default is 10000).}
+\item{sex_column}{Character, the name of the column indicating sex. Default is "sex".}
+
+\item{n_points}{Integer, the number of points to use in the density estimation. Default is 10000.}
+
+\item{sex_specific}{Logical, indicating whether to calculate separate densities for males and females. Default is TRUE.}
 }
 \value{
-A density object representing the empirical density of ages.
+A density object or a list of density objects (if sex-specific) representing the empirical density of ages.
 }
 \description{
 This function calculates the empirical density for ages of non-affected individuals in a dataset.

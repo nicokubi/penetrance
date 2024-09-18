@@ -80,13 +80,6 @@ function.
 
 ``` r
 library(penetrance)
-#> Loading required package: clipp
-#> Loading required package: parallel
-#> Loading required package: MASS
-#> Loading required package: kinship2
-#> Warning: package 'kinship2' was built under R version 4.2.3
-#> Loading required package: Matrix
-#> Loading required package: quadprog
 ```
 
 ### Pedigree
@@ -148,7 +141,7 @@ approach is run. Available options are:
 #' @param n_chains Number of chains for parallel computation. Default is 1.
 #' @param n_iter_per_chain Number of iterations for each chain. Default is 10000.
 #' @param ncores Number of cores for parallel computation. Default is 6.
-#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.
+#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.
 #' @param max_age Maximum age considered for analysis. Default is 94.
 #' @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.
 #' @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.
@@ -171,6 +164,7 @@ approach is run. Available options are:
 #' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.
 #' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.
 #' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.
+#' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.
 ```
 
 ### Prior Specification
