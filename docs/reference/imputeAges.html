@@ -56,16 +56,21 @@ status and sex using either Weibull, baseline, or empirical distribution.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">imputeAges</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
 <span>  <span class="va">na_indices</span>,</span>
-<span>  <span class="va">baseline_male</span>,</span>
-<span>  <span class="va">baseline_female</span>,</span>
-<span>  <span class="va">alpha_male</span>,</span>
-<span>  <span class="va">beta_male</span>,</span>
-<span>  <span class="va">delta_male</span>,</span>
-<span>  <span class="va">alpha_female</span>,</span>
-<span>  <span class="va">beta_female</span>,</span>
-<span>  <span class="va">delta_female</span>,</span>
+<span>  baseline_male <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  baseline_female <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alpha_male <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  beta_male <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  delta_male <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alpha_female <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  beta_female <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  delta_female <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  baseline <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  beta <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  delta <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">empirical_density</span>,</span>
-<span>  <span class="va">max_age</span></span>
+<span>  <span class="va">max_age</span>,</span>
+<span>  sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -74,7 +79,7 @@ status and sex using either Weibull, baseline, or empirical distribution.</p>
 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A data frame containing the data.</p></dd>
+<dd><p>A data frame containing the individual data, including columns for age, sex, and affection status.</p></dd>
 
 
 <dt id="arg-na-indices">na_indices<a class="anchor" aria-label="anchor" href="#arg-na-indices"></a></dt>
@@ -82,43 +87,64 @@ status and sex using either Weibull, baseline, or empirical distribution.</p>
 
 
 <dt id="arg-baseline-male">baseline_male<a class="anchor" aria-label="anchor" href="#arg-baseline-male"></a></dt>
-<dd><p>A data frame containing baseline data for males.</p></dd>
+<dd><p>A data frame containing baseline data for males, with columns 'cum_prob' and 'age'.</p></dd>
 
 
 <dt id="arg-baseline-female">baseline_female<a class="anchor" aria-label="anchor" href="#arg-baseline-female"></a></dt>
-<dd><p>A data frame containing baseline data for females.</p></dd>
+<dd><p>A data frame containing baseline data for females, with columns 'cum_prob' and 'age'.</p></dd>
 
 
 <dt id="arg-alpha-male">alpha_male<a class="anchor" aria-label="anchor" href="#arg-alpha-male"></a></dt>
-<dd><p>Shape parameter for the Weibull distribution for males.</p></dd>
+<dd><p>Numeric, shape parameter for the Weibull distribution for males.</p></dd>
 
 
 <dt id="arg-beta-male">beta_male<a class="anchor" aria-label="anchor" href="#arg-beta-male"></a></dt>
-<dd><p>Scale parameter for the Weibull distribution for males.</p></dd>
+<dd><p>Numeric, scale parameter for the Weibull distribution for males.</p></dd>
 
 
 <dt id="arg-delta-male">delta_male<a class="anchor" aria-label="anchor" href="#arg-delta-male"></a></dt>
-<dd><p>Location parameter for the Weibull distribution for males.</p></dd>
+<dd><p>Numeric, location parameter for the Weibull distribution for males.</p></dd>
 
 
 <dt id="arg-alpha-female">alpha_female<a class="anchor" aria-label="anchor" href="#arg-alpha-female"></a></dt>
-<dd><p>Shape parameter for the Weibull distribution for females.</p></dd>
+<dd><p>Numeric, shape parameter for the Weibull distribution for females.</p></dd>
 
 
 <dt id="arg-beta-female">beta_female<a class="anchor" aria-label="anchor" href="#arg-beta-female"></a></dt>
-<dd><p>Scale parameter for the Weibull distribution for females.</p></dd>
+<dd><p>Numeric, scale parameter for the Weibull distribution for females.</p></dd>
 
 
 <dt id="arg-delta-female">delta_female<a class="anchor" aria-label="anchor" href="#arg-delta-female"></a></dt>
-<dd><p>Location parameter for the Weibull distribution for females.</p></dd>
+<dd><p>Numeric, location parameter for the Weibull distribution for females.</p></dd>
+
+
+<dt id="arg-baseline">baseline<a class="anchor" aria-label="anchor" href="#arg-baseline"></a></dt>
+<dd><p>A data frame containing baseline data (used for non-sex-specific analysis) with columns 'cum_prob' and 'age'.</p></dd>
+
+
+<dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
+<dd><p>Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).</p></dd>
+
+
+<dt id="arg-beta">beta<a class="anchor" aria-label="anchor" href="#arg-beta"></a></dt>
+<dd><p>Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).</p></dd>
+
+
+<dt id="arg-delta">delta<a class="anchor" aria-label="anchor" href="#arg-delta"></a></dt>
+<dd><p>Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).</p></dd>
 
 
 <dt id="arg-empirical-density">empirical_density<a class="anchor" aria-label="anchor" href="#arg-empirical-density"></a></dt>
-<dd><p>A density object containing the empirical density of ages.</p></dd>
+<dd><p>A density object or list of density objects containing the empirical density of ages,
+possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.</p></dd>
 
 
 <dt id="arg-max-age">max_age<a class="anchor" aria-label="anchor" href="#arg-max-age"></a></dt>
 <dd><p>Integer, the maximum age considered in the analysis.</p></dd>
+
+
+<dt id="arg-sex-specific">sex_specific<a class="anchor" aria-label="anchor" href="#arg-sex-specific"></a></dt>
+<dd><p>Logical, indicating whether the imputation should be sex-specific. Default is TRUE.</p></dd>
 
 </dl></div>
     <div class="section level2">

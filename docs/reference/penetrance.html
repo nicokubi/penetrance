@@ -84,7 +84,8 @@ chains and provides various options for analyzing and visualizing the results.</
 <span>  plot_trace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  penetrance_plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  penetrance_plot_pdf <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  probCI <span class="op">=</span> <span class="fl">0.95</span></span>
+<span>  probCI <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -93,7 +94,7 @@ chains and provides various options for analyzing and visualizing the results.</
 
 
 <dl><dt id="arg-pedigree">pedigree<a class="anchor" aria-label="anchor" href="#arg-pedigree"></a></dt>
-<dd><p>A data frame containing the pedigree data in the required format. It should include the following columns:</p><ul><li><p><code>PedigreeID</code>:  A numeric value representing the unique identifier for each family There should be no duplicated entries.</p></li>
+<dd><p>A data frame containing the pedigree data in the required format. It should include the following columns:</p><ul><li><p><code>PedigreeID</code>: A numeric value representing the unique identifier for each family. There should be no duplicated entries.</p></li>
 <li><p><code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></li>
 <li><p><code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</p></li>
 <li><p><code>MotherID</code>: A numeric value representing the unique identifier for an individual's mother.</p></li>
@@ -107,28 +108,27 @@ chains and provides various options for analyzing and visualizing the results.</
 
 
 <dt id="arg-twins">twins<a class="anchor" aria-label="anchor" href="#arg-twins"></a></dt>
-<dd><p>Identical twins or triplets in the family can be specifed. For example, to indicate that <code>ora024</code> and <code>ora027</code> are identical twins, and so are <code>aey063</code> and <code>aey064</code>,
-then we can use the following as the twins arguement: twins &lt;- list(c("ora024", "ora027"), c("aey063", "aey064"))</p></dd>
+<dd><p>A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: <code>twins &lt;- list(c("ora024", "ora027"), c("aey063", "aey064"))</code>.</p></dd>
 
 
 <dt id="arg-n-chains">n_chains<a class="anchor" aria-label="anchor" href="#arg-n-chains"></a></dt>
-<dd><p>Number of chains for parallel computation. Default is 1.</p></dd>
+<dd><p>Integer, the number of chains for parallel computation. Default is 1.</p></dd>
 
 
 <dt id="arg-n-iter-per-chain">n_iter_per_chain<a class="anchor" aria-label="anchor" href="#arg-n-iter-per-chain"></a></dt>
-<dd><p>Number of iterations for each chain. Default is 10000.</p></dd>
+<dd><p>Integer, the number of iterations for each chain. Default is 10000.</p></dd>
 
 
 <dt id="arg-ncores">ncores<a class="anchor" aria-label="anchor" href="#arg-ncores"></a></dt>
-<dd><p>Number of cores for parallel computation. Default is 6.</p></dd>
+<dd><p>Integer, the number of cores for parallel computation. Default is 6.</p></dd>
 
 
 <dt id="arg-max-age">max_age<a class="anchor" aria-label="anchor" href="#arg-max-age"></a></dt>
-<dd><p>Maximum age considered for analysis. Default is 94.</p></dd>
+<dd><p>Integer, the maximum age considered for analysis. Default is 94.</p></dd>
 
 
 <dt id="arg-baseline-data">baseline_data<a class="anchor" aria-label="anchor" href="#arg-baseline-data"></a></dt>
-<dd><p>Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.</p></dd>
+<dd><p>Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.</p></dd>
 
 
 <dt id="arg-removeproband">removeProband<a class="anchor" aria-label="anchor" href="#arg-removeproband"></a></dt>
@@ -140,23 +140,23 @@ then we can use the following as the twins arguement: twins &lt;- list(c("ora024
 
 
 <dt id="arg-median-max">median_max<a class="anchor" aria-label="anchor" href="#arg-median-max"></a></dt>
-<dd><p>Boolean indicating whether to use the baseline median age or max_age as an upper bound for the median proposal. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to use the baseline median age or <code>max_age</code> as an upper bound for the median proposal. Default is TRUE.</p></dd>
 
 
 <dt id="arg-baselinenc">BaselineNC<a class="anchor" aria-label="anchor" href="#arg-baselinenc"></a></dt>
-<dd><p>Boolean indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.</p></dd>
 
 
 <dt id="arg-var">var<a class="anchor" aria-label="anchor" href="#arg-var"></a></dt>
-<dd><p>Vector of variances for the proposal distribution. Default is c(0.1, 0.1, 2, 2, 5, 5, 5, 5).</p></dd>
+<dd><p>Numeric vector, variances for the proposal distribution in the Metropolis-Hastings algorithm. Default is <code>c(0.1, 0.1, 2, 2, 5, 5, 5, 5)</code>.</p></dd>
 
 
 <dt id="arg-burn-in">burn_in<a class="anchor" aria-label="anchor" href="#arg-burn-in"></a></dt>
-<dd><p>Fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).</p></dd>
+<dd><p>Numeric, the fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).</p></dd>
 
 
 <dt id="arg-thinning-factor">thinning_factor<a class="anchor" aria-label="anchor" href="#arg-thinning-factor"></a></dt>
-<dd><p>Factor by which to thin the results. Default is 1 (no thinning).</p></dd>
+<dd><p>Integer, the factor by which to thin the results. Default is 1 (no thinning).</p></dd>
 
 
 <dt id="arg-distribution-data">distribution_data<a class="anchor" aria-label="anchor" href="#arg-distribution-data"></a></dt>
@@ -164,60 +164,64 @@ then we can use the following as the twins arguement: twins &lt;- list(c("ora024
 
 
 <dt id="arg-af">af<a class="anchor" aria-label="anchor" href="#arg-af"></a></dt>
-<dd><p>Allele frequency for the risk allele. Default is 0.0001.</p></dd>
+<dd><p>Numeric, allele frequency for the risk allele. Default is 0.0001.</p></dd>
 
 
 <dt id="arg-max-penetrance">max_penetrance<a class="anchor" aria-label="anchor" href="#arg-max-penetrance"></a></dt>
-<dd><p>Maximum penetrance considered for analysis. Default is 1.</p></dd>
+<dd><p>Numeric, the maximum penetrance considered for analysis. Default is 1.</p></dd>
 
 
 <dt id="arg-sample-size">sample_size<a class="anchor" aria-label="anchor" href="#arg-sample-size"></a></dt>
-<dd><p>Optional sample size for distribution generation.</p></dd>
+<dd><p>Optional numeric, sample size for distribution generation.</p></dd>
 
 
 <dt id="arg-ratio">ratio<a class="anchor" aria-label="anchor" href="#arg-ratio"></a></dt>
-<dd><p>Optional ratio parameter for distribution generation.</p></dd>
+<dd><p>Optional numeric, ratio parameter for distribution generation.</p></dd>
 
 
 <dt id="arg-prior-params">prior_params<a class="anchor" aria-label="anchor" href="#arg-prior-params"></a></dt>
-<dd><p>Parameters for prior distributions.</p></dd>
+<dd><p>List, parameters for prior distributions.</p></dd>
 
 
 <dt id="arg-risk-proportion">risk_proportion<a class="anchor" aria-label="anchor" href="#arg-risk-proportion"></a></dt>
-<dd><p>Proportion of risk for distribution generation.</p></dd>
+<dd><p>Numeric, proportion of risk for distribution generation.</p></dd>
 
 
 <dt id="arg-summary-stats">summary_stats<a class="anchor" aria-label="anchor" href="#arg-summary-stats"></a></dt>
-<dd><p>Boolean indicating whether to include summary statistics in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include summary statistics in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-rejection-rates">rejection_rates<a class="anchor" aria-label="anchor" href="#arg-rejection-rates"></a></dt>
-<dd><p>Boolean indicating whether to include rejection rates in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include rejection rates in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-density-plots">density_plots<a class="anchor" aria-label="anchor" href="#arg-density-plots"></a></dt>
-<dd><p>Boolean indicating whether to include density plots in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include density plots in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-plot-trace">plot_trace<a class="anchor" aria-label="anchor" href="#arg-plot-trace"></a></dt>
-<dd><p>Boolean indicating whether to include trace plots in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include trace plots in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-penetrance-plot">penetrance_plot<a class="anchor" aria-label="anchor" href="#arg-penetrance-plot"></a></dt>
-<dd><p>Boolean indicating whether to include penetrance plots in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include penetrance plots in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-penetrance-plot-pdf">penetrance_plot_pdf<a class="anchor" aria-label="anchor" href="#arg-penetrance-plot-pdf"></a></dt>
-<dd><p>Boolean indicating whether to include PDF plots in the output. Default is TRUE.</p></dd>
+<dd><p>Logical, indicating whether to include PDF plots in the output. Default is TRUE.</p></dd>
 
 
 <dt id="arg-probci">probCI<a class="anchor" aria-label="anchor" href="#arg-probci"></a></dt>
-<dd><p>Probability level for confidence intervals in penetrance plots. Default is 0.95.</p></dd>
+<dd><p>Numeric, probability level for credible intervals in penetrance plots. Must be between 0 and 1. Default is 0.95.</p></dd>
+
+
+<dt id="arg-sex-specific">sex_specific<a class="anchor" aria-label="anchor" href="#arg-sex-specific"></a></dt>
+<dd><p>Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing combined results from all chains, along with optional statistics and plots.</p>
+    <p>A list containing combined results from all chains, including optional statistics and plots.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

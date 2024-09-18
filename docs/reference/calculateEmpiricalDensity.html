@@ -54,7 +54,9 @@
 <span>  <span class="va">data</span>,</span>
 <span>  aff_column <span class="op">=</span> <span class="st">"aff"</span>,</span>
 <span>  age_column <span class="op">=</span> <span class="st">"age"</span>,</span>
-<span>  n_points <span class="op">=</span> <span class="fl">10000</span></span>
+<span>  sex_column <span class="op">=</span> <span class="st">"sex"</span>,</span>
+<span>  n_points <span class="op">=</span> <span class="fl">10000</span>,</span>
+<span>  sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -67,20 +69,28 @@
 
 
 <dt id="arg-aff-column">aff_column<a class="anchor" aria-label="anchor" href="#arg-aff-column"></a></dt>
-<dd><p>The name of the column indicating affection status (default is "aff").</p></dd>
+<dd><p>Character, the name of the column indicating affection status. Default is "aff".</p></dd>
 
 
 <dt id="arg-age-column">age_column<a class="anchor" aria-label="anchor" href="#arg-age-column"></a></dt>
-<dd><p>The name of the column indicating ages (default is "age").</p></dd>
+<dd><p>Character, the name of the column indicating ages. Default is "age".</p></dd>
+
+
+<dt id="arg-sex-column">sex_column<a class="anchor" aria-label="anchor" href="#arg-sex-column"></a></dt>
+<dd><p>Character, the name of the column indicating sex. Default is "sex".</p></dd>
 
 
 <dt id="arg-n-points">n_points<a class="anchor" aria-label="anchor" href="#arg-n-points"></a></dt>
-<dd><p>The number of points to use in the density estimation (default is 10000).</p></dd>
+<dd><p>Integer, the number of points to use in the density estimation. Default is 10000.</p></dd>
+
+
+<dt id="arg-sex-specific">sex_specific<a class="anchor" aria-label="anchor" href="#arg-sex-specific"></a></dt>
+<dd><p>Logical, indicating whether to calculate separate densities for males and females. Default is TRUE.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A density object representing the empirical density of ages.</p>
+    <p>A density object or a list of density objects (if sex-specific) representing the empirical density of ages.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

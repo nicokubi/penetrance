@@ -88,32 +88,23 @@
 <h2 id="quick-start-guide">Quick-start guide<a class="anchor" aria-label="anchor" href="#quick-start-guide"></a>
 </h2>
 <p>This following is a quick-start guide for basic usage of the package. For greater detail on options, please refer to the other articles.</p>
-<p>The primary function in the package is <code>PenEstim</code>. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function.</p>
+<p>The primary function in the package is <code>penetrance</code>. The package workflow includes three main parts: user input, including family data in the form of pedigrees and specification for the penetrance estimation, the estimation of the posterior distribution using the MCMC approach, and the outputting of the results in the form of the samples from the approximated posterior distribution, i.e. the estimated penetrance function.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/nicokubi/penetrance" class="external-link">penetrance</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="pedigree">Pedigree<a class="anchor" aria-label="anchor" href="#pedigree"></a>
 </h3>
-<p>The user must specify the <code>pedigree</code> argument as a data frame with the following columns:</p>
+<p>The user must specify the <code>pedigree</code> argument as a data frame that contains the family data (see <code>test_family_1</code>). The family data must be in the correct format with the following columns:</p>
 <ul>
-<li>
-<code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</li>
-<li>
-<code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</li>
-<li>
-<code>MotherID</code>: A numeric value representing the unique identifier for an individual’s mother.</li>
-<li>
-<code>FatherID</code>: A numeric value representing the unique identifier for an individual’s father.</li>
-<li>
-<code>isProband</code>: A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</li>
-<li>
-<code>CurAge</code>: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</li>
-<li>
-<code>isAff</code>: A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</li>
-<li>
-<code>Age</code>: A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</li>
-<li>
-<code>Geno</code>: A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</li>
+<li><p><code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></li>
+<li><p><code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</p></li>
+<li><p><code>MotherID</code>: A numeric value representing the unique identifier for an individual’s mother.</p></li>
+<li><p><code>FatherID</code>: A numeric value representing the unique identifier for an individual’s father.</p></li>
+<li><p><code>isProband</code>: A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</p></li>
+<li><p><code>CurAge</code>: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
+<li><p><code>isAff</code>: A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</p></li>
+<li><p><code>Age</code>: A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
+<li><p><code>Geno</code>: A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</p></li>
 </ul>
 </div>
 <div class="section level3">
@@ -137,7 +128,7 @@
 <span><span class="co">#' @param n_chains Number of chains for parallel computation. Default is 1.</span></span>
 <span><span class="co">#' @param n_iter_per_chain Number of iterations for each chain. Default is 10000.</span></span>
 <span><span class="co">#' @param ncores Number of cores for parallel computation. Default is 6.</span></span>
-<span><span class="co">#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.</span></span>
+<span><span class="co">#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.</span></span>
 <span><span class="co">#' @param max_age Maximum age considered for analysis. Default is 94.</span></span>
 <span><span class="co">#' @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.</span></span>
 <span><span class="co">#' @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.</span></span>
@@ -159,7 +150,8 @@
 <span><span class="co">#' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.</span></span>
 <span><span class="co">#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.</span></span>
 <span><span class="co">#' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span></code></pre></div>
+<span><span class="co">#' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span>
+<span><span class="co">#' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="prior-specification">Prior Specification<a class="anchor" aria-label="anchor" href="#prior-specification"></a>
