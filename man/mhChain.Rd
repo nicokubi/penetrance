@@ -2,7 +2,7 @@
 % Please edit documentation in R/mhChain.R
 \name{mhChain}
 \alias{mhChain}
-\title{Execution of a Single Chain in Metropolis-Hastings for Cancer Risk Estimation with Sex Differentiation}
+\title{Execution of a Single Chain in Metropolis-Hastings for Cancer Risk Estimation}
 \usage{
 mhChain(
   seed,
@@ -21,7 +21,8 @@ mhChain(
   BaselineNC,
   var,
   ageImputation,
-  removeProband
+  removeProband,
+  sex_specific
 )
 }
 \arguments{
@@ -41,13 +42,13 @@ mhChain(
 
 \item{max_age}{Integer, the maximum age considered in the analysis.}
 
-\item{baseline_data}{Numeric matrix, containing baseline risk estimates for different ages and sexes.}
+\item{baseline_data}{Numeric matrix or vector, containing baseline risk estimates for different ages and sexes.}
 
 \item{prior_distributions}{List, containing prior distributions for the parameters being estimated.}
 
 \item{af}{Numeric, the allele frequency of the risk allele in the population.}
 
-\item{median_max}{Numeric, the maximum median age for the Weibull distribution.}
+\item{median_max}{Logical, indicates if the maximum median age should be used for the Weibull distribution.}
 
 \item{max_penetrance}{Numeric, the maximum penetrance value allowed.}
 
@@ -58,12 +59,14 @@ mhChain(
 \item{ageImputation}{Logical, indicates if age imputation should be performed.}
 
 \item{removeProband}{Logical, indicates if the proband should be removed from the analysis.}
+
+\item{sex_specific}{Logical, indicates if the analysis should differentiate by sex.}
 }
 \value{
 A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.
 }
 \description{
 Performs a single chain execution in the Metropolis-Hastings algorithm for Bayesian inference,
-specifically tailored for cancer risk estimation. It estimates parameters related to cancer penetrance
-based on family data, genetic information, and baseline database estimates.
+specifically tailored for cancer risk estimation. This function can handle both sex-specific and
+non-sex-specific scenarios.
 }

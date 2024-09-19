@@ -91,15 +91,39 @@ penetrance <- function(pedigree,
   if (n_chains > parallel::detectCores()) {
     stop("Error: 'n_chains' exceeds the number of available CPU cores.")
   }
+  if (af < 0 || af > 1) {
+    stop("Error: 'af' must be between 0 and 1.")
+  }
+  
+  # Check the length of var based on sex_specific
+  if (sex_specific && length(var) != 8) {
+    stop("Error: When 'sex_specific' is TRUE, 'var' must have exactly 8 elements.")
+  } else if (!sex_specific && length(var) != 4) {
+    stop("Error: When 'sex_specific' is FALSE, 'var' must have exactly 4 elements.")
+  }
+  
+  # Check baseline_data structure
+  if (sex_specific) {
+    if (!is.data.frame(baseline_data) || nrow(baseline_data) != 94 || ncol(baseline_data) != 3) {
+      stop("Error: 'baseline_data' must be a data frame with 94 rows and 3 columns (Age, Female, Male) when 'sex_specific' is TRUE.")
+    }
+  } else {
+    if (!is.data.frame(baseline_data) && !is.vector(baseline_data)) {
+      stop("Error: 'baseline_data' must be either a data frame with 94 rows and 1 column or a numeric vector when 'sex_specific' is FALSE.")
+    }
+    if (is.data.frame(baseline_data) && (nrow(baseline_data) != 94 || ncol(baseline_data) != 1)) {
+      stop("Error: When 'baseline_data' is a data frame for non-sex-specific analysis, it must have 94 rows and 1 column.")
+    }
+    if (is.vector(baseline_data) && length(baseline_data) != 94) {
+      stop("Error: When 'baseline_data' is a vector for non-sex-specific analysis, it must have exactly 94 elements.")
+    }
+  }
   
   # Create the seeds for the individual chains
   seeds <- sample.int(1000, n_chains)
   
   # Apply the transformation to adjust the format for the clipp package
   data <- do.call(rbind, lapply(pedigree, transformDF))
-  
-  # Select the appropriate MCMC chain function
-  chain_function <- if (sex_specific) mhChain else mhChain_noSex
   
   # Create the prior distributions
   prop <- makePriors(
@@ -128,16 +152,17 @@ penetrance <- function(pedigree,
   })
   
   parallel::clusterExport(cl, c(
-    "mhChain", "mhChain_noSex", "mhLogLikelihood_clipp", "mhLogLikelihood_clipp_noSex", 
+    "mhChain", "mhLogLikelihood_clipp", "mhLogLikelihood_clipp_noSex", 
     "calculate_weibull_parameters", "validate_weibull_parameters", "prior_params",
     "transformDF", "lik.fn", "lik_noSex", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data", 
     "calcPedDegree","seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", 
     "drawBaseline", "calculateNCPen", "drawEmpirical",
-    "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores", "removeProband"
+    "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
+    "removeProband", "sex_specific"
   ), envir = environment())
   
   results <- parallel::parLapply(cl, 1:n_chains, function(i) {
-    chain_function(
+    mhChain(
       seed = seeds[i],
       n_iter = n_iter_per_chain,
       burn_in = burn_in,
@@ -154,7 +179,8 @@ penetrance <- function(pedigree,
       BaselineNC = BaselineNC,
       var = var,
       ageImputation = ageImputation,
-      removeProband = removeProband
+      removeProband = removeProband,
+      sex_specific = sex_specific
     )
   })
   
