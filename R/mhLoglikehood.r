@@ -118,7 +118,7 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
 #'
 lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
                    delta_male, delta_female, gamma_male, gamma_female, max_age,
-                   baselineRisk, BaselineNC) {
+                   baselineRisk, BaselineNC, af) {
   # Map sex to row index: "Female" is 1st row and "Male" is 2nd row
   sex_index <- ifelse(data$sex[i] == 2, "Female", "Male")
   
@@ -151,11 +151,11 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
     } else {
       nc.pen <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
       )$weightedCarrierRisk[age_index]
       nc.pen.c <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
       )$cumulativeProb[age_index]
     }
     
@@ -236,7 +236,7 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     lik <- t(sapply(1:nrow(families), function(i) {
         lik.fn(i, families, alpha_male, alpha_female, beta_male, beta_female, delta_male, 
                delta_female, gamma_male, gamma_female,
-            max_age, baselineRisk, BaselineNC
+            max_age, baselineRisk, BaselineNC, af
         )
     }))
 
@@ -300,7 +300,7 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
   
   # Calculate penetrance
   lik <- t(sapply(1:nrow(families), function(i) {
-    lik_noSex(i, families, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC)
+    lik_noSex(i, families, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af)
   }))
   
   # Compute log-likelihood
@@ -355,7 +355,7 @@ lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk,
     } else {
       nc_pen_results <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
       )
       nc.pen <- nc_pen_results$weightedCarrierRisk[age_index]
       nc.pen.c <- nc_pen_results$cumulativeProb[age_index]
