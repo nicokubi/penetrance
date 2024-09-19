@@ -1,26 +1,24 @@
 {
-    "id": "9F271696",
-    "path": "~/Documents/Master Statistics/Master Thesis/Code/PenEstim/README.Rmd",
-    "project_path": "README.Rmd",
+    "id": "7AF1A844",
+    "path": "~/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/3_Code/CCGCRN Data Application/PenEstim_CoH_PALB2_vNK.rmarkdown",
+    "project_path": null,
     "type": "r_markdown",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1726693176044.0,
+    "created": 1726697582572.0,
     "source_on_save": false,
     "relative_order": 7,
     "properties": {
         "source_window_id": "",
-        "Source": "Source",
-        "cursorPosition": "131,0",
-        "scrollLine": "125"
+        "Source": "Source"
     },
     "folds": "",
-    "lastKnownWriteTime": 1726692601,
+    "lastKnownWriteTime": 1724404100,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1726692601,
+    "last_content_update": 1724404100,
     "read_only": false,
     "read_only_alternatives": []
 }

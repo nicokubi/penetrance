@@ -1,0 +1,38 @@
+"0","# Analysis
+"
+"2","Warning messages:
+"
+"2","1: "
+"2","In read.dcf(file.path(p, ""DESCRIPTION""), c(""Package"", ""Version"")) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/PenEstim/DESCRIPTION', probable reason 'No such file or directory'
+"
+"2","2: "
+"2","In read.dcf(file.path(p, ""DESCRIPTION""), c(""Package"", ""Version"")) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/PenEstim/DESCRIPTION', probable reason 'No such file or directory'
+"
+"2","3: "
+"2","In read.dcf(file.path(p, ""DESCRIPTION""), c(""Package"", ""Version"")) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/PenEstim/DESCRIPTION', probable reason 'No such file or directory'
+"
+"2","4: "
+"2","In read.dcf(file.path(p, ""DESCRIPTION""), c(""Package"", ""Version"")) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/PenEstim/DESCRIPTION', probable reason 'No such file or directory'
+"
+"2","5: "
+"2","In read.dcf(file.path(p, ""DESCRIPTION""), c(""Package"", ""Version"")) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/nicolaskubista/Documents/Master Statistics/Master Thesis/Code/PenEstim/DESCRIPTION', probable reason 'No such file or directory'
+"
+"0","describeFamilies(selected_families_weibull_large)"
+"2","Error in describeFamilies(selected_families_weibull_large) : 
+  could not find function ""describeFamilies""
+"
