@@ -20,8 +20,8 @@ mhChain(
   max_penetrance,
   BaselineNC,
   var,
-  ageImputation,
-  removeProband,
+  age_imputation,
+  remove_proband,
   sex_specific
 )
 }
@@ -56,9 +56,9 @@ mhChain(
 
 \item{var}{Numeric, the variance for the proposal distribution in the Metropolis-Hastings algorithm.}
 
-\item{ageImputation}{Logical, indicates if age imputation should be performed.}
+\item{age_imputation}{Logical, indicates if age imputation should be performed.}
 
-\item{removeProband}{Logical, indicates if the proband should be removed from the analysis.}
+\item{remove_proband}{Logical, indicates if the proband should be removed from the analysis.}
 
 \item{sex_specific}{Logical, indicates if the analysis should differentiate by sex.}
 }

@@ -12,8 +12,8 @@ penetrance(
   ncores = 6,
   max_age = 94,
   baseline_data = baseline_data_default,
-  removeProband = FALSE,
-  ageImputation = FALSE,
+  remove_proband = FALSE,
+  age_imputation = FALSE,
   median_max = TRUE,
   BaselineNC = TRUE,
   var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
@@ -63,9 +63,9 @@ penetrance(
 
 \item{baseline_data}{Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.}
 
-\item{removeProband}{Logical, indicating whether to remove probands from the analysis. Default is FALSE.}
+\item{remove_proband}{Logical, indicating whether to remove probands from the analysis. Default is FALSE.}
 
-\item{ageImputation}{Logical, indicating whether to perform age imputation. Default is FALSE.}
+\item{age_imputation}{Logical, indicating whether to perform age imputation. Default is FALSE.}
 
 \item{median_max}{Logical, indicating whether to use the baseline median age or \code{max_age} as an upper bound for the median proposal. Default is TRUE.}
 

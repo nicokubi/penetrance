@@ -19,15 +19,15 @@
 #' @param max_penetrance Numeric, the maximum penetrance value allowed.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
 #' @param var Numeric, the variance for the proposal distribution in the Metropolis-Hastings algorithm.
-#' @param ageImputation Logical, indicates if age imputation should be performed.
-#' @param removeProband Logical, indicates if the proband should be removed from the analysis.
+#' @param age_imputation Logical, indicates if age imputation should be performed.
+#' @param remove_proband Logical, indicates if the proband should be removed from the analysis.
 #' @param sex_specific Logical, indicates if the analysis should differentiate by sex.
 #'
 #' @return A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.
 #' 
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                              prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
-                             ageImputation, removeProband, sex_specific) {
+                             age_imputation, remove_proband, sex_specific) {
   # Set seed for the chain
   set.seed(seed)
   
@@ -39,7 +39,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     }
   
   # Prepare initial age imputation if enabled
-  if (ageImputation) {
+  if (age_imputation) {
     data <- calcPedDegree(data)
     # Initialize ages
     threshold <- prior_distributions$prior_params$threshold$min
@@ -55,7 +55,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   proband_indices <- which(data$isProband == 1)
   
   # Option to remove the proband after age imputation
-  if (removeProband) {
+  if (remove_proband) {
     proband_indices <- sort(proband_indices, decreasing = TRUE)
     data <- data[-proband_indices, ]
     
@@ -286,7 +286,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
       
       # Impute ages at each iteration based on current parameters
-      if (ageImputation) {
+      if (age_imputation) {
         data <- imputeAges(
           data = data, 
           na_indices = na_indices, 
@@ -341,7 +341,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       weibull_params <- calculate_weibull_parameters(params_current$median, params_current$first_quartile, params_current$threshold)
       
       # Impute ages at each iteration based on current parameters
-      if (ageImputation) {
+      if (age_imputation) {
         data <- imputeAges(
           data = data, 
           na_indices = na_indices, 

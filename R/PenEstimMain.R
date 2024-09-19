@@ -21,8 +21,8 @@
 #' @param ncores Integer, the number of cores for parallel computation. Default is 6.
 #' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.
 #' @param max_age Integer, the maximum age considered for analysis. Default is 94.
-#' @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.
-#' @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.
+#' @param remove_proband Logical, indicating whether to remove probands from the analysis. Default is FALSE.
+#' @param age_imputation Logical, indicating whether to perform age imputation. Default is FALSE.
 #' @param median_max Logical, indicating whether to use the baseline median age or `max_age` as an upper bound for the median proposal. Default is TRUE.
 #' @param BaselineNC Logical, indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.
 #' @param var Numeric vector, variances for the proposal distribution in the Metropolis-Hastings algorithm. Default is `c(0.1, 0.1, 2, 2, 5, 5, 5, 5)`.
@@ -56,8 +56,8 @@ penetrance <- function(pedigree,
                      ncores = 6,
                      max_age = 94,
                      baseline_data = baseline_data_default,
-                     removeProband = FALSE,
-                     ageImputation = FALSE,
+                     remove_proband = FALSE,
+                     age_imputation = FALSE,
                      median_max = TRUE,
                      BaselineNC = TRUE,
                      var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
@@ -158,7 +158,7 @@ penetrance <- function(pedigree,
     "calcPedDegree","seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", 
     "drawBaseline", "calculateNCPen", "drawEmpirical",
     "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
-    "removeProband", "sex_specific"
+    "remove_proband", "sex_specific"
   ), envir = environment())
   
   results <- parallel::parLapply(cl, 1:n_chains, function(i) {
@@ -178,8 +178,8 @@ penetrance <- function(pedigree,
       baseline_data = baseline_data,
       BaselineNC = BaselineNC,
       var = var,
-      ageImputation = ageImputation,
-      removeProband = removeProband,
+      age_imputation = age_imputation,
+      remove_proband = remove_proband,
       sex_specific = sex_specific
     )
   })
