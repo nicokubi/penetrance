@@ -351,15 +351,15 @@ plot_penetrance <- function(data, prob, max_age, sex = "NA") {
   } else {
     # Use non-sex-specific parameters
     params <- calculate_weibull_parameters(
-      data$median_samples,
-      data$first_quartile_samples,
-      data$threshold_samples
+      data$median_results,
+      data$first_quartile_results,
+      data$threshold_results
     )
     
     alphas <- params$alpha
     betas <- params$beta
-    thresholds <- data$threshold_samples
-    asymptotes <- data$asymptote_samples
+    thresholds <- data$threshold_results
+    asymptotes <- data$asymptote_results
   }
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
@@ -462,15 +462,15 @@ plot_pdf <- function(data, prob, max_age, sex = "NA") {
   } else {
     # Use non-sex-specific parameters
     params <- calculate_weibull_parameters(
-      data$median_samples,
-      data$first_quartile_samples,
-      data$threshold_samples
+      data$median_results,
+      data$first_quartile_results,
+      data$threshold_results
     )
     
     alphas <- params$alpha
     betas <- params$beta
-    thresholds <- data$threshold_samples
-    asymptotes <- data$asymptote_samples
+    thresholds <- data$threshold_results
+    asymptotes <- data$asymptote_results
   }
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
