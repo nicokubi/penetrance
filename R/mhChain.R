@@ -358,50 +358,54 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     out$loglikelihood_current[i] <- loglikelihood_current
     out$logprior_current[i] <- logprior_current
     
-    # Check if the proposed parameters satisfy the constraints and calculate proposal values
-    valid_proposal <- TRUE
-    
-    # Explicit median baseline checks
+    # Explicit checks for sex-specific parameters
     if (sex_specific) {
-      # Asymptote checks (male and female must be between 0 and 1)
-      if (proposal_vector[1] < 0 || proposal_vector[1] > 1) valid_proposal <- FALSE
-      if (proposal_vector[2] < 0 || proposal_vector[2] > 1) valid_proposal <- FALSE
+      # Asymptote checks (male and female must be strictly between 0 and 1)
+      if (proposal_vector[1] <= 0 || proposal_vector[1] >= 1) valid_proposal <- FALSE
+      if (proposal_vector[2] <= 0 || proposal_vector[2] >= 1) valid_proposal <- FALSE
       
-      # Threshold checks (male and female must be within prior bounds)
-      if (proposal_vector[3] < prior_distributions$prior_params$threshold$min || 
-          proposal_vector[3] > prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
-      if (proposal_vector[4] < prior_distributions$prior_params$threshold$min || 
-          proposal_vector[4] > prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
+      # Threshold checks (male and female must be within prior bounds, strictly)
+      if (proposal_vector[3] <= prior_distributions$prior_params$threshold$min || 
+          proposal_vector[3] >= prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
+      if (proposal_vector[4] <= prior_distributions$prior_params$threshold$min || 
+          proposal_vector[4] >= prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
       
-      # Median and first quartile checks (male and female)
-      if (proposal_vector[5] < proposal_vector[7]) valid_proposal <- FALSE  # Median male < first quartile male
-      if (proposal_vector[6] < proposal_vector[8]) valid_proposal <- FALSE  # Median female < first quartile female
+      # First quartile must be strictly greater than the threshold (male and female)
+      if (proposal_vector[7] <= proposal_vector[3]) valid_proposal <- FALSE  # First quartile male <= threshold male
+      if (proposal_vector[8] <= proposal_vector[4]) valid_proposal <- FALSE  # First quartile female <= threshold female
+      
+      # Median must be strictly greater than the first quartile (male and female)
+      if (proposal_vector[5] <= proposal_vector[7]) valid_proposal <- FALSE  # Median male <= first quartile male
+      if (proposal_vector[6] <= proposal_vector[8]) valid_proposal <- FALSE  # Median female <= first quartile female
       
       # Median should not exceed baseline midpoint or max age (for both male and female)
       if (median_max) {
-        if (proposal_vector[5] > baseline_mid_male) valid_proposal <- FALSE  # Median male exceeds baseline midpoint
-        if (proposal_vector[6] > baseline_mid_female) valid_proposal <- FALSE  # Median female exceeds baseline midpoint
+        if (proposal_vector[5] >= baseline_mid_male) valid_proposal <- FALSE  # Median male >= baseline midpoint
+        if (proposal_vector[6] >= baseline_mid_female) valid_proposal <- FALSE  # Median female >= baseline midpoint
       } else {
-        if (proposal_vector[5] > max_age) valid_proposal <- FALSE  # Median male exceeds max age
-        if (proposal_vector[6] > max_age) valid_proposal <- FALSE  # Median female exceeds max age
+        if (proposal_vector[5] >= max_age) valid_proposal <- FALSE  # Median male >= max age
+        if (proposal_vector[6] >= max_age) valid_proposal <- FALSE  # Median female >= max age
       }
       
     } else {
       # Non-sex-specific proposal checks
-      if (proposal_vector[1] < 0 || proposal_vector[1] > 1) valid_proposal <- FALSE  # Asymptote check
+      if (proposal_vector[1] <= 0 || proposal_vector[1] >= 1) valid_proposal <- FALSE  # Asymptote must be strictly between 0 and 1
       
       # Threshold check
-      if (proposal_vector[2] < prior_distributions$prior_params$threshold$min || 
-          proposal_vector[2] > prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
+      if (proposal_vector[2] <= prior_distributions$prior_params$threshold$min || 
+          proposal_vector[2] >= prior_distributions$prior_params$threshold$max) valid_proposal <- FALSE
       
-      # Median and first quartile checks
-      if (proposal_vector[3] < proposal_vector[4]) valid_proposal <- FALSE  # Median < first quartile
+      # First quartile must be strictly greater than the threshold
+      if (proposal_vector[4] <= proposal_vector[2]) valid_proposal <- FALSE  # First quartile <= threshold
+      
+      # Median must be strictly greater than the first quartile
+      if (proposal_vector[3] <= proposal_vector[4]) valid_proposal <- FALSE  # Median <= first quartile
       
       # Median baseline check
       if (median_max) {
-        if (proposal_vector[3] > baseline_mid) valid_proposal <- FALSE  # Median exceeds baseline midpoint
+        if (proposal_vector[3] >= baseline_mid) valid_proposal <- FALSE  # Median >= baseline midpoint
       } else {
-        if (proposal_vector[3] > max_age) valid_proposal <- FALSE  # Median exceeds max age
+        if (proposal_vector[3] >= max_age) valid_proposal <- FALSE  # Median >= max age
       }
     }
     
