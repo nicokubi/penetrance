@@ -78,6 +78,7 @@ penetrance <- function(pedigree,
                      penetrance_plot_pdf = TRUE,
                      probCI = 0.95,
                      sex_specific = TRUE) {
+  
   # Validate inputs
   if (missing(pedigree)) {
     stop("Error: 'pedigree' parameter is missing. Please provide a valid list of pedigrees.")

@@ -119,6 +119,7 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
 lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
                    delta_male, delta_female, gamma_male, gamma_female, max_age,
                    baselineRisk, BaselineNC, af) {
+  
   # Map sex to row index: "Female" is 1st row and "Male" is 2nd row
   sex_index <- ifelse(data$sex[i] == 2, "Female", "Male")
   

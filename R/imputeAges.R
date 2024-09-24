@@ -30,61 +30,101 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
                        baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
                        empirical_density, max_age, sex_specific = TRUE) {
   
-  for (i in na_indices) {
-    # Ensure 'i' is within the valid range
-    if (i > nrow(data) || i < 1) {
-      stop(paste("Index", i, "is out of bounds for the data frame."))
+  # Precompute relationship probabilities for valid rows
+  relationship_prob <- as.numeric(data$degree_of_relationship[na_indices])
+  
+  # Handle missing relationship probabilities (vectorized)
+  invalid_relationship_prob <- is.na(relationship_prob)
+  
+  # Empirical imputation for missing relationship prob cases
+  if (sex_specific) {
+    data$age[na_indices[invalid_relationship_prob]] <- round(sapply(data$sex[na_indices[invalid_relationship_prob]], function(sex) {
+      drawEmpirical(empirical_density, sex)
+    }))
+  } else {
+    data$age[na_indices[invalid_relationship_prob]] <- round(drawEmpirical(empirical_density))
+  }
+  
+  # Process rows with valid relationship probabilities
+  valid_relationship_prob <- !invalid_relationship_prob
+  na_indices_remaining <- na_indices[valid_relationship_prob]
+  
+  # Handle unknown sex cases
+  unknown_sex <- is.na(data$sex[na_indices_remaining]) | !(data$sex[na_indices_remaining] %in% c(1, 2))
+  
+  if (any(unknown_sex)) {
+    warning(paste(sum(unknown_sex), "cases with unknown sex. Applying non-sex-specific imputation."))
+    unknown_indices <- na_indices_remaining[unknown_sex]
+    data$age[unknown_indices] <- round(drawEmpirical(empirical_density))
+    na_indices_remaining <- na_indices_remaining[!unknown_sex]
+  }
+  
+  # Generate random draws for the Weibull distribution
+  u <- runif(length(na_indices_remaining))
+  
+  if (sex_specific) {
+    male <- data$sex[na_indices_remaining] == 1
+    female <- data$sex[na_indices_remaining] == 2
+    affected <- data$aff[na_indices_remaining] == 1
+    
+    # Gracefully handle invalid Weibull parameters for males
+    valid_male_weibull <- !(beta_male <= 0 | alpha_male <= 0 | delta_male < 0)
+    if (!valid_male_weibull) {
+      warning("Invalid Weibull parameters for males. Using empirical distribution.")
+      data$age[na_indices_remaining[male & affected]] <- round(sapply(data$sex[na_indices_remaining[male & affected]], function(sex) {
+        drawEmpirical(empirical_density, sex)
+      }))
+    } else {
+      # Weibull draw for affected males
+      data$age[na_indices_remaining[male & affected]] <- round(
+        delta_male + beta_male * (-log(1 - u[male & affected]))^(1 / alpha_male)
+      )
     }
     
-    valid_age <- FALSE
-    while (!valid_age) {
-      u <- runif(1)
-      relationship_prob <- as.numeric(data$degree_of_relationship[i])
-      
-      if (is.na(relationship_prob)) {
-        warning(paste("Invalid degree of relationship for individual at index", i, ". Using empirical distribution."))
-        # Use drawEmpirical with sex if sex-specific
-        if (sex_specific) {
-          data$age[i] <- round(drawEmpirical(empirical_density, data$sex[i]))
-        } else {
-          data$age[i] <- round(drawEmpirical(empirical_density))
-        }
-      } else {
-        if (data$aff[i] == 1) {
-          if (runif(1) < relationship_prob) {
-            if (sex_specific) {
-              if (data$sex[i] == 1) { # Male
-                data$age[i] <- round(delta_male + beta_male * (-log(1 - u))^(1 / alpha_male))
-              } else if (data$sex[i] == 2) { # Female
-                data$age[i] <- round(delta_female + beta_female * (-log(1 - u))^(1 / alpha_female))
-              }
-            } else {
-              # Non-sex-specific imputation
-              data$age[i] <- round(delta + beta * (-log(1 - u))^(1 / alpha))
-            }
-          } else {
-            if (sex_specific) {
-              data$age[i] <- round(ifelse(data$sex[i] == 1, drawBaseline(baseline_male), drawBaseline(baseline_female)))
-            } else {
-              # Non-sex-specific baseline imputation
-              data$age[i] <- round(drawBaseline(baseline)) # Use baseline directly
-            }
-          }
-        } else {
-          # Use drawEmpirical with sex if sex-specific
-          if (sex_specific) {
-            data$age[i] <- round(drawEmpirical(empirical_density, data$sex[i]))
-          } else {
-            data$age[i] <- round(drawEmpirical(empirical_density))
-          }
-        }
-      }
-      
-      if (!is.na(data$age[i]) && data$age[i] >= 1 && data$age[i] <= max_age) {
-        valid_age <- TRUE
-      }
+    # Gracefully handle invalid Weibull parameters for females
+    valid_female_weibull <- !(beta_female <= 0 | alpha_female <= 0 | delta_female < 0)
+    if (!valid_female_weibull) {
+      warning("Invalid Weibull parameters for females. Using empirical distribution.")
+      data$age[na_indices_remaining[female & affected]] <- round(sapply(data$sex[na_indices_remaining[female & affected]], function(sex) {
+        drawEmpirical(empirical_density, sex)
+      }))
+    } else {
+      # Weibull draw for affected females
+      data$age[na_indices_remaining[female & affected]] <- round(
+        delta_female + beta_female * (-log(1 - u[female & affected]))^(1 / alpha_female)
+      )
     }
+    
+    # Baseline draw for non-affected males
+    data$age[na_indices_remaining[male & !affected]] <- round(drawBaseline(baseline_male))
+    
+    # Baseline draw for non-affected females
+    data$age[na_indices_remaining[female & !affected]] <- round(drawBaseline(baseline_female))
+  } else {
+    affected <- data$aff[na_indices_remaining] == 1
+    data$age[na_indices_remaining] <- round(ifelse(
+      affected,
+      delta + beta * (-log(1 - u))^(1 / alpha),  # Weibull for affected
+      drawBaseline(baseline)  # Baseline for non-affected
+    ))
   }
+  
+  # Validate ages: Ensure ages are within the valid range [1, max_age]
+  invalid_ages <- is.na(data$age[na_indices_remaining]) | data$age[na_indices_remaining] < 1 | data$age[na_indices_remaining] > max_age
+  
+  # Draw invalid ages from the empirical distribution
+  if (any(invalid_ages)) {
+    na_indices_invalid <- na_indices_remaining[invalid_ages]
+    
+    # Empirical fallback for invalid ages
+    data$age[na_indices_invalid] <- round(sapply(data$sex[na_indices_invalid], function(sex) {
+      drawEmpirical(empirical_density, sex)
+    }))
+  }
+  
+  # Ensure no negative ages
+  data$age <- pmax(data$age, 1)
+  
   return(data)
 }
 
@@ -158,14 +198,14 @@ calcPedDegree <- function(data) {
   
   for (fam in families) {
     family_data <- data_copy[data_copy$family == fam, ]
-    proband_actual_id <- family_data$individual[family_data$isProband == 1]
+    proband_actual_id <- family_data$individual[family_data$isProband == 1 & !is.na(family_data$isProband)]
     
     if (length(proband_actual_id) == 1) {
       # Subset the kinship matrix for the current family
       family_ids <- family_data$individual
       family_kin_matrix <- kin_matrix[family_ids, family_ids]
       
-      if (is.matrix(family_kin_matrix) && !is.null(nrow(family_kin_matrix))) {
+      if (!is.null(nrow(family_kin_matrix))) {
         # Find the row index of the proband in the family kinship matrix
         proband_index <- which(family_ids == proband_actual_id)
         

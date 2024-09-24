@@ -28,8 +28,6 @@
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
                     age_imputation, remove_proband, sex_specific) {
-  browser()
-  
   # Set seed for the chain
   set.seed(seed)
   
@@ -282,6 +280,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   for (i in 1:n_iter) {
     if (sex_specific) {
       
+      # Calculate Weibull parameters for male and female
+      weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
+      weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
       # Impute ages at each iteration based on current parameters
       if (age_imputation) {
         data <- imputeAges(
@@ -345,7 +346,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
       
     } else {
-      
+      # Non-sex-specific
+      weibull_params <- calculate_weibull_parameters(params_current$median, params_current$first_quartile, params_current$threshold)
       # Impute ages at each iteration based on current parameters
       if (age_imputation) {
         data <- imputeAges(
