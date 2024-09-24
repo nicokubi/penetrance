@@ -358,6 +358,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     out$loglikelihood_current[i] <- loglikelihood_current
     out$logprior_current[i] <- logprior_current
     
+    # Initialize valid proposal
+    valid_proposal <- TRUE
+    
     # Explicit checks for sex-specific parameters
     if (sex_specific) {
       # Asymptote checks (male and female must be strictly between 0 and 1)
