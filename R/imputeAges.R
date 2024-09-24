@@ -55,8 +55,16 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   if (any(unknown_sex)) {
     warning(paste(sum(unknown_sex), "cases with unknown sex. Applying non-sex-specific imputation."))
     unknown_indices <- na_indices_remaining[unknown_sex]
-    data$age[unknown_indices] <- round(drawEmpirical(empirical_density))
-    na_indices_remaining <- na_indices_remaining[!unknown_sex]
+    if (sex_specific) {
+      # Sex-specific empirical imputation
+      data$age[unknown_indices] <- round(sapply(data$sex[unknown_indices], function(sex) {
+        drawEmpirical(empirical_density, sex)
+      }))
+    } else {
+      # Non-sex-specific empirical imputation
+      data$age[unknown_indices] <- round(drawEmpirical(empirical_density))
+    }
+    na_indices_remaining <- na_indices_remaining[!unknown_sex]  # Remove unknown sex cases from further processing
   }
   
   # Generate random draws for the Weibull distribution
@@ -101,6 +109,7 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     # Baseline draw for non-affected females
     data$age[na_indices_remaining[female & !affected]] <- round(drawBaseline(baseline_female))
   } else {
+    # Non-sex-specific imputation using Weibull or baseline
     affected <- data$aff[na_indices_remaining] == 1
     data$age[na_indices_remaining] <- round(ifelse(
       affected,
@@ -117,9 +126,14 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     na_indices_invalid <- na_indices_remaining[invalid_ages]
     
     # Empirical fallback for invalid ages
-    data$age[na_indices_invalid] <- round(sapply(data$sex[na_indices_invalid], function(sex) {
-      drawEmpirical(empirical_density, sex)
-    }))
+    if (sex_specific) {
+      data$age[na_indices_invalid] <- round(sapply(data$sex[na_indices_invalid], function(sex) {
+        drawEmpirical(empirical_density, sex)
+      }))
+    } else {
+      # Non-sex-specific empirical fallback
+      data$age[na_indices_invalid] <- round(drawEmpirical(empirical_density))
+    }
   }
   
   # Ensure no negative ages

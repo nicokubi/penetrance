@@ -332,7 +332,7 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
 #' @return Numeric vector, containing likelihood values for unaffected and affected individuals.
 #'
 #' @export
-lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC) {
+lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af) {
   if (data$age[i] == 0 || data$age[i] == 1) {
     lik.i <- c(1, 1)  # Assuming people aged 0 or 1 years are all unaffected
   } else {
