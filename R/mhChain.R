@@ -28,6 +28,7 @@
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
                     age_imputation, remove_proband, sex_specific) {
+  browser()
   
   # Set seed for the chain
   set.seed(seed)
@@ -280,6 +281,25 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   # Main loop of Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
     if (sex_specific) {
+      
+      # Impute ages at each iteration based on current parameters
+      if (age_imputation) {
+        data <- imputeAges(
+          data = data, 
+          na_indices = na_indices, 
+          baseline_male = baseline_male_df, 
+          baseline_female = baseline_female_df,
+          alpha_male = weibull_params_male$alpha, 
+          beta_male = weibull_params_male$beta, 
+          delta_male = params_current$threshold_male,
+          alpha_female = weibull_params_female$alpha, 
+          beta_female = weibull_params_female$beta, 
+          delta_female = params_current$threshold_female,
+          empirical_density = age_density, 
+          max_age = max_age, 
+          sex_specific = TRUE
+        )
+      }
       # Current parameter vector for sex-specific model
       params_vector <- c(
         params_current$asymptote_male, params_current$asymptote_female,
@@ -325,6 +345,21 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
       
     } else {
+      
+      # Impute ages at each iteration based on current parameters
+      if (age_imputation) {
+        data <- imputeAges(
+          data = data, 
+          na_indices = na_indices, 
+          baseline = baseline_df, 
+          alpha = weibull_params$alpha, 
+          beta = weibull_params$beta, 
+          delta = params_current$threshold,
+          empirical_density = age_density, 
+          max_age = max_age, 
+          sex_specific = FALSE
+        )
+      }
       # Current parameter vector for non-sex-specific model
       params_vector <- c(params_current$asymptote, params_current$threshold, params_current$median, params_current$first_quartile)
       
