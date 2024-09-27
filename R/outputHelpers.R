@@ -571,3 +571,131 @@ generate_summary_noSex <- function(data) {
   print(summary(summary_data))
   return(summary(summary_data))
 }
+
+#' Plot Autocorrelation for Multiple MCMC Chains (Posterior Samples)
+#'
+#' This function plots the autocorrelation for sex-specific or non-sex-specific posterior samples across multiple MCMC chains. 
+#' It defaults to key parameters like `asymptote_male_samples`, `asymptote_female_samples`, etc.
+#'
+#' @param results A list of MCMC chain results.
+#' @param n_chains The number of chains.
+#' @param max_lag Integer, the maximum lag to be considered for the autocorrelation plot. Default is 50.
+#'
+#' @return A series of autocorrelation plots for each chain.
+#' @export
+plot_acf <- function(results, n_chains, max_lag = 50) {
+  # Set up a grid for the plots based on the number of chains
+  if (n_chains <= 3) {
+    par(mfrow = c(n_chains * 2, 2))  # Up to 3 chains: 3 rows, 4 columns
+  } else {
+    par(mfrow = c(ceiling(n_chains), 4))  # More than 3 chains: grid layout
+  }
+  
+  # Loop through each chain
+  for (chain_id in 1:n_chains) {
+    if (!is.null(results[[chain_id]]$median_male_samples) || !is.null(results[[chain_id]]$median_female_samples)) {
+      # Plot ACF for sex-specific parameters if available
+      median_results <- results[[chain_id]]$median_male_samples
+      threshold_results <- results[[chain_id]]$threshold_male_samples
+      first_quartile_results <- results[[chain_id]]$first_quartile_male_samples
+      asymptote_results <- results[[chain_id]]$asymptote_male_samples
+      
+      # ACF plot for male parameters
+      if (length(median_results) > 0) {
+        acf(median_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Median - Male"))
+      }
+      if (length(threshold_results) > 0) {
+        acf(threshold_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Threshold - Male"))
+      }
+      if (length(first_quartile_results) > 0) {
+        acf(first_quartile_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of First Quartile - Male"))
+      }
+      if (length(asymptote_results) > 0) {
+        acf(asymptote_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Asymptote - Male"))
+      }
+      
+      # Now plot for female parameters
+      median_results <- results[[chain_id]]$median_female_samples
+      threshold_results <- results[[chain_id]]$threshold_female_samples
+      first_quartile_results <- results[[chain_id]]$first_quartile_female_samples
+      asymptote_results <- results[[chain_id]]$asymptote_female_samples
+      
+      if (length(median_results) > 0) {
+        acf(median_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Median - Female"))
+      }
+      if (length(threshold_results) > 0) {
+        acf(threshold_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Threshold - Female"))
+      }
+      if (length(first_quartile_results) > 0) {
+        acf(first_quartile_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of First Quartile - Female"))
+      }
+      if (length(asymptote_results) > 0) {
+        acf(asymptote_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Asymptote - Female"))
+      }
+    } else {
+      # Plot ACF for non-sex-specific parameters if sex-specific are not available
+      median_results <- results[[chain_id]]$median_samples
+      threshold_results <- results[[chain_id]]$threshold_samples
+      first_quartile_results <- results[[chain_id]]$first_quartile_samples
+      asymptote_results <- results[[chain_id]]$asymptote_samples
+      
+      if (length(median_results) > 0) {
+        acf(median_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Median"))
+      }
+      if (length(threshold_results) > 0) {
+        acf(threshold_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Threshold"))
+      }
+      if (length(first_quartile_results) > 0) {
+        acf(first_quartile_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of First Quartile"))
+      }
+      if (length(asymptote_results) > 0) {
+        acf(asymptote_results, lag.max = max_lag, main = paste("Chain", chain_id, "- ACF of Asymptote"))
+      }
+    }
+  }
+  
+  # Reset the plotting layout
+  par(mfrow = c(1, 1))
+}
+
+#' Plot Log-Likelihood for Multiple MCMC Chains
+#'
+#' This function plots the log-likelihood values across iterations for multiple MCMC chains. 
+#' It helps visualize the convergence of the chains based on the log-likelihood values.
+#'
+#' @param results A list of MCMC chain results, each containing the `loglikelihood_current` values.
+#' @param n_chains The number of chains.
+#'
+#' @return A series of log-likelihood plots for each chain.
+#' @export
+plot_loglikelihood <- function(results, n_chains) {
+  # Set up a grid for the plots based on the number of chains
+  if (n_chains <= 3) {
+    par(mfrow = c(n_chains, 1))  # Up to 3 chains: stacked vertically
+  } else {
+    par(mfrow = c(ceiling(n_chains / 2), 2))  # More than 3 chains: grid layout
+  }
+  
+  # Loop through each chain
+  for (chain_id in 1:n_chains) {
+    # Check if the loglikelihood_current exists in the chain results
+    if (is.null(results[[chain_id]]$loglikelihood_current)) {
+      stop(paste("loglikelihood_current not found in chain", chain_id))
+    }
+    
+    # Extract the log-likelihood values
+    loglikelihood_values <- results[[chain_id]]$loglikelihood_current
+    
+    # Plot the log-likelihood values
+    plot(loglikelihood_values, type = "l", col = "blue",
+         main = paste("Chain", chain_id, "- Log-Likelihood"),
+         xlab = "Iteration", ylab = "Log-Likelihood",
+         ylim = range(loglikelihood_values, na.rm = TRUE))
+    
+    # Add a grid for better readability
+    grid()
+  }
+  
+  # Reset the plotting layout
+  par(mfrow = c(1, 1))
+}

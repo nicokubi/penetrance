@@ -41,6 +41,8 @@
 #' @param plot_trace Logical, indicating whether to include trace plots in the output. Default is TRUE.
 #' @param penetrance_plot Logical, indicating whether to include penetrance plots in the output. Default is TRUE.
 #' @param penetrance_plot_pdf Logical, indicating whether to include PDF plots in the output. Default is TRUE.
+#' @param plot_loglikelihood Logical, indicating whether to include log-likelihood plots in the output. Default is TRUE.
+#' @param plot_acf Logical, indicating whether to include autocorrelation function (ACF) plots for posterior samples. Default is TRUE.
 #' @param probCI Numeric, probability level for credible intervals in penetrance plots. Must be between 0 and 1. Default is 0.95.
 #' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.
 #'
@@ -50,34 +52,36 @@
 #' @importFrom parallel makeCluster stopCluster parLapply
 #' @export
 penetrance <- function(pedigree, 
-                     twins = NULL, 
-                     n_chains = 1,
-                     n_iter_per_chain = 10000,
-                     ncores = 6,
-                     max_age = 94,
-                     baseline_data = baseline_data_default,
-                     remove_proband = FALSE,
-                     age_imputation = FALSE,
-                     median_max = TRUE,
-                     BaselineNC = TRUE,
-                     var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
-                     burn_in = 0,
-                     thinning_factor = 1,
-                     distribution_data = distribution_data_default,
-                     af = 0.0001,
-                     max_penetrance = 1,
-                     sample_size = NULL,
-                     ratio = NULL,
-                     prior_params = prior_params_default,
-                     risk_proportion = risk_proportion_default,
-                     summary_stats = TRUE,
-                     rejection_rates = TRUE,
-                     density_plots = TRUE,
-                     plot_trace = TRUE,
-                     penetrance_plot = TRUE,
-                     penetrance_plot_pdf = TRUE,
-                     probCI = 0.95,
-                     sex_specific = TRUE) {
+                       twins = NULL, 
+                       n_chains = 1,
+                       n_iter_per_chain = 10000,
+                       ncores = 6,
+                       max_age = 94,
+                       baseline_data = baseline_data_default,
+                       remove_proband = FALSE,
+                       age_imputation = FALSE,
+                       median_max = TRUE,
+                       BaselineNC = TRUE,
+                       var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
+                       burn_in = 0,
+                       thinning_factor = 1,
+                       distribution_data = distribution_data_default,
+                       af = 0.0001,
+                       max_penetrance = 1,
+                       sample_size = NULL,
+                       ratio = NULL,
+                       prior_params = prior_params_default,
+                       risk_proportion = risk_proportion_default,
+                       summary_stats = TRUE,
+                       rejection_rates = TRUE,
+                       density_plots = TRUE,
+                       plot_trace = TRUE,
+                       penetrance_plot = TRUE,
+                       penetrance_plot_pdf = TRUE,
+                       plot_loglikelihood = TRUE,
+                       plot_acf = TRUE,
+                       probCI = 0.95,
+                       sex_specific = TRUE) {
   
   # Validate inputs
   if (missing(pedigree)) {
@@ -242,6 +246,14 @@ penetrance <- function(pedigree,
         # Generate PDF plots
         output$penetrance_plot_pdf <- plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
       }
+      
+      if (plot_loglikelihood) {
+        output$loglikelihood_plots <- plot_loglikelihood(results, n_chains)
+      }
+      
+      if (plot_acf) {
+        output$acf_plots <- plot_acf(results, n_chains)
+      }
     },
     error = function(e) {
       # Handle errors here
@@ -252,6 +264,8 @@ penetrance <- function(pedigree,
   output$combined_chains <- combined_chains
   output$results <- results
   output$data <- data
+  
+  parallel::stopCluster(cl)
   
   return(output)
 }
