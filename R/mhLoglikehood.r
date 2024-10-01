@@ -245,9 +245,9 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     loglik <- pedigree_loglikelihood(dat = families, geno_freq = geno_freq, trans = trans, 
                                      penet = lik, monozyg = twins, ncores = ncores)
     # Handle -Inf values
-    #if (is.infinite(loglik) && loglik == -Inf) {
-    #    loglik <- -50000
-    #}
+    if (is.infinite(loglik) && loglik == -Inf) {
+        loglik <- -50000
+    }
     return(loglik)
 }
 
@@ -308,9 +308,9 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
   loglik <- pedigree_loglikelihood(dat = families, geno_freq = geno_freq, trans = trans, penet = lik, monozyg = twins, ncores = ncores)
   
   # Handle -Inf values
-  #if (is.infinite(loglik) && loglik == -Inf) {
-   # loglik <- -50000
-  #}
+  if (is.infinite(loglik) && loglik == -Inf) {
+    loglik <- -50000
+  }
   
   return(loglik)
 }
@@ -367,7 +367,7 @@ lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk,
     if (data$aff[i] == 1) lik.i <- c(nc.pen * nc.pen.c, c.pen)  # For affected observations
   }
   
-  # Adjustment for observed genotypes
+  # Adjustment for observed genotypes, setting other genotypes to small value to avoid numerical instability
   if (data$geno[i] == "1/1") lik.i[-1] <- 1e-8
   if (data$geno[i] == "1/2") lik.i[-2] <- 1e-8
   return(lik.i)

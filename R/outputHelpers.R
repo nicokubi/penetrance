@@ -270,7 +270,7 @@ apply_burn_in <- function(results, burn_in) {
   })
 }
 
-#' Apply Thinning
+##' Apply Thinning
 #'
 #' @param results A list of MCMC chain results.
 #' @param thinning_factor The factor by which to thin the results (positive integer). The default thinning factor is 1, which implies no thinning.
@@ -278,31 +278,48 @@ apply_burn_in <- function(results, burn_in) {
 #' @return A list of results with thinning applied.
 #'
 apply_thinning <- function(results, thinning_factor) {
-  # Ensure 'results' is a list and has at least one chain
-  if (!is.list(results) || length(results) < 1) {
-    stop("results must be a list with at least one chain.")
-  }
-
-  # Ensure 'thinning_factor' is a positive integer
-  if (!is.numeric(thinning_factor) || thinning_factor <= 0 || !is.integer(thinning_factor)) {
+  if (!is.numeric(thinning_factor) || thinning_factor <= 0 || thinning_factor != round(thinning_factor)) {
     stop("thinning_factor must be a positive integer.")
   }
-
-  # Function to perform thinning on a single chain (list of numeric vectors)
-  thin_chain <- function(chain, thinning_factor) {
-    lapply(chain, function(param_results) {
-      if (length(param_results) < thinning_factor) {
-        stop("Thinning factor is larger than the number of results.")
+  thinning_factor <- as.integer(thinning_factor)
+  
+  # Define a function to thin each element of the chain
+  thin_list <- function(chain, factor) {
+    lapply(chain, function(param) {
+      if (is.vector(param)) {
+        # If param is a vector, select every nth element
+        return(param[seq(1, length(param), by = factor)])
+      } else if (is.matrix(param)) {
+        # If param is a matrix, select every nth row
+        return(param[seq(1, nrow(param), by = factor), , drop = FALSE])
+      } else if (is.list(param)) {
+        # If param is a list, recursively thin each element of the list
+        return(lapply(param, function(sub_param) {
+          if (is.vector(sub_param)) {
+            return(sub_param[seq(1, length(sub_param), by = factor)])
+          } else if (is.matrix(sub_param)) {
+            return(sub_param[seq(1, nrow(sub_param), by = factor), , drop = FALSE])
+          } else {
+            return(sub_param) # If it's not a vector/matrix, return as is
+          }
+        }))
+      } else {
+        return(param) # If it's not a vector/matrix/list, return as is
       }
-      param_results[seq(1, length(param_results), by = thinning_factor)]
     })
   }
-
-  # Apply thinning to all chains
-  lapply(results, function(chain) {
-    thin_chain(chain, thinning_factor)
+  
+  # Apply thinning to the results
+  thinned_results <- lapply(results, function(chain) {
+    thin_list(chain, thinning_factor)
   })
+  
+  return(thinned_results)
 }
+
+# Example usage:
+# thinned_results <- apply_thinning(out_OC_PALB2$results, 5)
+
 
 #' Plot Weibull Distribution with Credible Intervals
 #'

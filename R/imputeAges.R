@@ -21,6 +21,7 @@
 #'                          possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.
 #' @param max_age Integer, the maximum age considered in the analysis.
 #' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
+#' @param max_attempts Integer, the maximum number of attempts to get a valid age. Default is 100.
 #'
 #' @return The data frame with imputed ages.
 #'
@@ -28,7 +29,7 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,
                        alpha_female = NULL, beta_female = NULL, delta_female = NULL, 
                        baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
-                       empirical_density, max_age, sex_specific = TRUE) {
+                       empirical_density, max_age, sex_specific = TRUE, max_attempts = 100) {
   
   # Extract necessary columns for faster access
   aff <- data$aff[na_indices]
@@ -41,54 +42,88 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   # Create a vector to store the imputed ages
   imputed_ages <- numeric(length(na_indices))
   
-  if (sex_specific) {
-    # Empirical draws for male and female, calculated outside of loop
-    empirical_draws <- c(
-      round(drawEmpirical(empirical_density, 1)),
-      round(drawEmpirical(empirical_density, 2))
-    )
-  } else {
-    empirical_draws <- round(drawEmpirical(empirical_density))
+  # Calculate median ages for fallback option
+  median_ages <- list(
+    male_affected = median(data$age[data$sex == 1 & data$aff == 1], na.rm = TRUE),
+    female_affected = median(data$age[data$sex == 2 & data$aff == 1], na.rm = TRUE),
+    male_unaffected = median(data$age[data$sex == 1 & data$aff == 0], na.rm = TRUE),
+    female_unaffected = median(data$age[data$sex == 2 & data$aff == 0], na.rm = TRUE),
+    all_affected = median(data$age[data$aff == 1], na.rm = TRUE),
+    all_unaffected = median(data$age[data$aff == 0], na.rm = TRUE)
+  )
+  
+  # Function to get a valid age
+  get_valid_age <- function(age_func, is_male, is_affected) {
+    for (attempt in 1:max_attempts) {
+      age <- age_func()
+      if (!is.na(age) && age >= 1 && age <= max_age) {
+        return(age)
+      }
+    }
+    # Fallback to median age if max attempts reached
+    if (sex_specific) {
+      if (is_male) {
+        return(if (is_affected) median_ages$male_affected else median_ages$male_unaffected)
+      } else {
+        return(if (is_affected) median_ages$female_affected else median_ages$female_unaffected)
+      }
+    } else {
+      return(if (is_affected) median_ages$all_affected else median_ages$all_unaffected)
+    }
   }
   
   # Loop over indices
   for (idx in seq_along(na_indices)) {
     rel_prob <- relationship_probs[idx]
     is_male <- (sex[idx] == 1)
+    is_affected <- (aff[idx] == 1)
     
     if (is.na(rel_prob)) {
       # Draw from empirical distribution for missing relationship prob
-      imputed_ages[idx] <- if (sex_specific) empirical_draws[ifelse(is_male, 1, 2)] else empirical_draws
+      imputed_ages[idx] <- get_valid_age(function() {
+        if (sex_specific) {
+          round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
+        } else {
+          round(drawEmpirical(empirical_density))
+        }
+      }, is_male, is_affected)
     } else {
-      if (aff[idx] == 1) {
+      if (is_affected) {
         # Weibull distribution for affected individuals
         if (u[idx] < rel_prob) {
-          imputed_ages[idx] <- if (sex_specific) {
-            if (is_male) {
-              round(delta_male + beta_male * (-log(1 - u[idx]))^(1 / alpha_male))
+          imputed_ages[idx] <- get_valid_age(function() {
+            if (sex_specific) {
+              if (is_male) {
+                round(delta_male + beta_male * (-log(1 - runif(1)))^(1 / alpha_male))
+              } else {
+                round(delta_female + beta_female * (-log(1 - runif(1)))^(1 / alpha_female))
+              }
             } else {
-              round(delta_female + beta_female * (-log(1 - u[idx]))^(1 / alpha_female))
+              round(delta + beta * (-log(1 - runif(1)))^(1 / alpha))
             }
-          } else {
-            round(delta + beta * (-log(1 - u[idx]))^(1 / alpha))
-          }
+          }, is_male, is_affected)
         } else {
           # Draw from baseline if not using Weibull
-          imputed_ages[idx] <- if (sex_specific) {
-            if (is_male) round(drawBaseline(baseline_male)) else round(drawBaseline(baseline_female))
-          } else {
-            round(drawBaseline(baseline))
-          }
+          imputed_ages[idx] <- get_valid_age(function() {
+            if (sex_specific) {
+              if (is_male) round(drawBaseline(baseline_male)) else round(drawBaseline(baseline_female))
+            } else {
+              round(drawBaseline(baseline))
+            }
+          }, is_male, is_affected)
         }
       } else {
         # Draw from empirical for unaffected individuals
-        imputed_ages[idx] <- if (sex_specific) empirical_draws[ifelse(is_male, 1, 2)] else empirical_draws
+        imputed_ages[idx] <- get_valid_age(function() {
+          if (sex_specific) {
+            round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
+          } else {
+            round(drawEmpirical(empirical_density))
+          }
+        }, is_male, is_affected)
       }
     }
   }
-  
-  # Vectorized age validity check
-  imputed_ages[imputed_ages < 1 | imputed_ages > max_age] <- NA
   
   # Assign imputed ages back to the data
   data$age[na_indices] <- imputed_ages
