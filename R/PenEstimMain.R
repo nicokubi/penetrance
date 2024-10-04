@@ -14,7 +14,7 @@
 #'   - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`.
 #'   - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals and `0` otherwise. Missing entries are not supported.
 #'   - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`.
-#'   - `Geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
+#'   - `geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
 #' @param twins A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: `twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))`.
 #' @param n_chains Integer, the number of chains for parallel computation. Default is 1.
 #' @param n_iter_per_chain Integer, the number of iterations for each chain. Default is 10000.
@@ -51,8 +51,8 @@
 #' @importFrom stats rbeta runif
 #' @importFrom parallel makeCluster stopCluster parLapply
 #' @export
-penetrance <- function(pedigree, 
-                       twins = NULL, 
+penetrance <- function(pedigree,
+                       twins = NULL,
                        n_chains = 1,
                        n_iter_per_chain = 10000,
                        ncores = 6,
@@ -82,10 +82,34 @@ penetrance <- function(pedigree,
                        plot_acf = TRUE,
                        probCI = 0.95,
                        sex_specific = TRUE) {
-  
   # Validate inputs
-  if (missing(pedigree)) {
-    stop("Error: 'pedigree' parameter is missing. Please provide a valid list of pedigrees.")
+  if (missing(pedigree) || !is.list(pedigree) || length(pedigree) == 0) {
+    stop("Error: 'pedigree' parameter is missing or invalid. Please provide a non-empty list of pedigrees.")
+  }
+
+  # Check pedigree data structure and content for each pedigree in the list
+  required_columns <- c("PedigreeID", "ID", "Sex", "MotherID", "FatherID", "isProband", "CurAge", "isAff", "Age", "geno")
+  for (i in seq_along(pedigree)) {
+    if (!all(required_columns %in% colnames(pedigree[[i]]))) {
+      stop(paste("Error: Pedigree", i, "is missing one or more required columns."))
+    }
+
+    # Check for NA values in critical columns
+    critical_columns <- c("PedigreeID", "ID", "Sex", "isAff")
+    for (col in critical_columns) {
+      if (any(is.na(pedigree[[i]][[col]]))) {
+        stop(paste("Error: NA values found in the", col, "column of pedigree", i, ". Please check your data."))
+      }
+    }
+
+    # Check for valid values in specific columns
+    if (!all(pedigree[[i]]$Sex %in% c(0, 1))) {
+      stop(paste("Error: 'Sex' column in pedigree", i, "should only contain 0 (female) or 1 (male)."))
+    }
+
+    if (!all(pedigree[[i]]$isAff %in% c(0, 1))) {
+      stop(paste("Error: 'isAff' column in pedigree", i, "should only contain 0 or 1."))
+    }
   }
   if (missing(n_chains) || !is.numeric(n_chains) || n_chains <= 0) {
     stop("Error: 'n_chains' parameter is missing or invalid. Please specify a positive integer.")
@@ -99,14 +123,14 @@ penetrance <- function(pedigree,
   if (af < 0 || af > 1) {
     stop("Error: 'af' must be between 0 and 1.")
   }
-  
+
   # Check the length of var based on sex_specific
   if (sex_specific && length(var) != 8) {
     stop("Error: When 'sex_specific' is TRUE, 'var' must have exactly 8 elements.")
   } else if (!sex_specific && length(var) != 4) {
     stop("Error: When 'sex_specific' is FALSE, 'var' must have exactly 4 elements.")
   }
-  
+
   # Check baseline_data structure
   if (sex_specific) {
     if (!is.data.frame(baseline_data) || nrow(baseline_data) != 94 || ncol(baseline_data) != 3) {
@@ -123,30 +147,30 @@ penetrance <- function(pedigree,
       stop("Error: When 'baseline_data' is a vector for non-sex-specific analysis, it must have exactly 94 elements.")
     }
   }
-  
+
   # Create the seeds for the individual chains
   seeds <- sample.int(1000, n_chains)
-  
+
   # Apply the transformation to adjust the format for the clipp package
   data <- do.call(rbind, lapply(pedigree, transformDF))
-  
+
   # Create the prior distributions
   prop <- makePriors(
     data = distribution_data,
     sample_size = sample_size,
     ratio = ratio,
     prior_params = prior_params,
-    risk_proportion = risk_proportion, 
+    risk_proportion = risk_proportion,
     baseline_data = baseline_data
   )
-  
+
   cores <- parallel::detectCores()
-  
+
   if (n_chains > cores) {
     stop("Error: 'n_chains exceeds the number of available CPU cores.")
   }
   cl <- parallel::makeCluster(n_chains)
-  
+
   # Load required packages to the clusters
   parallel::clusterEvalQ(cl, {
     library(clipp)
@@ -155,17 +179,17 @@ penetrance <- function(pedigree,
     library(parallel)
     library(kinship2)
   })
-  
+
   parallel::clusterExport(cl, c(
-    "mhChain", "mhLogLikelihood_clipp", "mhLogLikelihood_clipp_noSex", 
+    "mhChain", "mhLogLikelihood_clipp", "mhLogLikelihood_clipp_noSex", "imputeUnaffectedAges",
     "calculate_weibull_parameters", "validate_weibull_parameters", "prior_params",
-    "transformDF", "lik.fn", "lik_noSex", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data", 
-    "calcPedDegree","seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit", 
+    "transformDF", "lik.fn", "lik_noSex", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data",
+    "calcPedDegree", "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit",
     "drawBaseline", "calculateNCPen", "drawEmpirical",
-    "data","twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
+    "data", "twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
     "remove_proband", "sex_specific"
   ), envir = environment())
-  
+
   results <- parallel::parLapply(cl, 1:n_chains, function(i) {
     mhChain(
       seed = seeds[i],
@@ -188,13 +212,13 @@ penetrance <- function(pedigree,
       sex_specific = sex_specific
     )
   })
-  
+
   # Check rejection rates and issue a warning if they are all above 90%
   all_high_rejections <- all(sapply(results, function(x) x$rejection_rate > 0.9))
   if (all_high_rejections) {
     warning("Low acceptance rate. Please consider running the chain longer.")
   }
-  
+
   # Apply burn-in and thinning
   if (burn_in > 0) {
     results <- apply_burn_in(results, burn_in)
@@ -202,55 +226,55 @@ penetrance <- function(pedigree,
   if (thinning_factor > 1) {
     results <- apply_thinning(results, thinning_factor)
   }
-  
+
   # Select the appropriate combination chain function
   combine_function <- if (sex_specific) combine_chains else combine_chains_noSex
-  
+
   # Select the appropriatesummary function
   summary_function <- if (sex_specific) generate_summary else generate_summary_noSex
-  
+
   # Extract samples from the chains
   combined_chains <- combine_function(results)
-  
+
   # Initialize variables
   output <- list()
-  
+
   tryCatch(
     {
       if (rejection_rates) {
         # Generate rejection rates
         output$rejection_rates <- printRejectionRates(results)
       }
-      
+
       if (summary_stats) {
         # Generate summary statistics
         output$summary_stats <- summary_function(combined_chains)
       }
-      
+
       if (density_plots) {
         # Generate density plots
         output$density_plots <- generate_density_plots(combined_chains)
       }
-      
+
       if (plot_trace) {
         # Generate trace plots
         output$trace_plots <- plot_trace(results, n_chains)
       }
-      
+
       if (penetrance_plot) {
         # Generate penetrance plot
         output$penetrance_plot <- plot_penetrance(combined_chains, prob = probCI, max_age = max_age)
       }
-      
+
       if (penetrance_plot_pdf) {
         # Generate PDF plots
         output$penetrance_plot_pdf <- plot_pdf(combined_chains, prob = probCI, max_age = max_age, sex = "NA")
       }
-      
+
       if (plot_loglikelihood) {
         output$loglikelihood_plots <- plot_loglikelihood(results, n_chains)
       }
-      
+
       if (plot_acf) {
         output$acf_plots <- plot_acf(results, n_chains)
       }
@@ -260,12 +284,12 @@ penetrance <- function(pedigree,
       cat("An error occurred in the output display: ", e$message, "\n")
     }
   )
-  
+
   output$combined_chains <- combined_chains
   output$results <- results
   output$data <- data
-  
+
   parallel::stopCluster(cl)
-  
+
   return(output)
 }

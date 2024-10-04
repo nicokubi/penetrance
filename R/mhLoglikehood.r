@@ -129,7 +129,7 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
   gamma <- ifelse(data$sex[i] == 1, gamma_male, gamma_female)
   delta <- ifelse(data$sex[i] == 1, delta_male, delta_female)
   
-  if (data$age[i] == 0 || data$age[i] == 1) {
+  if (is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1){
     lik.i <- c(1, 1) # Assuming people aged 0 or 1 years are all unaffected
   } else {
     # Ensure age is within the valid range
@@ -333,7 +333,7 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
 #'
 #' @export
 lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af) {
-  if (data$age[i] == 0 || data$age[i] == 1) {
+  if (is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1) {
     lik.i <- c(1, 1)  # Assuming people aged 0 or 1 years are all unaffected
   } else {
     # Ensure age is within the valid range

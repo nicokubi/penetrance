@@ -69,6 +69,21 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       na_indices <- original_na_indices
     }
   }
+  # Check if age imputation is enabled
+  if (age_imputation) {
+    # Check which of the NA ages are for unaffected individuals
+    if (exists("na_indices")) {
+      unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
+
+      # Impute ages for unaffected individuals with NA ages
+      if (length(unaffected_na_indices) > 0) {
+        data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age, sex_specific)
+      }
+
+      # Update na_indices to only include affected individuals
+      na_indices <- na_indices[data$aff[na_indices] == 1]
+    }
+  }
 
   # Initialize variables for sex-specific or non-specific model
   if (sex_specific) {
@@ -302,7 +317,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           alpha_female = weibull_params_female$alpha,
           beta_female = weibull_params_female$beta,
           delta_female = params_current$threshold_female,
-          empirical_density = age_density,
           max_age = max_age,
           sex_specific = TRUE
         )
@@ -364,7 +378,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           alpha = weibull_params$alpha,
           beta = weibull_params$beta,
           delta = params_current$threshold,
-          empirical_density = age_density,
           max_age = max_age,
           sex_specific = FALSE
         )

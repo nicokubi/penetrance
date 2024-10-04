@@ -17,43 +17,31 @@
 #' @param alpha Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).
 #' @param beta Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).
 #' @param delta Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).
-#' @param empirical_density A density object or list of density objects containing the empirical density of ages, 
-#'                          possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.
 #' @param max_age Integer, the maximum age considered in the analysis.
 #' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
 #' @param max_attempts Integer, the maximum number of attempts to get a valid age. Default is 100.
 #'
 #' @return The data frame with imputed ages.
 #'
-imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL, 
+imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL,
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,
-                       alpha_female = NULL, beta_female = NULL, delta_female = NULL, 
+                       alpha_female = NULL, beta_female = NULL, delta_female = NULL,
                        baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
-                       empirical_density, max_age, sex_specific = TRUE, max_attempts = 100) {
-  
+                       max_age, sex_specific = TRUE, max_attempts = 100) {
   # Extract necessary columns for faster access
   aff <- data$aff[na_indices]
   sex <- data$sex[na_indices]
   relationship_probs <- as.numeric(data$degree_of_relationship[na_indices])
-  
-  # Generate all random uniform numbers once
-  u <- runif(length(na_indices))
-  
-  # Create a vector to store the imputed ages
-  imputed_ages <- numeric(length(na_indices))
-  
+
   # Calculate median ages for fallback option
   median_ages <- list(
     male_affected = median(data$age[data$sex == 1 & data$aff == 1], na.rm = TRUE),
     female_affected = median(data$age[data$sex == 2 & data$aff == 1], na.rm = TRUE),
-    male_unaffected = median(data$age[data$sex == 1 & data$aff == 0], na.rm = TRUE),
-    female_unaffected = median(data$age[data$sex == 2 & data$aff == 0], na.rm = TRUE),
-    all_affected = median(data$age[data$aff == 1], na.rm = TRUE),
-    all_unaffected = median(data$age[data$aff == 0], na.rm = TRUE)
+    all_affected = median(data$age[data$aff == 1], na.rm = TRUE)
   )
-  
+
   # Function to get a valid age
-  get_valid_age <- function(age_func, is_male, is_affected) {
+  get_valid_age <- function(age_func, is_male) {
     for (attempt in 1:max_attempts) {
       age <- age_func()
       if (!is.na(age) && age >= 1 && age <= max_age) {
@@ -62,75 +50,49 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     }
     # Fallback to median age if max attempts reached
     if (sex_specific) {
-      if (is_male) {
-        return(if (is_affected) median_ages$male_affected else median_ages$male_unaffected)
-      } else {
-        return(if (is_affected) median_ages$female_affected else median_ages$female_unaffected)
-      }
+      return(if (is_male) median_ages$male_affected else median_ages$female_affected)
     } else {
-      return(if (is_affected) median_ages$all_affected else median_ages$all_unaffected)
+      return(median_ages$all_affected)
     }
   }
-  
-  # Loop over indices
+
+  # Create a vector to store the imputed ages
+  imputed_ages <- numeric(length(na_indices))
+
   for (idx in seq_along(na_indices)) {
-    rel_prob <- relationship_probs[idx]
     is_male <- (sex[idx] == 1)
-    is_affected <- (aff[idx] == 1)
-    
-    if (is.na(rel_prob)) {
-      # Draw from empirical distribution for missing relationship prob
+    rel_prob <- relationship_probs[idx]
+
+    if (!is.na(rel_prob) && runif(1) < rel_prob) {
+      # Weibull distribution for affected individuals
       imputed_ages[idx] <- get_valid_age(function() {
         if (sex_specific) {
-          round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
-        } else {
-          round(drawEmpirical(empirical_density))
-        }
-      }, is_male, is_affected)
-    } else {
-      if (is_affected) {
-        # Weibull distribution for affected individuals
-        if (u[idx] < rel_prob) {
-          imputed_ages[idx] <- get_valid_age(function() {
-            if (sex_specific) {
-              if (is_male) {
-                round(delta_male + beta_male * (-log(1 - runif(1)))^(1 / alpha_male))
-              } else {
-                round(delta_female + beta_female * (-log(1 - runif(1)))^(1 / alpha_female))
-              }
-            } else {
-              round(delta + beta * (-log(1 - runif(1)))^(1 / alpha))
-            }
-          }, is_male, is_affected)
-        } else {
-          # Draw from baseline if not using Weibull
-          imputed_ages[idx] <- get_valid_age(function() {
-            if (sex_specific) {
-              if (is_male) round(drawBaseline(baseline_male)) else round(drawBaseline(baseline_female))
-            } else {
-              round(drawBaseline(baseline))
-            }
-          }, is_male, is_affected)
-        }
-      } else {
-        # Draw from empirical for unaffected individuals
-        imputed_ages[idx] <- get_valid_age(function() {
-          if (sex_specific) {
-            round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
+          if (is_male) {
+            round(delta_male + beta_male * (-log(1 - runif(1)))^(1 / alpha_male))
           } else {
-            round(drawEmpirical(empirical_density))
+            round(delta_female + beta_female * (-log(1 - runif(1)))^(1 / alpha_female))
           }
-        }, is_male, is_affected)
-      }
+        } else {
+          round(delta + beta * (-log(1 - runif(1)))^(1 / alpha))
+        }
+      }, is_male)
+    } else {
+      # Baseline for affected if not using Weibull
+      imputed_ages[idx] <- get_valid_age(function() {
+        if (sex_specific) {
+          if (is_male) round(drawBaseline(baseline_male)) else round(drawBaseline(baseline_female))
+        } else {
+          round(drawBaseline(baseline))
+        }
+      }, is_male)
     }
   }
-  
+
   # Assign imputed ages back to the data
   data$age[na_indices] <- imputed_ages
-  
+
   return(data)
 }
-
 
 #' Initialize Ages Using a Uniform Distribution
 #'
@@ -308,4 +270,82 @@ drawEmpirical <- function(empirical_density, sex = NA) {
   
   age <- approx(cumsum(density_data$y) / sum(density_data$y), density_data$x, xout = u)$y
   return(age)
+}
+#' Impute Ages for Unaffected Individuals
+#'
+#' This function imputes ages for unaffected individuals in a dataset based on their relationship
+#' to the proband, sex, and empirical age distribution.
+#'
+#' @param data A data frame containing the individual data, including columns for age, sex, proband status, and degree of relationship.
+#' @param na_indices A vector of indices indicating the rows in the data where ages need to be imputed.
+#' @param empirical_density A density object or a list of density objects (if sex-specific) containing the empirical density of ages.
+#' @param max_age Integer, the maximum age considered in the analysis.
+#' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
+#'
+#' @return A vector of imputed ages for the individuals specified by na_indices.
+#'
+#' @details This function uses a combination of relationship-based estimation and empirical distribution
+#' to impute ages. For individuals with known relationship to the proband, it estimates the age based on
+#' the degree of relationship and adds some random variation. For others, it draws ages from the provided
+#' empirical density. The function ensures that all imputed ages are within the valid range (1 to max_age).
+#'
+#' @examples
+#' # Assuming 'data', 'na_indices', 'empirical_density', and 'max_age' are properly defined:
+#' imputed_ages <- imputeUnaffectedAges(data, na_indices, empirical_density, max_age = 100)
+#'
+#' @seealso \code{\link{drawEmpirical}}, \code{\link{estimate_age_from_degree}}
+#'
+imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age, sex_specific = TRUE) {
+  # Extract necessary columns for faster access
+  sex <- data$sex[na_indices]
+  relationship_probs <- as.numeric(data$degree_of_relationship[na_indices])
+
+  # Function to estimate age based on degree of relationship
+  estimate_age_from_degree <- function(proband_age, degree) {
+    age_diff_range <- switch(degree,
+      "0.5" = c(-5, 5), # Siblings, spouses (2nd degree)
+      "0.25" = c(20, 40), # Parents, children (1st degree)
+      "0.125" = c(40, 60), # Grandparents, grandchildren (3rd degree)
+      c(-10, 10) # Default range for other degrees
+    )
+    age_diff <- runif(1, age_diff_range[1], age_diff_range[2])
+    return(proband_age + age_diff)
+  }
+
+  # Identify proband and get proband's age
+  proband_index <- which(data$isProband == 1)[1]
+  proband_age <- data$age[proband_index]
+
+  # Create a vector to store the imputed ages
+  imputed_ages <- numeric(length(na_indices))
+
+  for (idx in seq_along(na_indices)) {
+    is_male <- (sex[idx] == 1)
+    rel_prob <- relationship_probs[idx]
+
+    if (!is.na(rel_prob) && !is.na(proband_age)) {
+      # Use degree of relationship to estimate age
+      estimated_age <- estimate_age_from_degree(proband_age, rel_prob)
+
+      # Add some random variation
+      variation <- rnorm(1, mean = 0, sd = 5 * (1 - rel_prob))
+
+      imputed_age <- round(estimated_age + variation)
+    } else {
+      # If relationship probability or proband age is unknown, use empirical distribution
+      imputed_age <- if (sex_specific) {
+        round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
+      } else {
+        round(drawEmpirical(empirical_density))
+      }
+    }
+
+    # Ensure the imputed age is within valid range
+    imputed_ages[idx] <- max(1, min(imputed_age, max_age))
+  }
+
+  # Assign imputed ages back to the data
+  data$age[na_indices] <- imputed_ages
+
+  return(data)
 }
