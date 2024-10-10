@@ -381,7 +381,19 @@ plot_penetrance <- function(data, prob, max_age, sex = "NA") {
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
   
-  plot_distribution <- function(alphas, betas, thresholds, asymptotes, x_values, prob, color, add = FALSE) {
+  calculate_ylim <- function(alphas, betas, thresholds, asymptotes, x_values, prob) {
+    distributions <- mapply(function(alpha, beta, threshold, asymptote) {
+      pweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
+    }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+    
+    distributions_matrix <- matrix(unlist(distributions), nrow = length(x_values), byrow = FALSE)
+    ci_lower <- apply(distributions_matrix, 1, quantile, probs = (1 - prob) / 2, na.rm = TRUE)
+    ci_upper <- apply(distributions_matrix, 1, quantile, probs = 1 - (1 - prob) / 2, na.rm = TRUE)
+    
+    return(c(min(ci_lower, na.rm = TRUE), max(ci_upper, na.rm = TRUE)))
+  }
+  
+  plot_distribution <- function(alphas, betas, thresholds, asymptotes, x_values, prob, color, add = FALSE, ylim = NULL) {
     distributions <- mapply(function(alpha, beta, threshold, asymptote) {
       pweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
     }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
@@ -394,33 +406,41 @@ plot_penetrance <- function(data, prob, max_age, sex = "NA") {
     if (!add) {
       plot(x_values, mean_density,
            type = "l", col = color,
-           ylim = c(min(ci_lower, na.rm = TRUE), max(ci_upper, na.rm = TRUE)),
-           xlab = "Age", ylab = "Cumulative Penetrance", main = "Penetrance Curve with Credible Interval - Cumulative Probability"
+           ylim = ylim,
+           xlab = "Age", ylab = "Cumulative Penetrance", 
+           main = "Penetrance Curve with Credible Interval - Cumulative Probability"
       )
     } else {
       lines(x_values, mean_density, col = color)
     }
     lines(x_values, ci_lower, col = color, lty = 2)
     lines(x_values, ci_upper, col = color, lty = 2)
-    polygon(c(x_values, rev(x_values)), c(ci_lower, rev(ci_upper)), col = rgb(0, 0, 1, 0.1), border = NA)
+    polygon(c(x_values, rev(x_values)), c(ci_lower, rev(ci_upper)), col = adjustcolor(color, alpha.f = 0.1), border = NA)
   }
   
   if (sex_specific) {
-    # Plot for sex-specific parameters
+    # Calculate y-limits for both male and female distributions without plotting
+    ylim_male <- calculate_ylim(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob)
+    ylim_female <- calculate_ylim(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob)
+    
+    # Combine y-limits
+    combined_ylim <- c(min(ylim_male[1], ylim_female[1]), max(ylim_male[2], ylim_female[2]))
+    
+    # Plot for sex-specific parameters with combined y-limits
     if (sex == "Male") {
-      plot_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue")
+      plot_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue", add = FALSE, ylim = combined_ylim)
       legend_text <- "Male"
     } else if (sex == "Female") {
-      plot_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red")
+      plot_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = FALSE, ylim = combined_ylim)
       legend_text <- "Female"
     } else {
-      plot_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue")
-      plot_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = TRUE)
+      plot_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue", add = FALSE, ylim = combined_ylim)
+      plot_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = TRUE, ylim = combined_ylim)
       legend_text <- c("Male", "Female")
     }
   } else {
     # Plot for non-sex-specific parameters
-    plot_distribution(alphas, betas, thresholds, asymptotes, x_values, prob, "green")
+    plot_distribution(alphas, betas, thresholds, asymptotes, x_values, prob, "green", add = FALSE)
     legend_text <- "Overall"
   }
   
@@ -492,7 +512,19 @@ plot_pdf <- function(data, prob, max_age, sex = "NA") {
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
   
-  plot_pdf_distribution <- function(alphas, betas, thresholds, asymptotes, x_values, prob, color, add = FALSE) {
+  calculate_ylim <- function(alphas, betas, thresholds, asymptotes, x_values, prob) {
+    pdf_distributions <- mapply(function(alpha, beta, threshold, asymptote) {
+      dweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
+    }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
+    
+    pdf_matrix <- matrix(unlist(pdf_distributions), nrow = length(x_values), byrow = FALSE)
+    ci_lower <- apply(pdf_matrix, 1, quantile, probs = (1 - prob) / 2, na.rm = TRUE)
+    ci_upper <- apply(pdf_matrix, 1, quantile, probs = 1 - (1 - prob) / 2, na.rm = TRUE)
+    
+    return(c(min(ci_lower, na.rm = TRUE), max(ci_upper, na.rm = TRUE)))
+  }
+  
+  plot_pdf_distribution <- function(alphas, betas, thresholds, asymptotes, x_values, prob, color, add = FALSE, ylim = NULL) {
     pdf_distributions <- mapply(function(alpha, beta, threshold, asymptote) {
       dweibull(x_values - threshold, shape = alpha, scale = beta) * asymptote
     }, alphas, betas, thresholds, asymptotes, SIMPLIFY = FALSE)
@@ -505,33 +537,41 @@ plot_pdf <- function(data, prob, max_age, sex = "NA") {
     if (!add) {
       plot(x_values, mean_density,
            type = "l", col = color,
-           ylim = c(min(ci_lower, na.rm = TRUE), max(ci_upper, na.rm = TRUE)),
-           xlab = "Age", ylab = "Probability Density", main = "Penetrance Curve with Credible Interval - Probability Distribution"
+           ylim = ylim,
+           xlab = "Age", ylab = "Probability Density", 
+           main = "Penetrance Curve with Credible Interval - Probability Distribution"
       )
     } else {
       lines(x_values, mean_density, col = color)
     }
     lines(x_values, ci_lower, col = color, lty = 2)
     lines(x_values, ci_upper, col = color, lty = 2)
-    polygon(c(x_values, rev(x_values)), c(ci_lower, rev(ci_upper)), col = rgb(0, 0, 1, 0.1), border = NA)
+    polygon(c(x_values, rev(x_values)), c(ci_lower, rev(ci_upper)), col = adjustcolor(color, alpha.f = 0.1), border = NA)
   }
   
   if (sex_specific) {
-    # Plot for sex-specific parameters
+    # Calculate y-limits for both male and female distributions without plotting
+    ylim_male <- calculate_ylim(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob)
+    ylim_female <- calculate_ylim(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob)
+    
+    # Combine y-limits
+    combined_ylim <- c(min(ylim_male[1], ylim_female[1]), max(ylim_male[2], ylim_female[2]))
+    
+    # Plot for sex-specific parameters with combined y-limits
     if (sex == "Male") {
-      plot_pdf_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue")
+      plot_pdf_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue", add = FALSE, ylim = combined_ylim)
       legend_text <- "Male"
     } else if (sex == "Female") {
-      plot_pdf_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red")
+      plot_pdf_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = FALSE, ylim = combined_ylim)
       legend_text <- "Female"
     } else {
-      plot_pdf_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue")
-      plot_pdf_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = TRUE)
+      plot_pdf_distribution(alphas_male, betas_male, thresholds_male, asymptotes_male, x_values, prob, "blue", add = FALSE, ylim = combined_ylim)
+      plot_pdf_distribution(alphas_female, betas_female, thresholds_female, asymptotes_female, x_values, prob, "red", add = TRUE, ylim = combined_ylim)
       legend_text <- c("Male", "Female")
     }
   } else {
     # Plot for non-sex-specific parameters
-    plot_pdf_distribution(alphas, betas, thresholds, asymptotes, x_values, prob, "green")
+    plot_pdf_distribution(alphas, betas, thresholds, asymptotes, x_values, prob, "green", add = FALSE)
     legend_text <- "Overall"
   }
   
