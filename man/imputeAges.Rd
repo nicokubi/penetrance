@@ -19,9 +19,9 @@ imputeAges(
   alpha = NULL,
   beta = NULL,
   delta = NULL,
-  empirical_density,
   max_age,
-  sex_specific = TRUE
+  sex_specific = TRUE,
+  max_attempts = 100
 )
 }
 \arguments{
@@ -53,12 +53,11 @@ imputeAges(
 
 \item{delta}{Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).}
 
-\item{empirical_density}{A density object or list of density objects containing the empirical density of ages,
-possibly sex-specific. If sex-specific, it should be a list with elements 'male' and 'female'.}
-
 \item{max_age}{Integer, the maximum age considered in the analysis.}
 
 \item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
+
+\item{max_attempts}{Integer, the maximum number of attempts to get a valid age. Default is 100.}
 }
 \value{
 The data frame with imputed ages.

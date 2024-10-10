@@ -32,6 +32,8 @@ penetrance(
   plot_trace = TRUE,
   penetrance_plot = TRUE,
   penetrance_plot_pdf = TRUE,
+  plot_loglikelihood = TRUE,
+  plot_acf = TRUE,
   probCI = 0.95,
   sex_specific = TRUE
 )
@@ -48,7 +50,7 @@ penetrance(
 \item \code{CurAge}: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from \code{1} to \code{94}.
 \item \code{isAff}: A numeric value indicating the affection status of cancer, with \code{1} for diagnosed individuals and \code{0} otherwise. Missing entries are not supported.
 \item \code{Age}: A numeric value indicating the age of cancer diagnosis, encoded as \code{NA} if the individual was not diagnosed. Allowed ages range from \code{1} to \code{94}.
-\item \code{Geno}: A column for germline testing or tumor marker testing results. Positive results should be coded as \code{1}, negative results as \code{0}, and unknown results as \code{NA} or left empty.
+\item \code{geno}: A column for germline testing or tumor marker testing results. Positive results should be coded as \code{1}, negative results as \code{0}, and unknown results as \code{NA} or left empty.
 }}
 
 \item{twins}{A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: \code{twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))}.}
@@ -102,6 +104,10 @@ penetrance(
 \item{penetrance_plot}{Logical, indicating whether to include penetrance plots in the output. Default is TRUE.}
 
 \item{penetrance_plot_pdf}{Logical, indicating whether to include PDF plots in the output. Default is TRUE.}
+
+\item{plot_loglikelihood}{Logical, indicating whether to include log-likelihood plots in the output. Default is TRUE.}
+
+\item{plot_acf}{Logical, indicating whether to include autocorrelation function (ACF) plots for posterior samples. Default is TRUE.}
 
 \item{probCI}{Numeric, probability level for credible intervals in penetrance plots. Must be between 0 and 1. Default is 0.95.}
 

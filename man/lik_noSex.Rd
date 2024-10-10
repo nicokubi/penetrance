@@ -13,7 +13,8 @@ lik_noSex(
   gamma,
   max_age,
   baselineRisk,
-  BaselineNC
+  BaselineNC,
+  af
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ lik_noSex(
 \item{baselineRisk}{Numeric vector, baseline risk for each age.}
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on SEER data or the calculated non-carrier penetrance.}
+
+\item{af}{Numeric, allele frequency of the risk allele in the population.}
 }
 \value{
 Numeric vector, containing likelihood values for unaffected and affected individuals.

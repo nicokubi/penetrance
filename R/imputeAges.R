@@ -284,17 +284,6 @@ drawEmpirical <- function(empirical_density, sex = NA) {
 #'
 #' @return A vector of imputed ages for the individuals specified by na_indices.
 #'
-#' @details This function uses a combination of relationship-based estimation and empirical distribution
-#' to impute ages. For individuals with known relationship to the proband, it estimates the age based on
-#' the degree of relationship and adds some random variation. For others, it draws ages from the provided
-#' empirical density. The function ensures that all imputed ages are within the valid range (1 to max_age).
-#'
-#' @examples
-#' # Assuming 'data', 'na_indices', 'empirical_density', and 'max_age' are properly defined:
-#' imputed_ages <- imputeUnaffectedAges(data, na_indices, empirical_density, max_age = 100)
-#'
-#' @seealso \code{\link{drawEmpirical}}, \code{\link{estimate_age_from_degree}}
-#'
 imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age, sex_specific = TRUE) {
   # Extract necessary columns for faster access
   sex <- data$sex[na_indices]

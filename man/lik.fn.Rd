@@ -17,7 +17,8 @@ lik.fn(
   gamma_female,
   max_age,
   baselineRisk,
-  BaselineNC
+  BaselineNC,
+  af
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ lik.fn(
 \item{baselineRisk}{Numeric matrix, baseline risk for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.}
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on SEER data.}
+
+\item{af}{Numeric, allele frequency of the risk allele in the population.}
 }
 \value{
 Numeric vector, containing penetrance values for unaffected and affected individuals.

@@ -113,6 +113,7 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baselineRisk Numeric matrix, baseline risk for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
+#' @param af Numeric, allele frequency of the risk allele in the population.
 #'
 #' @return Numeric vector, containing penetrance values for unaffected and affected individuals.
 #'
@@ -270,7 +271,6 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
 #' @references
 #' Details about the clipp package and methods can be found in the package documentation.
 #'
-#' @export
 mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, af, BaselineNC, ncores) {
   # Extract parameters
   paras <- unlist(paras)
@@ -328,10 +328,10 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baselineRisk Numeric vector, baseline risk for each age.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data or the calculated non-carrier penetrance.
-#'
+#' @param af Numeric, allele frequency of the risk allele in the population.
+#' 
 #' @return Numeric vector, containing likelihood values for unaffected and affected individuals.
 #'
-#' @export
 lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af) {
   if (is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1) {
     lik.i <- c(1, 1)  # Assuming people aged 0 or 1 years are all unaffected
