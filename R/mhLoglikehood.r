@@ -194,7 +194,7 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
 #' Details about the clipp package and methods can be found in the package documentation.
 #'
 #' @import clipp
-mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data, af, BaselineNC, ncores) {
+mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores) {
   paras <- unlist(paras)
     # Extract parameters
     gamma_male <- paras[1]
@@ -215,23 +215,7 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     alpha_female <- params_female$alpha
     beta_female <- params_female$beta
 
-    # Initialize the model
-    # Here we assume a simple biallelic model where af is the allele frequency of the
-    #  pathogenic variant
-    geno_freq <- c(1 - af, af)
-
-    # The transition matrix represents the probabilities of transitioning between
-    # different genotype states across generations.
-    trans <- matrix(
-        c(
-            1, 0,
-            0.5, 0.5,
-            0.5, 0.5,
-            1 / 3, 2 / 3
-        ),
-        nrow = 4, ncol = 2, byrow = TRUE
-    )
-
+    # Use the baselineRisk vector directly
     baselineRisk <- baseline_data
 
     # Calculate penetrance
@@ -249,7 +233,8 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     if (is.infinite(loglik) && loglik == -Inf) {
         loglik <- -50000
     }
-    return(loglik)
+    # Return both loglik and lik
+    return(list(loglik = loglik, penet = lik))
 }
 
 #' Calculate Log Likelihood without Sex Differentiation
@@ -271,7 +256,7 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
 #' @references
 #' Details about the clipp package and methods can be found in the package documentation.
 #'
-mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, af, BaselineNC, ncores) {
+mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores) {
   # Extract parameters
   paras <- unlist(paras)
   gamma <- paras[1]  # Asymptote
@@ -283,18 +268,6 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
   params <- calculate_weibull_parameters(given_median, given_first_quartile, delta)
   alpha <- params$alpha
   beta <- params$beta
-  
-  # Initialize the model
-  geno_freq <- c(1 - af, af)
-  trans <- matrix(
-    c(
-      1, 0,
-      0.5, 0.5,
-      0.5, 0.5,
-      1 / 3, 2 / 3
-    ),
-    nrow = 4, ncol = 2, byrow = TRUE
-  )
   
   # Use the baselineRisk vector directly
   baselineRisk <- baseline_data
@@ -312,7 +285,8 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
     loglik <- -50000
   }
   
-  return(loglik)
+  # Return both loglik and lik
+  return(list(loglik = loglik, penet = lik))
 }
 
 #' Likelihood Calculation without Sex Differentiation

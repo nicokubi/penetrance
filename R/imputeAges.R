@@ -27,11 +27,21 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,
                        alpha_female = NULL, beta_female = NULL, delta_female = NULL,
                        baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
-                       max_age, sex_specific = TRUE, max_attempts = 100) {
+                       max_age, sex_specific = TRUE, max_attempts = 100,
+                       geno_freq, trans, lik)  {
+  # Change the data frame to include the 'indiv' column and the 'mother' and 'father' columns
+  data$indiv <- paste(data$family, data$individual, sep = "-")
+  data$mother <- paste(data$family, data$mother, sep = "-")
+  data$father <- paste(data$family, data$father, sep = "-") 
+  # Remove the original 'individual', 'mother', and 'father' columns
+  data$individual <- NULL
+
+  # Move the 'indiv' column to the beginning of the dataframe
+  data <- data[, c("indiv", setdiff(names(data), "indiv"))]
+  
   # Extract necessary columns for faster access
   aff <- data$aff[na_indices]
   sex <- data$sex[na_indices]
-  relationship_probs <- as.numeric(data$degree_of_relationship[na_indices])
 
   # Calculate median ages for fallback option
   median_ages <- list(
@@ -58,6 +68,17 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
 
   # Create a vector to store the imputed ages
   imputed_ages <- numeric(length(na_indices))
+
+  # Calculate genotype probabilities for all individuals using the clipp function
+  all_genotype_probs <- lapply(data$indiv, function(target) {
+    genotype_probabilities(target, data, geno_freq, trans, lik)
+  })
+
+  # Extract the second column (relationship probabilities) for each individual
+  relationship_probs <- sapply(all_genotype_probs, function(x) x[2])
+
+    # Select only the relationship probabilities for individuals with NA ages
+    relationship_probs <- relationship_probs[na_indices]
 
   for (idx in seq_along(na_indices)) {
     is_male <- (sex[idx] == 1)
@@ -90,6 +111,18 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
 
   # Assign imputed ages back to the data
   data$age[na_indices] <- imputed_ages
+
+  # Reformat individual, mother, and father columns back to original format
+  data$individual <- sapply(strsplit(data$indiv, "-"), `[`, 2)
+  data$mother <- sapply(strsplit(data$mother, "-"), `[`, 2)
+  data$father <- sapply(strsplit(data$father, "-"), `[`, 2)
+  
+  # Remove the 'indiv' column
+  data$indiv <- NULL
+  
+  # Reorder columns to match original format
+  original_order <- c("family", "individual", "father", "mother", "sex", "aff", "age", "geno", "isProband", "degree_of_relationship")
+  data <- data[, original_order]
 
   return(data)
 }
@@ -198,32 +231,30 @@ calcPedDegree <- function(data) {
 
 #' Calculate Empirical Density for Non-Affected Individuals
 #'
-#' This function calculates the empirical density for ages of non-affected individuals in a dataset.
+#' This function calculates the empirical density for ages of non-affected individuals in a dataset,
+#' differentiating by sex and whether the individual was tested (has a non-NA 'geno' value).
 #'
 #' @param data A data frame containing the data.
 #' @param aff_column Character, the name of the column indicating affection status. Default is "aff".
 #' @param age_column Character, the name of the column indicating ages. Default is "age".
 #' @param sex_column Character, the name of the column indicating sex. Default is "sex".
+#' @param geno_column Character, the name of the column indicating genotype. Default is "geno".
 #' @param n_points Integer, the number of points to use in the density estimation. Default is 10000.
-#' @param sex_specific Logical, indicating whether to calculate separate densities for males and females. Default is TRUE.
 #'
-#' @return A density object or a list of density objects (if sex-specific) representing the empirical density of ages.
+#' @return A list of density objects representing the empirical density of ages for different groups.
 #'
 calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", sex_column = "sex", 
-                                      n_points = 10000, sex_specific = TRUE) {
+                                      geno_column = "geno", n_points = 10000) {
   
-  if (sex_specific) {
-    # Calculate empirical density separately for males and females
-    empirical_density <- list(
-      male = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1)[[age_column]]), n = n_points),
-      female = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2)[[age_column]]), n = n_points)
-    )
-  } else {
-    # Calculate empirical density for the entire dataset (non-sex-specific)
-    non_affected_data <- subset(data, data[[aff_column]] == 0)
-    cleaned_non_affected_ages <- na.omit(non_affected_data[[age_column]])
-    empirical_density <- density(cleaned_non_affected_ages, n = n_points)
-  }
+  # Helper function to check if geno is missing or empty
+  is_geno_missing <- function(x) is.na(x) | x == ""
+  
+  empirical_density <- list(
+    male_tested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & !is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
+    male_untested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
+    female_tested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & !is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
+    female_untested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points)
+  )
   
   return(empirical_density)
 }
@@ -244,28 +275,25 @@ drawBaseline <- function(baseline_data) {
 
 #' Draw Ages Using the Inverse CDF Method from Empirical Density
 #'
-#' This function draws ages using the inverse CDF method from empirical density data.
+#' This function draws ages using the inverse CDF method from empirical density data,
+#' based on sex and whether the individual was tested.
 #'
-#' @param empirical_density A density object or a list of density objects (if sex-specific) containing the empirical density of ages.
-#' @param sex Numeric, the sex of the individual (1 for male, 2 for female). Required if `empirical_density` is a list.
+#' @param empirical_density A list of density objects containing the empirical density of ages for different groups.
+#' @param sex Numeric, the sex of the individual (1 for male, 2 for female).
+#' @param tested Logical, indicating whether the individual was tested (has a non-NA 'geno' value).
 #'
-#' @return A single age value drawn from the empirical density data.
+#' @return A single age value drawn from the appropriate empirical density data.
 #'
-drawEmpirical <- function(empirical_density, sex = NA) {
+drawEmpirical <- function(empirical_density, sex, tested) {
   u <- runif(1)
   
-  # Use the appropriate density based on the sex input
-  if (is.list(empirical_density) && !is.na(sex)) {
-    if (sex == 1) { # Male
-      density_data <- empirical_density$male
-    } else if (sex == 2) { # Female
-      density_data <- empirical_density$female
-    } else {
-      stop("Invalid sex value for sex-specific empirical density.")
-    }
+  # Select the appropriate density based on sex and tested status
+  if (sex == 1) { # Male
+    density_data <- if(tested) empirical_density$male_tested else empirical_density$male_untested
+  } else if (sex == 2) { # Female
+    density_data <- if(tested) empirical_density$female_tested else empirical_density$female_untested
   } else {
-    # Use non-sex-specific density
-    density_data <- empirical_density
+    stop("Invalid sex value.")
   }
   
   age <- approx(cumsum(density_data$y) / sum(density_data$y), density_data$x, xout = u)$y
@@ -273,61 +301,30 @@ drawEmpirical <- function(empirical_density, sex = NA) {
 }
 #' Impute Ages for Unaffected Individuals
 #'
-#' This function imputes ages for unaffected individuals in a dataset based on their relationship
-#' to the proband, sex, and empirical age distribution.
+#' This function imputes ages for unaffected individuals in a dataset based on their sex
+#' and whether they were tested, using empirical age distributions.
 #'
-#' @param data A data frame containing the individual data, including columns for age, sex, proband status, and degree of relationship.
+#' @param data A data frame containing the individual data, including columns for age, sex, and geno.
 #' @param na_indices A vector of indices indicating the rows in the data where ages need to be imputed.
-#' @param empirical_density A density object or a list of density objects (if sex-specific) containing the empirical density of ages.
+#' @param empirical_density A list of density objects containing the empirical density of ages for different groups.
 #' @param max_age Integer, the maximum age considered in the analysis.
-#' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
 #'
-#' @return A vector of imputed ages for the individuals specified by na_indices.
+#' @return The data frame with imputed ages for unaffected individuals.
 #'
-imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age, sex_specific = TRUE) {
+imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age) {
   # Extract necessary columns for faster access
   sex <- data$sex[na_indices]
-  relationship_probs <- as.numeric(data$degree_of_relationship[na_indices])
-
-  # Function to estimate age based on degree of relationship
-  estimate_age_from_degree <- function(proband_age, degree) {
-    age_diff_range <- switch(degree,
-      "0.5" = c(-5, 5), # Siblings, spouses (2nd degree)
-      "0.25" = c(20, 40), # Parents, children (1st degree)
-      "0.125" = c(40, 60), # Grandparents, grandchildren (3rd degree)
-      c(-10, 10) # Default range for other degrees
-    )
-    age_diff <- runif(1, age_diff_range[1], age_diff_range[2])
-    return(proband_age + age_diff)
-  }
-
-  # Identify proband and get proband's age
-  proband_index <- which(data$isProband == 1)[1]
-  proband_age <- data$age[proband_index]
+  tested <- !is.na(data$geno[na_indices])
 
   # Create a vector to store the imputed ages
   imputed_ages <- numeric(length(na_indices))
 
   for (idx in seq_along(na_indices)) {
     is_male <- (sex[idx] == 1)
-    rel_prob <- relationship_probs[idx]
+    is_tested <- tested[idx]
 
-    if (!is.na(rel_prob) && !is.na(proband_age)) {
-      # Use degree of relationship to estimate age
-      estimated_age <- estimate_age_from_degree(proband_age, rel_prob)
-
-      # Add some random variation
-      variation <- rnorm(1, mean = 0, sd = 5 * (1 - rel_prob))
-
-      imputed_age <- round(estimated_age + variation)
-    } else {
-      # If relationship probability or proband age is unknown, use empirical distribution
-      imputed_age <- if (sex_specific) {
-        round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2)))
-      } else {
-        round(drawEmpirical(empirical_density))
-      }
-    }
+    # Draw age from the appropriate empirical distribution
+    imputed_age <- round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2), is_tested))
 
     # Ensure the imputed age is within valid range
     imputed_ages[idx] <- max(1, min(imputed_age, max_age))

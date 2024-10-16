@@ -20,6 +20,7 @@
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
 #' @param var Numeric, the variance for the proposal distribution in the Metropolis-Hastings algorithm.
 #' @param age_imputation Logical, indicates if age imputation should be performed.
+#' @param warm_up Integer, the number of iterations to perform without age imputation when age_imputation = TRUE.
 #' @param remove_proband Logical, indicates if the proband should be removed from the analysis.
 #' @param sex_specific Logical, indicates if the analysis should differentiate by sex.
 #'
@@ -27,15 +28,15 @@
 #'
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
-                    age_imputation, remove_proband, sex_specific) {
+                    age_imputation, warm_up, imp_interval, remove_proband, sex_specific) {
   # Set seed for the chain
   set.seed(seed)
 
   # Calculate empirical age density for affected individuals, depending on sex
   if (sex_specific) {
-    age_density <- calculateEmpiricalDensity(data, aff_column = "aff", age_column = "age", sex_specific = TRUE)
+    age_density <- calculateEmpiricalDensity(data)
   } else {
-    age_density <- calculateEmpiricalDensity(data, aff_column = "aff", age_column = "age", sex_specific = FALSE)
+    age_density <- calculateEmpiricalDensity(data)
   }
 
   # Prepare initial age imputation if enabled
@@ -77,7 +78,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 
       # Impute ages for unaffected individuals with NA ages
       if (length(unaffected_na_indices) > 0) {
-        data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age, sex_specific)
+        data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
       }
 
       # Update na_indices to only include affected individuals
@@ -298,14 +299,35 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   num_rejections <- 0
   cat("Starting Chain", chain_id, "\n")
 
+    # Initialize the model
+    # geno_freq represents the frequency of the risk allele and its complement in the population
+    # af is the frequency of the risk allele.
+    geno_freq <- c(1 - af, af)
+    
+    # trans is a transition matrix that defines the probabilities of allele transmission from parents to offspring
+    # We are assuming that homozygous genotype is not viable
+    # Here, the rows correspond to the 4 possible joint parental genotypes and the two columns correspond to the 
+    # two possible offspring genotypes. Each number is the conditional probability of the offspring genotype, given the parental genotypes. 
+    # The first column corresponds to the wildtype and the second column to the heterozygous carrier (i.e. mutated) for the offspring.
+    trans <- matrix(
+      c(
+        1, 0,   # both parents are wild type
+        0.5, 0.5, # mother is wildtype and father is a heterozygous carrier
+        0.5, 0.5, # father is wildtype and mother is a heterozygous carrier
+        1 / 3, 2 / 3  # both parents are heterozygous carriers
+      ),
+      nrow = 4, ncol = 2, byrow = TRUE
+    )
+
   # Main loop of Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
     if (sex_specific) {
       # Calculate Weibull parameters for male and female
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
       weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
-      # Impute ages at each iteration based on current parameters
-      if (age_imputation) {
+      
+      # Impute ages only after warmup_iterations, if age_imputation is TRUE
+      if (age_imputation && i > warmup_iterations) {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
@@ -318,7 +340,10 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           beta_female = weibull_params_female$beta,
           delta_female = params_current$threshold_female,
           max_age = max_age,
-          sex_specific = TRUE
+          sex_specific = TRUE,
+          geno_freq = geno_freq,
+          trans = trans,
+          lik = loglikelihood_current$penet
         )
       }
       # Current parameter vector for sex-specific model
@@ -363,14 +388,15 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 
       loglikelihood_current <- mhLogLikelihood_clipp(
         params_current, data, twins, max_age,
-        baseline_data, af, BaselineNC, ncores
+        baseline_data, af, geno_freq, trans, BaselineNC, ncores
       )
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
     } else {
       # Non-sex-specific
       weibull_params <- calculate_weibull_parameters(params_current$median, params_current$first_quartile, params_current$threshold)
-      # Impute ages at each iteration based on current parameters
-      if (age_imputation) {
+      
+      # Impute ages only after warmup_iterations, if age_imputation is TRUE
+      if (age_imputation && i > warmup_iterations) {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
@@ -379,7 +405,10 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           beta = weibull_params$beta,
           delta = params_current$threshold,
           max_age = max_age,
-          sex_specific = FALSE
+          sex_specific = FALSE,
+          geno_freq = geno_freq,
+          trans = trans,
+          lik = loglikelihood_current$penet
         )
       }
       # Current parameter vector for non-sex-specific model
@@ -407,13 +436,13 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       )
 
       loglikelihood_current <- mhLogLikelihood_clipp_noSex(
-        params_current, data, twins, max_age, baseline_data, af, BaselineNC, ncores
+        params_current, data, twins, max_age, baseline_data, af, geno_freq, trans,  BaselineNC, ncores
       )
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
     }
 
     # Record the outputs of the evaluation for the current set of parameters
-    out$loglikelihood_current[i] <- loglikelihood_current
+    out$loglikelihood_current[i] <- loglikelihood_current$loglik
     out$logprior_current[i] <- logprior_current
 
     # Initialize valid proposal
@@ -480,15 +509,15 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       if (sex_specific) {
         loglikelihood_proposal <- mhLogLikelihood_clipp(
           params_proposal, data, twins, max_age,
-          baseline_data, af, BaselineNC, ncores
+          baseline_data, af, geno_freq, trans, BaselineNC, ncores
         )
       } else {
         loglikelihood_proposal <- mhLogLikelihood_clipp_noSex(
-          params_proposal, data, twins, max_age, baseline_data, af, BaselineNC, ncores
+          params_proposal, data, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores
         )
       }
       logprior_proposal <- calculate_log_prior(params_proposal, prior_distributions, max_age)
-      log_acceptance_ratio <- (loglikelihood_proposal + logprior_proposal) - (loglikelihood_current + logprior_current)
+      log_acceptance_ratio <- (loglikelihood_proposal$loglik + logprior_proposal) - (loglikelihood_current$loglik + logprior_current)
 
       # Metropolis-Hastings acceptance step
       if (log(runif(1)) < log_acceptance_ratio) {
@@ -497,7 +526,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
         num_rejections <- num_rejections + 1
       }
       # Record
-      out$loglikelihood_proposal[i] <- loglikelihood_proposal
+      out$loglikelihood_proposal[i] <- loglikelihood_proposal$loglik
       out$logprior_proposal[i] <- logprior_proposal
       out$acceptance_ratio[i] <- log_acceptance_ratio
     } else {
