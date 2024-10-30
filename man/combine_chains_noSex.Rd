@@ -11,7 +11,7 @@ combine_chains_noSex(results)
 }
 \value{
 A list with combined results, including samples for median, threshold, first quartile, asymptote values,
-log-likelihoods, and acceptance ratios.
+log-likelihoods, and log-acceptance ratios.
 }
 \description{
 Combines the posterior samples from multiple MCMC chains for non-sex-specific estimations.

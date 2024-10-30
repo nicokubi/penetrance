@@ -11,6 +11,8 @@ mhLogLikelihood_clipp(
   max_age,
   baseline_data,
   af,
+  geno_freq,
+  trans,
   BaselineNC,
   ncores
 )

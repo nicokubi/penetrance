@@ -4,16 +4,19 @@
 \alias{drawEmpirical}
 \title{Draw Ages Using the Inverse CDF Method from Empirical Density}
 \usage{
-drawEmpirical(empirical_density, sex = NA)
+drawEmpirical(empirical_density, sex, tested)
 }
 \arguments{
-\item{empirical_density}{A density object or a list of density objects (if sex-specific) containing the empirical density of ages.}
+\item{empirical_density}{A list of density objects containing the empirical density of ages for different groups.}
 
-\item{sex}{Numeric, the sex of the individual (1 for male, 2 for female). Required if \code{empirical_density} is a list.}
+\item{sex}{Numeric, the sex of the individual (1 for male, 2 for female).}
+
+\item{tested}{Logical, indicating whether the individual was tested (has a non-NA 'geno' value).}
 }
 \value{
-A single age value drawn from the empirical density data.
+A single age value drawn from the appropriate empirical density data.
 }
 \description{
-This function draws ages using the inverse CDF method from empirical density data.
+This function draws ages using the inverse CDF method from empirical density data,
+based on sex and whether the individual was tested.
 }

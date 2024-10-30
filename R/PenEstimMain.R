@@ -28,6 +28,7 @@
 #' @param var Numeric vector, variances for the proposal distribution in the Metropolis-Hastings algorithm. Default is `c(0.1, 0.1, 2, 2, 5, 5, 5, 5)`.
 #' @param burn_in Numeric, the fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).
 #' @param thinning_factor Integer, the factor by which to thin the results. Default is 1 (no thinning).
+#' @param imp_interval Integer, the interval at which age imputation should be performed when age_imputation = TRUE.
 #' @param distribution_data Data for generating prior distributions.
 #' @param af Numeric, allele frequency for the risk allele. Default is 0.0001.
 #' @param max_penetrance Numeric, the maximum penetrance considered for analysis. Default is 1.
@@ -60,12 +61,12 @@ penetrance <- function(pedigree,
                        baseline_data = baseline_data_default,
                        remove_proband = FALSE,
                        age_imputation = FALSE,
-                       warm_up = 100,
                        median_max = TRUE,
                        BaselineNC = TRUE,
                        var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
                        burn_in = 0,
                        thinning_factor = 1,
+                       imp_interval = 100,
                        distribution_data = distribution_data_default,
                        af = 0.0001,
                        max_penetrance = 1,
@@ -186,7 +187,7 @@ penetrance <- function(pedigree,
     "calculate_weibull_parameters", "validate_weibull_parameters", "prior_params",
     "transformDF", "lik.fn", "lik_noSex", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data",
     "calcPedDegree", "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit",
-    "drawBaseline", "calculateNCPen", "drawEmpirical", "warm_up",
+    "drawBaseline", "calculateNCPen", "drawEmpirical", "imp_interval",
     "data", "twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
     "remove_proband", "sex_specific"
   ), envir = environment())
@@ -209,7 +210,7 @@ penetrance <- function(pedigree,
       BaselineNC = BaselineNC,
       var = var,
       age_imputation = age_imputation,
-      warm_up = warm_up,
+      imp_interval = imp_interval,
       remove_proband = remove_proband,
       sex_specific = sex_specific
     )

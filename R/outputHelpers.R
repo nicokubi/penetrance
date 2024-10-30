@@ -17,7 +17,7 @@ combine_chains <- function(results) {
     asymptote_female_results = do.call(c, lapply(results, function(x) x$asymptote_female_samples)),
     loglikelihood_current_results = do.call(c, lapply(results, function(x) x$loglikelihood_current)),
     loglikelihood_proposal_results = do.call(c, lapply(results, function(x) x$loglikelihood_proposal)),
-    acceptance_ratio_results = do.call(c, lapply(results, function(x) x$acceptance_ratio)),
+    log_acceptance_ratio_results = do.call(c, lapply(results, function(x) x$log_acceptance_ratio)),
     median_male_proposals = do.call(c, lapply(results, function(x) x$median_male_proposals)),
     median_female_proposals = do.call(c, lapply(results, function(x) x$median_female_proposals)),
     threshold_male_proposals = do.call(c, lapply(results, function(x) x$threshold_male_proposals)),
@@ -590,7 +590,7 @@ plot_pdf <- function(data, prob, max_age, sex = "NA") {
 #' @param results A list of MCMC chain results, where each element contains posterior samples of parameters.
 #'
 #' @return A list with combined results, including samples for median, threshold, first quartile, asymptote values, 
-#' log-likelihoods, and acceptance ratios.
+#' log-likelihoods, and log-acceptance ratios.
 #' 
 #' @export
 combine_chains_noSex <- function(results) {
@@ -601,7 +601,7 @@ combine_chains_noSex <- function(results) {
     asymptote_results = do.call(c, lapply(results, function(x) x$asymptote_samples)),
     loglikelihood_current_results = do.call(c, lapply(results, function(x) x$loglikelihood_current)),
     loglikelihood_proposal_results = do.call(c, lapply(results, function(x) x$loglikelihood_proposal)),
-    acceptance_ratio_results = do.call(c, lapply(results, function(x) x$acceptance_ratio)),
+    log_acceptance_ratio_results = do.call(c, lapply(results, function(x) x$log_acceptance_ratio)),
     median_proposals = do.call(c, lapply(results, function(x) x$median_proposals)),
     threshold_proposals = do.call(c, lapply(results, function(x) x$threshold_proposals)),
     first_quartile_proposals = do.call(c, lapply(results, function(x) x$first_quartile_proposals)),

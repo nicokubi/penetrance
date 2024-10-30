@@ -14,5 +14,5 @@ The transformed data frame in the format required for clipp.
 }
 \description{
 This function transforms a data frame from the standard format used in PanelPRO
-into the required format which conforms to the requirements of PenEstim (and clipp).
+into the required format which conforms to the requirements of penetrance (and clipp).
 }

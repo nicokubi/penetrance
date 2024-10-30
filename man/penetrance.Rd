@@ -19,6 +19,7 @@ penetrance(
   var = c(0.1, 0.1, 2, 2, 5, 5, 5, 5),
   burn_in = 0,
   thinning_factor = 1,
+  imp_interval = 100,
   distribution_data = distribution_data_default,
   af = 1e-04,
   max_penetrance = 1,
@@ -78,6 +79,8 @@ penetrance(
 \item{burn_in}{Numeric, the fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).}
 
 \item{thinning_factor}{Integer, the factor by which to thin the results. Default is 1 (no thinning).}
+
+\item{imp_interval}{Integer, the interval at which age imputation should be performed when age_imputation = TRUE.}
 
 \item{distribution_data}{Data for generating prior distributions.}
 

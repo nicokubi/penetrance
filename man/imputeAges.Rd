@@ -21,7 +21,10 @@ imputeAges(
   delta = NULL,
   max_age,
   sex_specific = TRUE,
-  max_attempts = 100
+  max_attempts = 100,
+  geno_freq,
+  trans,
+  lik
 )
 }
 \arguments{

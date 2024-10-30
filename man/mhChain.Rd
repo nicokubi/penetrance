@@ -21,6 +21,7 @@ mhChain(
   BaselineNC,
   var,
   age_imputation,
+  imp_interval,
   remove_proband,
   sex_specific
 )
@@ -58,12 +59,14 @@ mhChain(
 
 \item{age_imputation}{Logical, indicates if age imputation should be performed.}
 
+\item{imp_interval}{Integer, the interval at which age imputation should be performed when age_imputation = TRUE.}
+
 \item{remove_proband}{Logical, indicates if the proband should be removed from the analysis.}
 
 \item{sex_specific}{Logical, indicates if the analysis should differentiate by sex.}
 }
 \value{
-A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.
+A list containing samples, log likelihoods, log-acceptance ratio, and rejection rate for each iteration.
 }
 \description{
 Performs a single chain execution in the Metropolis-Hastings algorithm for Bayesian inference,

@@ -9,8 +9,8 @@ calculateEmpiricalDensity(
   aff_column = "aff",
   age_column = "age",
   sex_column = "sex",
-  n_points = 10000,
-  sex_specific = TRUE
+  geno_column = "geno",
+  n_points = 10000
 )
 }
 \arguments{
@@ -22,13 +22,14 @@ calculateEmpiricalDensity(
 
 \item{sex_column}{Character, the name of the column indicating sex. Default is "sex".}
 
-\item{n_points}{Integer, the number of points to use in the density estimation. Default is 10000.}
+\item{geno_column}{Character, the name of the column indicating genotype. Default is "geno".}
 
-\item{sex_specific}{Logical, indicating whether to calculate separate densities for males and females. Default is TRUE.}
+\item{n_points}{Integer, the number of points to use in the density estimation. Default is 10000.}
 }
 \value{
-A density object or a list of density objects (if sex-specific) representing the empirical density of ages.
+A list of density objects representing the empirical density of ages for different groups.
 }
 \description{
-This function calculates the empirical density for ages of non-affected individuals in a dataset.
+This function calculates the empirical density for ages of non-affected individuals in a dataset,
+differentiating by sex and whether the individual was tested (has a non-NA 'geno' value).
 }

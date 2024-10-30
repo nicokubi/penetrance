@@ -1,51 +1,3 @@
-#' Calculate Lifetime Risk of Cancer
-#'
-#' This function calculates the lifetime risk of a specific type of cancer based
-#' on genetic and demographic factors using data in the format of the PanelPRO Database.
-#'
-#' @param cancer_type The type of cancer for which the risk is being calculated.
-#' @param gene The gene of interest for which the risk is being calculated.
-#' @param race The race of the individual.
-#' @param sex The sex of the individual, Female or Male.
-#' @param type The type of penetrance calculation, Net or Crude.
-#' @param db The dataset used for the calculation.
-#'
-#' @return A list containing the cumulative risk (`cumulative_risk`) and the total
-#' probability (`total_prob`) of developing the specified cancer.
-#'
-calculate_lifetime_risk <- function(cancer_type, gene, race, sex, type, db) {
-  # Find the indices for the respective attributes
-  dim_names <- attr(db$Penetrance, "dimnames")
-  gene_index <- which(dim_names$Gene == gene)
-  cancer_index <- which(dim_names$Cancer == cancer_type)
-  race_index <- which(dim_names$Race == race)
-  type_index <- which(dim_names$PenetType == type)
-  
-  cumulative_risk <- list(
-    female = numeric(94),
-    male = numeric(94),
-    joint = numeric(93)
-  )
-  
-  lifetime_risk <- list(
-    female = numeric(94),
-    male = numeric(94),
-    joint = numeric(93)
-  )
-  
-  # Calculate the cumulative risk
-  risk <- db$Penetrance[cancer_index, gene_index, race_index, , , type_index]
-  cumulative_risk$female <- cumsum(risk[1, ])
-  cumulative_risk$male <- cumsum(risk[2, ])
-  cumulative_risk$joint <- cumsum(colMeans(risk))
-  
-  lifetime_risk$female <- sum(risk[1, ])
-  lifetime_risk$male <- sum(risk[2, ])
-  lifetime_risk$joint <- sum(colMeans(risk))
-  
-  return(list(risk = risk, cumulative_risk = cumulative_risk, lifetime_risk = lifetime_risk))
-}
-
 #' Calculate Weibull Parameters
 #'
 #' This function calculates the shape (\code{alpha}) and scale (\code{beta}) parameters
@@ -106,7 +58,7 @@ validate_weibull_parameters <- function(given_first_quartile, given_median, thre
 #' Transform Data Frame
 #'
 #' This function transforms a data frame from the standard format used in PanelPRO
-#' into the required format which conforms to the requirements of PenEstim (and clipp).
+#' into the required format which conforms to the requirements of penetrance (and clipp).
 #'
 #' @param df The input data frame in the usual PanelPRO format.
 #'

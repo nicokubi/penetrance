@@ -4,29 +4,21 @@
 \alias{imputeUnaffectedAges}
 \title{Impute Ages for Unaffected Individuals}
 \usage{
-imputeUnaffectedAges(
-  data,
-  na_indices,
-  empirical_density,
-  max_age,
-  sex_specific = TRUE
-)
+imputeUnaffectedAges(data, na_indices, empirical_density, max_age)
 }
 \arguments{
-\item{data}{A data frame containing the individual data, including columns for age, sex, proband status, and degree of relationship.}
+\item{data}{A data frame containing the individual data, including columns for age, sex, and geno.}
 
 \item{na_indices}{A vector of indices indicating the rows in the data where ages need to be imputed.}
 
-\item{empirical_density}{A density object or a list of density objects (if sex-specific) containing the empirical density of ages.}
+\item{empirical_density}{A list of density objects containing the empirical density of ages for different groups.}
 
 \item{max_age}{Integer, the maximum age considered in the analysis.}
-
-\item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
 }
 \value{
-A vector of imputed ages for the individuals specified by na_indices.
+The data frame with imputed ages for unaffected individuals.
 }
 \description{
-This function imputes ages for unaffected individuals in a dataset based on their relationship
-to the proband, sex, and empirical age distribution.
+This function imputes ages for unaffected individuals in a dataset based on their sex
+and whether they were tested, using empirical age distributions.
 }

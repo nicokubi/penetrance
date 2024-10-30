@@ -37,7 +37,6 @@ dat <- test_fam2
 Then we run the estimation using the default settings. 
 
 ```{r, eval=FALSE}
-
 # Set the random seed
 set.seed(2024)
 
@@ -62,7 +61,6 @@ out_sim <- penetrance(
     prior_params = prior_params, burn_in = 0.1, median_max = TRUE,  
     ageImputation = FALSE, removeProband = FALSE
 )
-
 ```
 
 ## References

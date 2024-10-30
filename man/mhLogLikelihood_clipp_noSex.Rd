@@ -11,6 +11,8 @@ mhLogLikelihood_clipp_noSex(
   max_age,
   baseline_data,
   af,
+  geno_freq,
+  trans,
   BaselineNC,
   ncores
 )

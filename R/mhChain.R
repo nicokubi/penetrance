@@ -20,15 +20,15 @@
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
 #' @param var Numeric, the variance for the proposal distribution in the Metropolis-Hastings algorithm.
 #' @param age_imputation Logical, indicates if age imputation should be performed.
-#' @param warm_up Integer, the number of iterations to perform without age imputation when age_imputation = TRUE.
+#' @param imp_interval Integer, the interval at which age imputation should be performed when age_imputation = TRUE.
 #' @param remove_proband Logical, indicates if the proband should be removed from the analysis.
 #' @param sex_specific Logical, indicates if the analysis should differentiate by sex.
 #'
-#' @return A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.
+#' @return A list containing samples, log likelihoods, log-acceptance ratio, and rejection rate for each iteration.
 #'
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
-                    age_imputation, warm_up, imp_interval, remove_proband, sex_specific) {
+                    age_imputation, imp_interval, remove_proband, sex_specific) {
   # Set seed for the chain
   set.seed(seed)
 
@@ -68,21 +68,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
         original_na_indices[original_na_indices > proband_index] <- original_na_indices[original_na_indices > proband_index] - 1
       }
       na_indices <- original_na_indices
-    }
-  }
-  # Check if age imputation is enabled
-  if (age_imputation) {
-    # Check which of the NA ages are for unaffected individuals
-    if (exists("na_indices")) {
-      unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
-
-      # Impute ages for unaffected individuals with NA ages
-      if (length(unaffected_na_indices) > 0) {
-        data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
-      }
-
-      # Update na_indices to only include affected individuals
-      na_indices <- na_indices[data$aff[na_indices] == 1]
     }
   }
 
@@ -135,10 +120,10 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       )
 
       first_quartile_male <- ifelse(length(data_male_affected$age) > 0,
-        min(quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE), median_male - 1), 40
+        max(min(quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE), median_male - 1), threshold_male + 1), 40
       )
       first_quartile_female <- ifelse(length(data_female_affected$age) > 0,
-        min(quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE), median_female - 1), 40
+        max(min(quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE), median_female - 1), threshold_female + 1), 40
       )
 
       asymptote_male <- runif(1, max(baseline_male_cum), 1)
@@ -223,7 +208,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       loglikelihood_proposal = numeric(n_iter),
       logprior_current = numeric(n_iter),
       logprior_proposal = numeric(n_iter),
-      acceptance_ratio = numeric(n_iter),
+      log_acceptance_ratio = numeric(n_iter),
       rejection_rate = numeric(n_iter),
       C = vector("list", n_iter)
     )
@@ -237,7 +222,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       loglikelihood_proposal = numeric(n_iter),
       logprior_current = numeric(n_iter),
       logprior_proposal = numeric(n_iter),
-      acceptance_ratio = numeric(n_iter),
+      log_acceptance_ratio = numeric(n_iter),
       rejection_rate = numeric(n_iter),
       C = vector("list", n_iter)
     )
@@ -326,8 +311,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
       weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
       
-      # Impute ages only after warmup_iterations, if age_imputation is TRUE
-      if (age_imputation && i > warmup_iterations) {
+      # Impute ages every imp_interval itterations, if age_imputation is TRUE.
+      # For the first imp_interval itterations there is no age imputation.
+      if (age_imputation && i %% imp_interval == 0)  {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
@@ -345,6 +331,14 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           trans = trans,
           lik = loglikelihood_current$penet
         )
+        if (exists("na_indices")) {
+          unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
+
+          # Impute ages for unaffected individuals with NA ages
+          if (length(unaffected_na_indices) > 0) {
+            data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
+          }
+        }
       }
       # Current parameter vector for sex-specific model
       params_vector <- c(
@@ -396,7 +390,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       weibull_params <- calculate_weibull_parameters(params_current$median, params_current$first_quartile, params_current$threshold)
       
       # Impute ages only after warmup_iterations, if age_imputation is TRUE
-      if (age_imputation && i > warmup_iterations) {
+      if (age_imputation && i %% imp_interval == 0) {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
@@ -410,7 +404,16 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           trans = trans,
           lik = loglikelihood_current$penet
         )
+        if (exists("na_indices")) {
+          unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
+
+          # Impute ages for unaffected individuals with NA ages
+          if (length(unaffected_na_indices) > 0) {
+            data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
+          }
+        }
       }
+
       # Current parameter vector for non-sex-specific model
       params_vector <- c(params_current$asymptote, params_current$threshold, params_current$median, params_current$first_quartile)
 
@@ -528,7 +531,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       # Record
       out$loglikelihood_proposal[i] <- loglikelihood_proposal$loglik
       out$logprior_proposal[i] <- logprior_proposal
-      out$acceptance_ratio[i] <- log_acceptance_ratio
+      out$log_acceptance_ratio[i] <- log_acceptance_ratio
     } else {
       # Proposal rejected without calculating log-likelihood
       num_rejections <- num_rejections + 1
