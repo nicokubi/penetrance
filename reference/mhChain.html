@@ -73,6 +73,7 @@ non-sex-specific scenarios.</p>
 <span>  <span class="va">BaselineNC</span>,</span>
 <span>  <span class="va">var</span>,</span>
 <span>  <span class="va">age_imputation</span>,</span>
+<span>  <span class="va">imp_interval</span>,</span>
 <span>  <span class="va">remove_proband</span>,</span>
 <span>  <span class="va">sex_specific</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -146,6 +147,10 @@ non-sex-specific scenarios.</p>
 <dd><p>Logical, indicates if age imputation should be performed.</p></dd>
 
 
+<dt id="arg-imp-interval">imp_interval<a class="anchor" aria-label="anchor" href="#arg-imp-interval"></a></dt>
+<dd><p>Integer, the interval at which age imputation should be performed when age_imputation = TRUE.</p></dd>
+
+
 <dt id="arg-remove-proband">remove_proband<a class="anchor" aria-label="anchor" href="#arg-remove-proband"></a></dt>
 <dd><p>Logical, indicates if the proband should be removed from the analysis.</p></dd>
 
@@ -156,7 +161,7 @@ non-sex-specific scenarios.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list containing samples, log likelihoods, acceptance ratio, and rejection rate for each iteration.</p>
+    <p>A list containing samples, log likelihoods, log-acceptance ratio, and rejection rate for each iteration.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

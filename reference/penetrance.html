@@ -71,6 +71,7 @@ chains and provides various options for analyzing and visualizing the results.</
 <span>  var <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">5</span>, <span class="fl">5</span>, <span class="fl">5</span>, <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  burn_in <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>  thinning_factor <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  imp_interval <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  distribution_data <span class="op">=</span> <span class="va">distribution_data_default</span>,</span>
 <span>  af <span class="op">=</span> <span class="fl">1e-04</span>,</span>
 <span>  max_penetrance <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -159,6 +160,10 @@ chains and provides various options for analyzing and visualizing the results.</
 
 <dt id="arg-thinning-factor">thinning_factor<a class="anchor" aria-label="anchor" href="#arg-thinning-factor"></a></dt>
 <dd><p>Integer, the factor by which to thin the results. Default is 1 (no thinning).</p></dd>
+
+
+<dt id="arg-imp-interval">imp_interval<a class="anchor" aria-label="anchor" href="#arg-imp-interval"></a></dt>
+<dd><p>Integer, the interval at which age imputation should be performed when age_imputation = TRUE.</p></dd>
 
 
 <dt id="arg-distribution-data">distribution_data<a class="anchor" aria-label="anchor" href="#arg-distribution-data"></a></dt>
