@@ -121,18 +121,19 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
                    delta_male, delta_female, gamma_male, gamma_female, max_age,
                    baselineRisk, BaselineNC, af) {
   
-  # Map sex to row index: "Female" is 1st row and "Male" is 2nd row
-  sex_index <- ifelse(data$sex[i] == 2, "Female", "Male")
-  
-  # Select parameters based on individual's sex
-  alpha <- ifelse(data$sex[i] == 1, alpha_male, alpha_female)
-  beta <- ifelse(data$sex[i] == 1, beta_male, beta_female)
-  gamma <- ifelse(data$sex[i] == 1, gamma_male, gamma_female)
-  delta <- ifelse(data$sex[i] == 1, delta_male, delta_female)
-  
-  if (is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1){
-    lik.i <- c(1, 1) # Assuming people aged 0 or 1 years are all unaffected
+  # Check for NA sex or very young age
+  if (is.na(data$sex[i]) || is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1) {
+    lik.i <- c(1, 1) # Disregard these observations
   } else {
+    # Map sex to row index: "Female" is 1st row and "Male" is 2nd row
+    sex_index <- ifelse(data$sex[i] == 2, "Female", "Male")
+    
+    # Select parameters based on individual's sex
+    alpha <- ifelse(data$sex[i] == 1, alpha_male, alpha_female)
+    beta <- ifelse(data$sex[i] == 1, beta_male, beta_female)
+    gamma <- ifelse(data$sex[i] == 1, gamma_male, gamma_female)
+    delta <- ifelse(data$sex[i] == 1, delta_male, delta_female)
+    
     # Ensure age is within the valid range
     age_index <- min(max_age, data$age[i])
     

@@ -59,7 +59,9 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
       }
     }
     # Fallback to median age if max attempts reached
-    if (sex_specific) {
+    if (is.na(is_male)) {
+      return(median_ages$all_affected)
+    } else if (sex_specific) {
       return(if (is_male) median_ages$male_affected else median_ages$female_affected)
     } else {
       return(median_ages$all_affected)
@@ -81,13 +83,21 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     relationship_probs <- relationship_probs[na_indices]
 
   for (idx in seq_along(na_indices)) {
-    is_male <- (sex[idx] == 1)
+    is_male <- if (is.na(sex[idx])) NA else (sex[idx] == 1)
     rel_prob <- relationship_probs[idx]
 
     if (!is.na(rel_prob) && runif(1) < rel_prob) {
       # Weibull distribution for affected individuals
       imputed_ages[idx] <- get_valid_age(function() {
-        if (sex_specific) {
+        if (is.na(is_male)) {
+          # Randomly choose male or female parameters
+          params <- sample(
+            list(
+              list(delta = delta_male, beta = beta_male, alpha = alpha_male),
+              list(delta = delta_female, beta = beta_female, alpha = alpha_female)
+            ), 1)[[1]]
+          round(params$delta + params$beta * (-log(1 - runif(1)))^(1 / params$alpha))
+        } else if (sex_specific) {
           if (is_male) {
             round(delta_male + beta_male * (-log(1 - runif(1)))^(1 / alpha_male))
           } else {
@@ -100,7 +110,11 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     } else {
       # Baseline for affected if not using Weibull
       imputed_ages[idx] <- get_valid_age(function() {
-        if (sex_specific) {
+        if (is.na(is_male)) {
+          # Randomly choose male or female baseline
+          chosen_baseline <- sample(list(baseline_male, baseline_female), 1)[[1]]
+          round(drawBaseline(chosen_baseline))
+        } else if (sex_specific) {
           if (is_male) round(drawBaseline(baseline_male)) else round(drawBaseline(baseline_female))
         } else {
           round(drawBaseline(baseline))
@@ -140,93 +154,6 @@ imputeAgesInit <- function(data, threshold, max_age) {
   na_indices <- which(is.na(data$age))
   data$age[na_indices] <- runif(length(na_indices), threshold, max_age)
   return(list(data = data, na_indices = na_indices))
-}
-
-#' Calculate Degree of Relationship in Pedigree
-#'
-#' This function calculates the degree of relationship for individuals in a dataset based on their pedigree.
-#'
-#' @param data A data frame containing the data with columns 'individual', 'father', 'mother', 'sex', 'aff', 'family', and 'isProband'.
-#' @return The data frame with an additional column 'degree_of_relationship' indicating the degree of relationship for each individual.
-#' 
-calcPedDegree <- function(data) {
-  # Create a copy of the data to avoid modifying the original data directly
-  data_copy <- data
-  
-  # Replace 0 with NA in the mother and father columns in the copy
-  data_copy$mother[data_copy$mother == 0] <- NA
-  data_copy$father[data_copy$father == 0] <- NA
-  
-  # Ensure both parents are NA if one is missing
-  data_copy$father[is.na(data_copy$father) != is.na(data_copy$mother)] <- NA
-  data_copy$mother[is.na(data_copy$father) != is.na(data_copy$mother)] <- NA
-  
-  # Create the pedigree object
-  ped <- pedigree(
-    id = data_copy$individual,
-    dadid = data_copy$father,
-    momid = data_copy$mother,
-    sex = data_copy$sex,
-    affected = data_copy$aff,
-    famid = data_copy$family
-  )
-  
-  # Calculate the kinship matrix
-  kin_matrix <- kinship(ped)
-  
-  # Function to calculate the degree of relationship
-  calculate_degree <- function(proband_id, family_kin_matrix) {
-    degrees <- rep(NA, nrow(family_kin_matrix))
-    names(degrees) <- rownames(family_kin_matrix)
-    for (i in 1:nrow(family_kin_matrix)) {
-      if (i == proband_id) {
-        degrees[i] <- 0
-      } else {
-        kin_value <- family_kin_matrix[proband_id, i]
-        degrees[i] <- kin_value * 2
-      }
-    }
-    return(degrees)
-  }
-  
-  # Initialize a column for degrees of relationship in the copy
-  data_copy$degree_of_relationship <- NA
-  
-  # Iterate through each family to calculate the degree of relationship
-  families <- unique(data_copy$family)
-  
-  for (fam in families) {
-    family_data <- data_copy[data_copy$family == fam, ]
-    proband_actual_id <- family_data$individual[family_data$isProband == 1 & !is.na(family_data$isProband)]
-    
-    if (length(proband_actual_id) == 1) {
-      # Subset the kinship matrix for the current family
-      family_ids <- family_data$individual
-      family_kin_matrix <- kin_matrix[family_ids, family_ids]
-      
-      if (!is.null(nrow(family_kin_matrix))) {
-        # Find the row index of the proband in the family kinship matrix
-        proband_index <- which(family_ids == proband_actual_id)
-        
-        # Calculate degrees of relationship for this family
-        degrees_of_relationship <- calculate_degree(proband_index, family_kin_matrix)
-        
-        # Update the copy of the main data frame
-        data_copy$degree_of_relationship[data_copy$family == fam] <- degrees_of_relationship
-      } else {
-        # If the kinship matrix is invalid, set the degree_of_relationship to NA
-        data_copy$degree_of_relationship[data_copy$family == fam] <- NA
-      }
-    } else {
-      # If no unique proband is found, set the degree_of_relationship to NA
-      data_copy$degree_of_relationship[data_copy$family == fam] <- NA
-    }
-  }
-  
-  # Add the new column to the original data
-  data$degree_of_relationship <- data_copy$degree_of_relationship
-  
-  return(data)
 }
 
 #' Calculate Empirical Density for Non-Affected Individuals
@@ -288,12 +215,18 @@ drawEmpirical <- function(empirical_density, sex, tested) {
   u <- runif(1)
   
   # Select the appropriate density based on sex and tested status
-  if (sex == 1) { # Male
+  if (is.na(sex)) {
+    # Use combined male/female density or pick randomly between male/female
+    density_data <- if(tested) 
+        sample(list(empirical_density$male_tested, empirical_density$female_tested), 1)[[1]]
+    else 
+        sample(list(empirical_density$male_untested, empirical_density$female_untested), 1)[[1]]
+  } else if (sex == 1) { # Male
     density_data <- if(tested) empirical_density$male_tested else empirical_density$male_untested
   } else if (sex == 2) { # Female
     density_data <- if(tested) empirical_density$female_tested else empirical_density$female_untested
   } else {
-    stop("Invalid sex value.")
+    stop("Invalid sex value: must be 1, 2, or NA")
   }
   
   age <- approx(cumsum(density_data$y) / sum(density_data$y), density_data$x, xout = u)$y
@@ -320,11 +253,11 @@ imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age) {
   imputed_ages <- numeric(length(na_indices))
 
   for (idx in seq_along(na_indices)) {
-    is_male <- (sex[idx] == 1)
+    # Pass sex value directly (can be 1, 2, or NA)
     is_tested <- tested[idx]
 
     # Draw age from the appropriate empirical distribution
-    imputed_age <- round(drawEmpirical(empirical_density, ifelse(is_male, 1, 2), is_tested))
+    imputed_age <- round(drawEmpirical(empirical_density, sex[idx], is_tested))
 
     # Ensure the imputed age is within valid range
     imputed_ages[idx] <- max(1, min(imputed_age, max_age))

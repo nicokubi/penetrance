@@ -41,7 +41,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 
   # Prepare initial age imputation if enabled
   if (age_imputation) {
-    data <- calcPedDegree(data)
     # Initialize ages
     threshold <- prior_distributions$prior_params$threshold$min
     init_result <- imputeAgesInit(data, threshold, max_age)

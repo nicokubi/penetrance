@@ -7,7 +7,7 @@
 #' @param pedigree A data frame containing the pedigree data in the required format. It should include the following columns:
 #'   - `PedigreeID`: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
 #'   - `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
-#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. Missing entries are not currently supported.
+#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. 
 #'   - `MotherID`: A numeric value representing the unique identifier for an individual's mother.
 #'   - `FatherID`: A numeric value representing the unique identifier for an individual's father.
 #'   - `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
@@ -97,16 +97,11 @@ penetrance <- function(pedigree,
     }
 
     # Check for NA values in critical columns
-    critical_columns <- c("PedigreeID", "ID", "Sex", "isAff")
+    critical_columns <- c("PedigreeID", "ID", "isAff")
     for (col in critical_columns) {
       if (any(is.na(pedigree[[i]][[col]]))) {
         stop(paste("Error: NA values found in the", col, "column of pedigree", i, ". Please check your data."))
       }
-    }
-
-    # Check for valid values in specific columns
-    if (!all(pedigree[[i]]$Sex %in% c(0, 1))) {
-      stop(paste("Error: 'Sex' column in pedigree", i, "should only contain 0 (female) or 1 (male)."))
     }
 
     if (!all(pedigree[[i]]$isAff %in% c(0, 1))) {
