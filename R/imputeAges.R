@@ -33,7 +33,7 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   data$indiv <- paste(data$family, data$individual, sep = "-")
   data$mother <- paste(data$family, data$mother, sep = "-")
   data$father <- paste(data$family, data$father, sep = "-") 
-  # Remove the original 'individual', 'mother', and 'father' columns
+  # Remove the original 'individual' column
   data$individual <- NULL
 
   # Move the 'indiv' column to the beginning of the dataframe
@@ -71,16 +71,44 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   # Create a vector to store the imputed ages
   imputed_ages <- numeric(length(na_indices))
 
-  # Calculate genotype probabilities for all individuals using the clipp function
-  all_genotype_probs <- lapply(data$indiv, function(target) {
-    genotype_probabilities(target, data, geno_freq, trans, lik)
+  # Calculate genotype probabilities for individuals with NA ages
+  all_genotype_probs <- lapply(seq_along(na_indices), function(i) {
+    idx <- na_indices[i]
+    target <- data$indiv[idx]
+    
+    # Get family ID from target
+    family_id <- strsplit(target, "-")[[1]][1]
+    
+    # Subset data for this family only
+    family_data <- data[data$family == family_id, ]
+    
+    result <- tryCatch({
+      # Pass the full lik matrix but use the correct index
+      probs <- genotype_probabilities(target, family_data, geno_freq, trans, lik[idx, , drop = FALSE])
+      
+      if (is.null(probs) || length(probs) == 0 || all(is.na(probs))) {
+        warning(sprintf("Invalid probability calculation for %s", target))
+        return(c(NA, NA))
+      }
+      
+      probs
+      
+    }, error = function(e) {
+      warning(sprintf("Error calculating genotype probabilities for %s: %s", target, e$message))
+      return(c(NA, NA))
+    })
+    
+    return(result)
   })
 
-  # Extract the second column (relationship probabilities) for each individual
+  # Extract the second column (relationship probabilities)
   relationship_probs <- sapply(all_genotype_probs, function(x) x[2])
 
-    # Select only the relationship probabilities for individuals with NA ages
-    relationship_probs <- relationship_probs[na_indices]
+  # Handle cases where all probabilities are NA
+  if (all(is.na(relationship_probs))) {
+    warning("All genotype probability calculations failed, using baseline probabilities")
+    relationship_probs <- rep(0, length(relationship_probs))
+  }
 
   for (idx in seq_along(na_indices)) {
     is_male <- if (is.na(sex[idx])) NA else (sex[idx] == 1)
@@ -135,7 +163,7 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   data$indiv <- NULL
   
   # Reorder columns to match original format
-  original_order <- c("family", "individual", "father", "mother", "sex", "aff", "age", "geno", "isProband", "degree_of_relationship")
+  original_order <- c("family", "individual", "father", "mother", "sex", "aff", "age", "geno", "isProband")
   data <- data[, original_order]
 
   return(data)
@@ -176,12 +204,65 @@ calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "ag
   # Helper function to check if geno is missing or empty
   is_geno_missing <- function(x) is.na(x) | x == ""
   
+  # Helper function to safely calculate density
+  density <- function(x, n) {
+    if (length(x) < 2) {
+      # Return NULL if not enough data points
+      return(NULL)
+    }
+    tryCatch({
+      density(na.omit(x), n = n)
+    }, error = function(e) {
+      # Return NULL if density calculation fails
+      return(NULL)
+    })
+  }
+  
+  # Calculate densities with error handling
   empirical_density <- list(
-    male_tested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & !is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
-    male_untested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
-    female_tested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & !is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points),
-    female_untested = density(na.omit(subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & is_geno_missing(data[[geno_column]]))[[age_column]]), n = n_points)
+    male_tested = density(
+      subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & !is_geno_missing(data[[geno_column]]))[[age_column]], 
+      n_points
+    ),
+    male_untested = density(
+      subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 1 & is_geno_missing(data[[geno_column]]))[[age_column]], 
+      n_points
+    ),
+    female_tested = density(
+      subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & !is_geno_missing(data[[geno_column]]))[[age_column]], 
+      n_points
+    ),
+    female_untested = density(
+      subset(data, data[[aff_column]] == 0 & data[[sex_column]] == 2 & is_geno_missing(data[[geno_column]]))[[age_column]], 
+      n_points
+    )
   )
+  
+  # Check if any densities are NULL and use alternatives
+  if (is.null(empirical_density$male_tested)) {
+    empirical_density$male_tested <- empirical_density$male_untested
+  }
+  if (is.null(empirical_density$male_untested)) {
+    empirical_density$male_untested <- empirical_density$male_tested
+  }
+  if (is.null(empirical_density$female_tested)) {
+    empirical_density$female_tested <- empirical_density$female_untested
+  }
+  if (is.null(empirical_density$female_untested)) {
+    empirical_density$female_untested <- empirical_density$female_tested
+  }
+  
+  # If still NULL, create a uniform density as fallback
+  if (is.null(empirical_density$male_tested) && is.null(empirical_density$male_untested)) {
+    x <- seq(1, 100, length.out = n_points)
+    y <- rep(1/length(x), length(x))
+    empirical_density$male_tested <- empirical_density$male_untested <- list(x = x, y = y)
+  }
+  if (is.null(empirical_density$female_tested) && is.null(empirical_density$female_untested)) {
+    x <- seq(1, 100, length.out = n_points)
+    y <- rep(1/length(x), length(x))
+    empirical_density$female_tested <- empirical_density$female_untested <- list(x = x, y = y)
+  }
   
   return(empirical_density)
 }

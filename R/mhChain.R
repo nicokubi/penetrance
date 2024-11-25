@@ -310,9 +310,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
       weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
       
-      # Impute ages every imp_interval itterations, if age_imputation is TRUE.
-      # For the first imp_interval itterations there is no age imputation.
-      if (age_imputation && i %% imp_interval == 0)  {
+      # Impute ages every imp_interval iterations, if age_imputation is TRUE.
+      # Skip the first iteration since loglikelihood_current isn't available yet
+      if (age_imputation && i > 1 && i %% imp_interval == 0)  {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
