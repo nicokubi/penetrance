@@ -32,19 +32,15 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   # Set seed for the chain
   set.seed(seed)
 
-  # Calculate empirical age density for affected individuals, depending on sex
-  if (sex_specific) {
-    age_density <- calculateEmpiricalDensity(data)
-  } else {
-    age_density <- calculateEmpiricalDensity(data)
-  }
-
   # Prepare initial age imputation if enabled
   if (age_imputation) {
     # Initialize ages
     threshold <- prior_distributions$prior_params$threshold$min
+    age_density <- calculateEmpiricalDensity(data)
     init_result <- imputeAgesInit(data, threshold, max_age)
     data <- init_result$data
+
+    # Extract the NA indices
     na_indices <- init_result$na_indices
   } else {
     # If age imputation is disabled, set unknown ages to 1 so they are disregarded in likelihood calculation
@@ -330,14 +326,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           trans = trans,
           lik = loglikelihood_current$penet
         )
-        if (exists("na_indices")) {
-          unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
-
-          # Impute ages for unaffected individuals with NA ages
-          if (length(unaffected_na_indices) > 0) {
-            data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
-          }
-        }
       }
       # Current parameter vector for sex-specific model
       params_vector <- c(
@@ -403,14 +391,6 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
           trans = trans,
           lik = loglikelihood_current$penet
         )
-        if (exists("na_indices")) {
-          unaffected_na_indices <- na_indices[data$aff[na_indices] == 0]
-
-          # Impute ages for unaffected individuals with NA ages
-          if (length(unaffected_na_indices) > 0) {
-            data <- imputeUnaffectedAges(data, unaffected_na_indices, age_density, max_age)
-          }
-        }
       }
 
       # Current parameter vector for non-sex-specific model

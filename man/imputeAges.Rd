@@ -61,6 +61,12 @@ imputeAges(
 \item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
 
 \item{max_attempts}{Integer, the maximum number of attempts to get a valid age. Default is 100.}
+
+\item{geno_freq}{A numeric vector representing genotype frequencies.}
+
+\item{trans}{A matrix or data frame representing transmission probabilities.}
+
+\item{lik}{A likelihood matrix returned by the mhloglikelihood_clipp function, used in genotype probability calculations.}
 }
 \value{
 The data frame with imputed ages.

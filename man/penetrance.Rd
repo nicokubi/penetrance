@@ -44,7 +44,7 @@ penetrance(
 \itemize{
 \item \code{PedigreeID}: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
 \item \code{ID}: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
-\item \code{Sex}: A numeric value where \code{0} indicates female and \code{1} indicates male. Missing entries are not currently supported.
+\item \code{Sex}: A numeric value where \code{0} indicates female and \code{1} indicates male.
 \item \code{MotherID}: A numeric value representing the unique identifier for an individual's mother.
 \item \code{FatherID}: A numeric value representing the unique identifier for an individual's father.
 \item \code{isProband}: A numeric value where \code{1} indicates the individual is a proband and \code{0} otherwise.
