@@ -20,6 +20,9 @@
 #' @param max_age Integer, the maximum age considered in the analysis.
 #' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
 #' @param max_attempts Integer, the maximum number of attempts to get a valid age. Default is 100.
+#' @param geno_freq A numeric vector representing genotype frequencies.
+#' @param trans A matrix or data frame representing transmission probabilities.
+#' @param lik A likelihood matrix used in genotype probability calculations.
 #'
 #' @return The data frame with imputed ages.
 #'
@@ -29,6 +32,14 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
                        baseline = NULL, alpha = NULL, beta = NULL, delta = NULL,
                        max_age, sex_specific = TRUE, max_attempts = 100,
                        geno_freq, trans, lik)  {
+  
+  # At the start of the function, store original IDs
+  original_ids <- list(
+    individual = data$individual,
+    mother = data$mother,
+    father = data$father
+  )
+
   # Change the data frame to include the 'indiv' column and the 'mother' and 'father' columns
   data$indiv <- paste(data$family, data$individual, sep = "-")
   data$mother <- paste(data$family, data$mother, sep = "-")
@@ -76,15 +87,9 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
     idx <- na_indices[i]
     target <- data$indiv[idx]
     
-    # Get family ID from target
-    family_id <- strsplit(target, "-")[[1]][1]
-    
-    # Subset data for this family only
-    family_data <- data[data$family == family_id, ]
-    
     result <- tryCatch({
       # Pass the full lik matrix but use the correct index
-      probs <- genotype_probabilities(target, family_data, geno_freq, trans, lik[idx, , drop = FALSE])
+      probs <- genotype_probabilities(target, data, geno_freq, trans, lik)
       
       if (is.null(probs) || length(probs) == 0 || all(is.na(probs))) {
         warning(sprintf("Invalid probability calculation for %s", target))
@@ -153,11 +158,11 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
 
   # Assign imputed ages back to the data
   data$age[na_indices] <- imputed_ages
-
+  
   # Reformat individual, mother, and father columns back to original format
-  data$individual <- sapply(strsplit(data$indiv, "-"), `[`, 2)
-  data$mother <- sapply(strsplit(data$mother, "-"), `[`, 2)
-  data$father <- sapply(strsplit(data$father, "-"), `[`, 2)
+  data$individual <- original_ids$individual
+  data$mother <- original_ids$mother
+  data$father <- original_ids$father
   
   # Remove the 'indiv' column
   data$indiv <- NULL
