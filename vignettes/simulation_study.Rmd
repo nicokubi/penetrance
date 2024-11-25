@@ -77,7 +77,7 @@ The families were simulated using the PedUtils Rpackage.
 
 ```{r}
 
-dat <- test_fam1
+dat <- simulated_families
 
 ```
   

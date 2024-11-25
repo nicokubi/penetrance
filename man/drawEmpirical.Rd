@@ -4,7 +4,7 @@
 \alias{drawEmpirical}
 \title{Draw Ages Using the Inverse CDF Method from Empirical Density}
 \usage{
-drawEmpirical(empirical_density, sex, tested)
+drawEmpirical(empirical_density, sex, tested, sex_specific = TRUE)
 }
 \arguments{
 \item{empirical_density}{A list of density objects containing the empirical density of ages for different groups.}

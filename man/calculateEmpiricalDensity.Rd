@@ -10,7 +10,8 @@ calculateEmpiricalDensity(
   age_column = "age",
   sex_column = "sex",
   geno_column = "geno",
-  n_points = 10000
+  n_points = 10000,
+  sex_specific = TRUE
 )
 }
 \arguments{

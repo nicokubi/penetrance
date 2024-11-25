@@ -1,7 +1,7 @@
 #' Processed Family Data
 #'
 #' A dataset containing processed information about the first simulated 130 families.
-#' These families are referenced in the vigniette simulation_study.Rmd
+#' These families are referenced in the vigniette simulation_study.Rmd and using_penetrance.Rmd
 #' The user must specify the `pedigree` argument as a data frame which contains the
 #' family data (see `test_fam`). The family data must be in the correct format with the following columns:
 #' 
@@ -19,7 +19,7 @@
 #' 
 #' @format A list of processed family data.
 #' @source Generated for package example
-"test_fam1"
+"simulated_families"
 
 #' Processed Family Data
 #'
