@@ -73,23 +73,42 @@ family data (see <code>test_fam</code>). The family data must be in the correct 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
-<ul><li><p><code>ID</code>A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></li>
-<li><p><code>Sex</code>A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</p></li>
-<li><p><code>MotherID</code>A numeric value representing the unique identifier for an individual's mother.</p></li>
-<li><p><code>FatherID</code>A numeric value representing the unique identifier for an individual's father.</p></li>
-<li><p><code>isProband</code>A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</p></li>
-<li><p><code>CurAge</code>A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
-<li><p><code>isAff</code>A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</p></li>
-<li><p><code>Age</code>A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</p></li>
-<li><p><code>Geno</code>A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</p></li>
-</ul></div>
+<dl><dt><code>ID</code></dt>
+<dd><p>A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></dd>
+
+<dt><code>Sex</code></dt>
+<dd><p>A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Missing entries are not currently supported.</p></dd>
+
+<dt><code>MotherID</code></dt>
+<dd><p>A numeric value representing the unique identifier for an individual's mother.</p></dd>
+
+<dt><code>FatherID</code></dt>
+<dd><p>A numeric value representing the unique identifier for an individual's father.</p></dd>
+
+<dt><code>isProband</code></dt>
+<dd><p>A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</p></dd>
+
+<dt><code>CurAge</code></dt>
+<dd><p>A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>.</p></dd>
+
+<dt><code>isAff</code></dt>
+<dd><p>A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals and <code>0</code> otherwise. Missing entries are not supported.</p></dd>
+
+<dt><code>Age</code></dt>
+<dd><p>A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>.</p></dd>
+
+<dt><code>Geno</code></dt>
+<dd><p>A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</p></dd>
+
+
+</dl></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

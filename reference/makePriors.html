@@ -59,7 +59,6 @@ The distributions are calculated for various statistical metrics such as asympto
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">makePriors</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
 <span>  <span class="va">sample_size</span>,</span>
-<span>  <span class="va">cancer</span>,</span>
 <span>  <span class="va">ratio</span>,</span>
 <span>  <span class="va">prior_params</span>,</span>
 <span>  <span class="va">risk_proportion</span>,</span>
@@ -77,10 +76,6 @@ The distributions are calculated for various statistical metrics such as asympto
 
 <dt id="arg-sample-size">sample_size<a class="anchor" aria-label="anchor" href="#arg-sample-size"></a></dt>
 <dd><p>Numeric, the total sample size used for risk proportion calculations.</p></dd>
-
-
-<dt id="arg-cancer">cancer<a class="anchor" aria-label="anchor" href="#arg-cancer"></a></dt>
-<dd><p>Character string, specifying the type of cancer, used in OR/RR ratio calculations.</p></dd>
 
 
 <dt id="arg-ratio">ratio<a class="anchor" aria-label="anchor" href="#arg-ratio"></a></dt>
@@ -120,7 +115,7 @@ The function handles various settings: using default parameters, applying user i
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">
