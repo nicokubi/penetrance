@@ -2,7 +2,7 @@
 % Please edit documentation in R/imputeAges.R
 \name{imputeAges}
 \alias{imputeAges}
-\title{Impute Ages Based on Affection Status and Sex}
+\title{Impute Missing Ages in Family-Based Data}
 \usage{
 imputeAges(
   data,
@@ -28,50 +28,40 @@ imputeAges(
 )
 }
 \arguments{
-\item{data}{A data frame containing the individual data, including columns for age, sex, and affection status.}
+\item{data}{A data frame containing family-based data with columns: family, individual,
+father, mother, sex, aff, age, geno, and isProband}
 
-\item{na_indices}{A vector of indices indicating the rows in the data where ages need to be imputed.}
+\item{na_indices}{Vector of indices where ages need to be imputed}
 
-\item{baseline_male}{A data frame containing baseline data for males, with columns 'cum_prob' and 'age'.}
+\item{baseline_male, baseline_female}{Data frames containing baseline age distributions for males/females}
 
-\item{baseline_female}{A data frame containing baseline data for females, with columns 'cum_prob' and 'age'.}
+\item{alpha_male, alpha_female}{Shape parameters for male/female Weibull distributions}
 
-\item{alpha_male}{Numeric, shape parameter for the Weibull distribution for males.}
+\item{beta_male, beta_female}{Scale parameters for male/female Weibull distributions}
 
-\item{beta_male}{Numeric, scale parameter for the Weibull distribution for males.}
+\item{delta_male, delta_female}{Location parameters for male/female Weibull distributions}
 
-\item{delta_male}{Numeric, location parameter for the Weibull distribution for males.}
+\item{baseline}{Data frame containing overall baseline age distribution (non-sex-specific)}
 
-\item{alpha_female}{Numeric, shape parameter for the Weibull distribution for females.}
+\item{alpha, beta, delta}{Overall Weibull parameters (non-sex-specific)}
 
-\item{beta_female}{Numeric, scale parameter for the Weibull distribution for females.}
+\item{max_age}{Maximum allowable age}
 
-\item{delta_female}{Numeric, location parameter for the Weibull distribution for females.}
+\item{sex_specific}{Logical; whether to use sex-specific parameters}
 
-\item{baseline}{A data frame containing baseline data (used for non-sex-specific analysis) with columns 'cum_prob' and 'age'.}
+\item{max_attempts}{Maximum number of attempts for generating valid ages}
 
-\item{alpha}{Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).}
+\item{geno_freq}{Vector of genotype frequencies}
 
-\item{beta}{Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).}
+\item{trans}{Transmission probabilities}
 
-\item{delta}{Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).}
-
-\item{max_age}{Integer, the maximum age considered in the analysis.}
-
-\item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
-
-\item{max_attempts}{Integer, the maximum number of attempts to get a valid age. Default is 100.}
-
-\item{geno_freq}{A numeric vector representing genotype frequencies.}
-
-\item{trans}{A matrix or data frame representing transmission probabilities.}
-
-\item{lik}{A likelihood matrix returned by the mhloglikelihood_clipp function, used in genotype probability calculations.}
+\item{lik}{Likelihood matrix}
 }
 \value{
-The data frame with imputed ages.
+A data frame with imputed ages
 }
 \description{
-This function imputes ages for individuals in a dataset based on their affection
-status and sex using either Weibull, baseline, or empirical distribution.
+Imputes missing ages in family-based data using a combination of Weibull distributions
+for affected individuals and empirical distributions for unaffected individuals.
+The function can perform both sex-specific and non-sex-specific imputations.
 }

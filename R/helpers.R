@@ -63,7 +63,7 @@ validate_weibull_parameters <- function(given_first_quartile, given_median, thre
 #' @param df The input data frame in the usual PanelPRO format.
 #'
 #' @return The transformed data frame in the format required for clipp.
-#'
+#' @export
 transformDF <- function(df) {
   # Rename and transform columns
   df$individual <- df$ID

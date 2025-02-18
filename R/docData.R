@@ -5,7 +5,7 @@
 #' The user must specify the `pedigree` argument as a data frame which contains the
 #' family data (see `test_fam`). The family data must be in the correct format with the following columns:
 #' 
-#' \itemize{
+#' \describe{
 #'   \item{\code{ID}}{A numeric value representing the unique identifier for each individual. There should be no duplicated entries.}
 #'   \item{\code{Sex}}{A numeric value where \code{0} indicates female and \code{1} indicates male. Missing entries are not currently supported.}
 #'   \item{\code{MotherID}}{A numeric value representing the unique identifier for an individual's mother.}
@@ -28,7 +28,7 @@
 #' The user must specify the `pedigree` argument as a data frame which contains the
 #' family data (see `test_fam`). The family data must be in the correct format with the following columns:
 #' 
-#' \itemize{
+#' \describe{
 #'   \item{\code{ID}}{A numeric value representing the unique identifier for each individual. There should be no duplicated entries.}
 #'   \item{\code{Sex}}{A numeric value where \code{0} indicates female and \code{1} indicates male. Missing entries are not currently supported.}
 #'   \item{\code{MotherID}}{A numeric value representing the unique identifier for an individual's mother.}

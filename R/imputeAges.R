@@ -1,31 +1,28 @@
-#' Impute Ages Based on Affection Status and Sex
+#' Impute Missing Ages in Family-Based Data
 #'
-#' This function imputes ages for individuals in a dataset based on their affection
-#' status and sex using either Weibull, baseline, or empirical distribution.
+#' @description
+#' Imputes missing ages in family-based data using a combination of Weibull distributions
+#' for affected individuals and empirical distributions for unaffected individuals.
+#' The function can perform both sex-specific and non-sex-specific imputations.
 #'
-#' @param data A data frame containing the individual data, including columns for age, sex, and affection status.
-#' @param na_indices A vector of indices indicating the rows in the data where ages need to be imputed.
-#' @param baseline_male A data frame containing baseline data for males, with columns 'cum_prob' and 'age'.
-#' @param baseline_female A data frame containing baseline data for females, with columns 'cum_prob' and 'age'.
-#' @param alpha_male Numeric, shape parameter for the Weibull distribution for males.
-#' @param beta_male Numeric, scale parameter for the Weibull distribution for males.
-#' @param delta_male Numeric, location parameter for the Weibull distribution for males.
-#' @param alpha_female Numeric, shape parameter for the Weibull distribution for females.
-#' @param beta_female Numeric, scale parameter for the Weibull distribution for females.
-#' @param delta_female Numeric, location parameter for the Weibull distribution for females.
-#' @param baseline A data frame containing baseline data (used for non-sex-specific analysis) with columns 'cum_prob' and 'age'.
-#' @param alpha Numeric, shape parameter for the Weibull distribution (used for non-sex-specific analysis).
-#' @param beta Numeric, scale parameter for the Weibull distribution (used for non-sex-specific analysis).
-#' @param delta Numeric, location parameter for the Weibull distribution (used for non-sex-specific analysis).
-#' @param max_age Integer, the maximum age considered in the analysis.
-#' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
-#' @param max_attempts Integer, the maximum number of attempts to get a valid age. Default is 100.
-#' @param geno_freq A numeric vector representing genotype frequencies.
-#' @param trans A matrix or data frame representing transmission probabilities.
-#' @param lik A likelihood matrix returned by the mhloglikelihood_clipp function, used in genotype probability calculations.
+#' @param data A data frame containing family-based data with columns: family, individual,
+#'   father, mother, sex, aff, age, geno, and isProband
+#' @param na_indices Vector of indices where ages need to be imputed
+#' @param baseline_male,baseline_female Data frames containing baseline age distributions for males/females
+#' @param alpha_male,alpha_female Shape parameters for male/female Weibull distributions
+#' @param beta_male,beta_female Scale parameters for male/female Weibull distributions
+#' @param delta_male,delta_female Location parameters for male/female Weibull distributions
+#' @param baseline Data frame containing overall baseline age distribution (non-sex-specific)
+#' @param alpha,beta,delta Overall Weibull parameters (non-sex-specific)
+#' @param max_age Maximum allowable age
+#' @param sex_specific Logical; whether to use sex-specific parameters
+#' @param max_attempts Maximum number of attempts for generating valid ages
+#' @param geno_freq Vector of genotype frequencies
+#' @param trans Transmission probabilities
+#' @param lik Likelihood matrix
 #'
-#' @return The data frame with imputed ages.
-#'
+#' @return A data frame with imputed ages
+#' @export
 imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL,
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,
                        alpha_female = NULL, beta_female = NULL, delta_female = NULL,
@@ -192,35 +189,62 @@ imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female =
   return(data)
 }
 
-#' Initialize Ages Using a Uniform Distribution
+#' Initialize Age Imputation
 #'
-#' This function initializes ages for individuals in a dataset using a uniform distribution.
+#' @description
+#' Initializes the age imputation process by filling missing ages with random values
+#' between a threshold and maximum age.
 #'
-#' @param data A data frame containing the data.
-#' @param threshold The minimum age value for the uniform distribution.
-#' @param max_age The maximum age value for the uniform distribution.
-#' @return A list containing the updated data frame and the indices of the rows where ages were initialized.
+#' @param data A data frame containing family-based data
+#' @param threshold Minimum age value for initialization
+#' @param max_age Maximum age value for initialization
+#'
+#' @return A list containing:
+#'   \item{data}{The data frame with initialized ages}
+#'   \item{na_indices}{Indices of missing age values}
+#' @export
+#' @examples
+#' # Create sample data
+#' data <- data.frame(
+#'   family = c(1, 1),
+#'   individual = c(1, 2),
+#'   father = c(NA, 1),
+#'   mother = c(NA, NA),
+#'   sex = c(1, 2),
+#'   aff = c(1, 0),
+#'   age = c(NA, NA),
+#'   geno = c("1/2", NA),
+#'   isProband = c(1, 0)
+#' )
 #' 
+#' # Initialize ages with random values between 20 and 94
+#' result <- imputeAgesInit(data, threshold = 20, max_age = 94)
+#' 
+#' # Access the results
+#' imputed_data <- result$data
+#' missing_indices <- result$na_indices
 imputeAgesInit <- function(data, threshold, max_age) {
   na_indices <- which(is.na(data$age))
   data$age[na_indices] <- runif(length(na_indices), threshold, max_age)
   return(list(data = data, na_indices = na_indices))
 }
 
-#' Calculate Empirical Density for Non-Affected Individuals
+#' Calculate Empirical Age Density
 #'
-#' This function calculates the empirical density for ages of non-affected individuals in a dataset,
-#' differentiating by sex and whether the individual was tested (has a non-NA 'geno' value).
+#' @description
+#' Calculates empirical age density distributions for different subgroups in the data,
+#' separated by sex and genetic testing status.
 #'
-#' @param data A data frame containing the data.
-#' @param aff_column Character, the name of the column indicating affection status. Default is "aff".
-#' @param age_column Character, the name of the column indicating ages. Default is "age".
-#' @param sex_column Character, the name of the column indicating sex. Default is "sex".
-#' @param geno_column Character, the name of the column indicating genotype. Default is "geno".
-#' @param n_points Integer, the number of points to use in the density estimation. Default is 10000.
+#' @param data A data frame containing the family data
+#' @param aff_column Name of the affection status column
+#' @param age_column Name of the age column
+#' @param sex_column Name of the sex column
+#' @param geno_column Name of the genotype column
+#' @param n_points Number of points to use in density estimation
+#' @param sex_specific Logical; whether to calculate sex-specific densities
 #'
-#' @return A list of density objects representing the empirical density of ages for different groups.
-#'
+#' @return A list of density objects for different subgroups (tested/untested, male/female)
+#' @export
 calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "age", sex_column = "sex", 
                                     geno_column = "geno", n_points = 10000, sex_specific = TRUE) {
   
@@ -306,7 +330,6 @@ calculateEmpiricalDensity <- function(data, aff_column = "aff", age_column = "ag
   return(empirical_density)
 }
 
-
 #' Draw Ages Using the Inverse CDF Method from the baseline data
 #'
 #' This function draws ages using the inverse CDF method from baseline data.
@@ -328,6 +351,7 @@ drawBaseline <- function(baseline_data) {
 #' @param empirical_density A list of density objects containing the empirical density of ages for different groups.
 #' @param sex Numeric, the sex of the individual (1 for male, 2 for female).
 #' @param tested Logical, indicating whether the individual was tested (has a non-NA 'geno' value).
+#' @param sex_specific Logical, indicating whether the imputation should be sex-specific. Default is TRUE.
 #'
 #' @return A single age value drawn from the appropriate empirical density data.
 #'
@@ -389,3 +413,51 @@ imputeUnaffectedAges <- function(data, na_indices, empirical_density, max_age) {
 
   return(data)
 }
+
+#' Impute Missing Ages in Family-Based Data
+#'
+#' @examples
+#' # Create sample data
+#' data <- data.frame(
+#'   family = c(1, 1, 1),
+#'   individual = c(1, 2, 3),
+#'   father = c(NA, 1, 1),
+#'   mother = c(NA, 2, 2),
+#'   sex = c(1, 2, 1),
+#'   aff = c(1, 0, NA),
+#'   age = c(45, NA, 20),
+#'   geno = c("1/2", NA, NA),
+#'   isProband = c(1, 0, 0)
+#' )
+#' 
+#' # Initialize parameters
+#' na_indices <- which(is.na(data$age))
+#' max_age <- 94
+#' geno_freq <- c(0.999, 0.001)
+#' trans <- matrix(c(1, 0, 0.5, 0.5), nrow = 2)
+#' lik <- matrix(1, nrow = nrow(data), ncol = 2)
+#' 
+#' # Impute ages
+#' imputed_data <- imputeAges(
+#'   data = data,
+#'   na_indices = na_indices,
+#'   max_age = max_age,
+#'   geno_freq = geno_freq,
+#'   trans = trans,
+#'   lik = lik
+#' )
+
+#' @examples
+#' # Create sample data
+#' data <- data.frame(
+#'   sex = c(1, 1, 2, 2),
+#'   aff = c(0, 0, 0, 0),
+#'   age = c(45, 50, 35, 40),
+#'   geno = c("1/2", NA, "1/2", NA)
+#' )
+#' 
+#' # Calculate density with sex-specific parameters
+#' density_sex <- calculateEmpiricalDensity(data, sex_specific = TRUE)
+#' 
+#' # Calculate density without sex-specific parameters
+#' density_nosex <- calculateEmpiricalDensity(data, sex_specific = FALSE)

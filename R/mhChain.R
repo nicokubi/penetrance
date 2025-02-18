@@ -14,9 +14,8 @@
 #' @param max_age Integer, the maximum age considered in the analysis.
 #' @param baseline_data Numeric matrix or vector, containing baseline risk estimates for different ages and sexes.
 #' @param prior_distributions List, containing prior distributions for the parameters being estimated.
-#' @param af Numeric, the allele frequency of the risk allele in the population.
+#' @param prev Numeric, the prevalence of the risk allele in the population.
 #' @param median_max Logical, indicates if the maximum median age should be used for the Weibull distribution.
-#' @param max_penetrance Numeric, the maximum penetrance value allowed.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
 #' @param var Numeric, the variance for the proposal distribution in the Metropolis-Hastings algorithm.
 #' @param age_imputation Logical, indicates if age imputation should be performed.
@@ -26,8 +25,9 @@
 #'
 #' @return A list containing samples, log likelihoods, log-acceptance ratio, and rejection rate for each iteration.
 #'
+#' @export
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
-                    prior_distributions, af, median_max, max_penetrance, BaselineNC, var,
+                    prior_distributions, prev, median_max, BaselineNC, var,
                     age_imputation, imp_interval, remove_proband, sex_specific) {
   # Set seed for the chain
   set.seed(seed)
@@ -52,18 +52,8 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 
   # Option to remove the proband after age imputation
   if (remove_proband) {
-    proband_indices <- sort(proband_indices, decreasing = TRUE)
-    data <- data[-proband_indices, ]
-
-    # Adjust na_indices
-    if (exists("na_indices")) {
-      original_na_indices <- na_indices
-      for (proband_index in proband_indices) {
-        original_na_indices <- original_na_indices[original_na_indices != proband_index]
-        original_na_indices[original_na_indices > proband_index] <- original_na_indices[original_na_indices > proband_index] - 1
-      }
-      na_indices <- original_na_indices
-    }
+    # Instead of removing probands, set their affection status to NA
+    data$aff[proband_indices] <- NA
   }
 
   # Initialize variables for sex-specific or non-specific model
@@ -280,9 +270,9 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   cat("Starting Chain", chain_id, "\n")
 
     # Initialize the model
-    # geno_freq represents the frequency of the risk allele and its complement in the population
-    # af is the frequency of the risk allele.
-    geno_freq <- c(1 - af, af)
+    # geno_freq represents the frequency of the risk type and its complement in the population
+    # prev is the frequency of the risk allele.
+    geno_freq <- c(1 - prev, prev)
     
     # trans is a transition matrix that defines the probabilities of allele transmission from parents to offspring
     # We are assuming that homozygous genotype is not viable
@@ -369,7 +359,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
 
       loglikelihood_current <- mhLogLikelihood_clipp(
         params_current, data, twins, max_age,
-        baseline_data, af, geno_freq, trans, BaselineNC, ncores
+        baseline_data, prev, geno_freq, trans, BaselineNC, ncores
       )
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
     } else {
@@ -418,7 +408,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       )
 
       loglikelihood_current <- mhLogLikelihood_clipp_noSex(
-        params_current, data, twins, max_age, baseline_data, af, geno_freq, trans,  BaselineNC, ncores
+        params_current, data, twins, max_age, baseline_data, prev, geno_freq, trans,  BaselineNC, ncores
       )
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
     }
@@ -491,11 +481,11 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       if (sex_specific) {
         loglikelihood_proposal <- mhLogLikelihood_clipp(
           params_proposal, data, twins, max_age,
-          baseline_data, af, geno_freq, trans, BaselineNC, ncores
+          baseline_data, prev, geno_freq, trans, BaselineNC, ncores
         )
       } else {
         loglikelihood_proposal <- mhLogLikelihood_clipp_noSex(
-          params_proposal, data, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores
+          params_proposal, data, twins, max_age, baseline_data, prev, geno_freq, trans, BaselineNC, ncores
         )
       }
       logprior_proposal <- calculate_log_prior(params_proposal, prior_distributions, max_age)

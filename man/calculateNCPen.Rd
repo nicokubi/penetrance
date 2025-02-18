@@ -4,7 +4,7 @@
 \alias{calculateNCPen}
 \title{Calculate Age-Specific Non-Carrier Penetrance}
 \usage{
-calculateNCPen(SEER_baseline, alpha, beta, delta, gamma, af, max_age)
+calculateNCPen(SEER_baseline, alpha, beta, delta, gamma, prev, max_age)
 }
 \arguments{
 \item{SEER_baseline}{Numeric, the baseline penetrance derived from SEER data for the general population without considering genetic risk factors.}
@@ -17,13 +17,13 @@ calculateNCPen(SEER_baseline, alpha, beta, delta, gamma, af, max_age)
 
 \item{gamma}{Numeric, scaling factor applied to the Weibull distribution to adjust carrier risk.}
 
-\item{af}{Numeric, the allele frequency of the risk allele in the population.}
+\item{prev}{Numeric, the prevalence of the risk allele in the population.}
 
 \item{max_age}{Integer, the maximum age up to which the calculations are performed.}
 }
 \value{
 A list containing:
-\item{weightedCarrierRisk}{Numeric vector, the weighted risk for carriers at each age based on allele frequency.}
+\item{weightedCarrierRisk}{Numeric vector, the weighted risk for carriers at each age based on prevalence.}
 \item{yearlyProb}{Numeric vector, the yearly probability of not getting the disease at each age.}
 \item{cumulativeProb}{Numeric vector, the cumulative probability of not getting the disease up to each age.}
 }

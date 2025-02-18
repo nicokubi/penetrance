@@ -54,17 +54,18 @@ calculateBaseline <- function(cancer_type, gene, race, type, db) {
 #' @param beta Numeric, scale parameter for the Weibull distribution used to model carrier risk.
 #' @param delta Numeric, location parameter for the Weibull distribution used to model carrier risk.
 #' @param gamma Numeric, scaling factor applied to the Weibull distribution to adjust carrier risk.
-#' @param af Numeric, the allele frequency of the risk allele in the population.
+#' @param prev Numeric, the prevalence of the risk allele in the population.
 #' @param max_age Integer, the maximum age up to which the calculations are performed.
 #'
 #' @return A list containing:
-#' \item{weightedCarrierRisk}{Numeric vector, the weighted risk for carriers at each age based on allele frequency.}
+#' \item{weightedCarrierRisk}{Numeric vector, the weighted risk for carriers at each age based on prevalence.}
 #' \item{yearlyProb}{Numeric vector, the yearly probability of not getting the disease at each age.}
 #' \item{cumulativeProb}{Numeric vector, the cumulative probability of not getting the disease up to each age.}
 #'
-calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age) {
+#' @export
+calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, prev, max_age) {
   # Calculate probability weights for carriers based on allele frequencies
-  weights <- 2 * af * (1 - af) # Heterozygous carriers only
+  weights <- 2 * prev * (1 - prev) # Heterozygous carriers only
   
   # Initialize vectors to store the yearly and cumulative probability of not getting the disease
   weightedCarrierRisk <- numeric(max_age)
@@ -77,7 +78,7 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
   for (age in 1:max_age) {
     # Calculate the risk for carriers at this age
     carrierRisk <- dweibull(age - delta, shape = alpha, scale = beta) * gamma
-    # Calculate the weighted risk for carriers based on allele frequency
+    # Calculate the weighted risk for carriers based on prevalence
     weightedCarrierRisk[age] <- carrierRisk * weights
     
     # Calculate the single-year probability of not getting the disease
@@ -93,6 +94,15 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
     weightedCarrierRisk = weightedCarrierRisk,
     yearlyProb = yearlyProb, cumulativeProb = cumulativeProb
   ))
+}
+
+#' Function to return absolute values
+#'
+#' @param x Numeric, the input value.
+#' @return Numeric, the absolute value of the input.
+#' @export
+absValue <- function(x) {
+  return(abs(x))
 }
 
 #' Penetrance Function
@@ -113,16 +123,17 @@ calculateNCPen <- function(SEER_baseline, alpha, beta, delta, gamma, af, max_age
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baselineRisk Numeric matrix, baseline risk for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data.
-#' @param af Numeric, allele frequency of the risk allele in the population.
+#' @param prev Numeric, prevalence of the risk allele in the population.
 #'
 #' @return Numeric vector, containing penetrance values for unaffected and affected individuals.
 #'
 lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
                    delta_male, delta_female, gamma_male, gamma_female, max_age,
-                   baselineRisk, BaselineNC, af) {
+                   baselineRisk, BaselineNC, prev) {
   
-  # Check for NA sex or very young age
-  if (is.na(data$sex[i]) || is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1) {
+  # Check for NA sex, age, or affection status, or very young age
+  if (is.na(data$sex[i]) || is.na(data$age[i]) || is.na(data$aff[i]) || 
+      data$age[i] == 0 || data$age[i] == 1) {
     lik.i <- c(1, 1) # Disregard these observations
   } else {
     # Map sex to row index: "Female" is 1st row and "Male" is 2nd row
@@ -154,17 +165,22 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
     } else {
       nc.pen <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
       )$weightedCarrierRisk[age_index]
       nc.pen.c <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
       )$cumulativeProb[age_index]
     }
     
     # Penetrance calculations based on genotype and affection status
-    lik.i <- c(nc.pen.c, survival_prob) # for censored observations
-    if (data$aff[i] == 1) lik.i <- c(nc.pen * nc.pen.c, c.pen) # for affected observations
+    if (data$aff[i] == 1) {
+      # For affected observations
+      lik.i <- c(nc.pen * nc.pen.c, c.pen)
+    } else {
+      # For censored/unaffected observations
+      lik.i <- c(nc.pen.c, survival_prob)
+    }
   }
   
   # Adjustment for observed genotypes
@@ -185,17 +201,16 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
 #' @param twins Information on monozygous twins or triplets in the pedigrees.
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baseline_data Numeric matrix, baseline risk data for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.
-#' @param af Numeric, allele frequency of the risk allele in the population.
+#' @param prev Numeric, prevalence of the risk allele in the population.
+#' @param geno_freq Numeric vector, represents the frequency of the risk type and its complement in the population.
+#' @param trans Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.
 #' @param ncores Integer, number of cores to use for parallel computation.
 #'
 #' @return Numeric, the calculated log likelihood.
 #'
-#' @references
-#' Details about the clipp package and methods can be found in the package documentation.
-#'
-#' @import clipp
-mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores) {
+#' @export
+mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data, prev, geno_freq, trans, BaselineNC, ncores) {
   paras <- unlist(paras)
     # Extract parameters
     gamma_male <- paras[1]
@@ -223,7 +238,7 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
     lik <- t(sapply(1:nrow(families), function(i) {
         lik.fn(i, families, alpha_male, alpha_female, beta_male, beta_female, delta_male, 
                delta_female, gamma_male, gamma_female,
-            max_age, baselineRisk, BaselineNC, af
+            max_age, baselineRisk, BaselineNC, prev
         )
     }))
 
@@ -248,7 +263,9 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
 #' @param twins Information on monozygous twins or triplets in the pedigrees.
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baseline_data Numeric vector, baseline risk data for each age.
-#' @param af Numeric, allele frequency of the risk allele in the population.
+#' @param prev Numeric, prevalence of the risk allele in the population.
+#' @param geno_freq Numeric vector, represents the frequency of the risk type and its complement in the population.
+#' @param trans Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.
 #' @param ncores Integer, number of cores to use for parallel computation.
 #'
@@ -257,7 +274,7 @@ mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data
 #' @references
 #' Details about the clipp package and methods can be found in the package documentation.
 #'
-mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, af, geno_freq, trans, BaselineNC, ncores) {
+mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baseline_data, prev, geno_freq, trans, BaselineNC, ncores) {
   # Extract parameters
   paras <- unlist(paras)
   gamma <- paras[1]  # Asymptote
@@ -275,7 +292,7 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
   
   # Calculate penetrance
   lik <- t(sapply(1:nrow(families), function(i) {
-    lik_noSex(i, families, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af)
+    lik_noSex(i, families, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, prev)
   }))
   
   # Compute log-likelihood
@@ -303,13 +320,14 @@ mhLogLikelihood_clipp_noSex <- function(paras, families, twins, max_age, baselin
 #' @param max_age Integer, maximum age considered in the analysis.
 #' @param baselineRisk Numeric vector, baseline risk for each age.
 #' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on SEER data or the calculated non-carrier penetrance.
-#' @param af Numeric, allele frequency of the risk allele in the population.
+#' @param prev Numeric, prevalence of the risk allele in the population.
 #' 
 #' @return Numeric vector, containing likelihood values for unaffected and affected individuals.
 #'
-lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, af) {
-  if (is.na(data$age[i]) || data$age[i] == 0 || data$age[i] == 1) {
-    lik.i <- c(1, 1)  # Assuming people aged 0 or 1 years are all unaffected
+lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk, BaselineNC, prev) {
+  # Check for NA age, affection status, or very young age
+  if (is.na(data$age[i]) || is.na(data$aff[i]) || data$age[i] == 0 || data$age[i] == 1) {
+    lik.i <- c(1, 1)  # Disregard these observations
   } else {
     # Ensure age is within the valid range
     age_index <- min(max_age, data$age[i])
@@ -331,15 +349,20 @@ lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk,
     } else {
       nc_pen_results <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, af
+        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
       )
       nc.pen <- nc_pen_results$weightedCarrierRisk[age_index]
       nc.pen.c <- nc_pen_results$cumulativeProb[age_index]
     }
     
     # Penetrance calculations based on genotype and affection status
-    lik.i <- c(nc.pen.c, survival_prob)  # For censored observations
-    if (data$aff[i] == 1) lik.i <- c(nc.pen * nc.pen.c, c.pen)  # For affected observations
+    if (data$aff[i] == 1) {
+      # For affected observations
+      lik.i <- c(nc.pen * nc.pen.c, c.pen)
+    } else {
+      # For censored/unaffected observations
+      lik.i <- c(nc.pen.c, survival_prob)
+    }
   }
   
   # Adjustment for observed genotypes, setting other genotypes to small value to avoid numerical instability

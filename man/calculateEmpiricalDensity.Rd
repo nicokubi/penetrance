@@ -2,7 +2,7 @@
 % Please edit documentation in R/imputeAges.R
 \name{calculateEmpiricalDensity}
 \alias{calculateEmpiricalDensity}
-\title{Calculate Empirical Density for Non-Affected Individuals}
+\title{Calculate Empirical Age Density}
 \usage{
 calculateEmpiricalDensity(
   data,
@@ -15,22 +15,24 @@ calculateEmpiricalDensity(
 )
 }
 \arguments{
-\item{data}{A data frame containing the data.}
+\item{data}{A data frame containing the family data}
 
-\item{aff_column}{Character, the name of the column indicating affection status. Default is "aff".}
+\item{aff_column}{Name of the affection status column}
 
-\item{age_column}{Character, the name of the column indicating ages. Default is "age".}
+\item{age_column}{Name of the age column}
 
-\item{sex_column}{Character, the name of the column indicating sex. Default is "sex".}
+\item{sex_column}{Name of the sex column}
 
-\item{geno_column}{Character, the name of the column indicating genotype. Default is "geno".}
+\item{geno_column}{Name of the genotype column}
 
-\item{n_points}{Integer, the number of points to use in the density estimation. Default is 10000.}
+\item{n_points}{Number of points to use in density estimation}
+
+\item{sex_specific}{Logical; whether to calculate sex-specific densities}
 }
 \value{
-A list of density objects representing the empirical density of ages for different groups.
+A list of density objects for different subgroups (tested/untested, male/female)
 }
 \description{
-This function calculates the empirical density for ages of non-affected individuals in a dataset,
-differentiating by sex and whether the individual was tested (has a non-NA 'geno' value).
+Calculates empirical age density distributions for different subgroups in the data,
+separated by sex and genetic testing status.
 }

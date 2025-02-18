@@ -10,7 +10,7 @@ mhLogLikelihood_clipp_noSex(
   twins,
   max_age,
   baseline_data,
-  af,
+  prev,
   geno_freq,
   trans,
   BaselineNC,
@@ -29,7 +29,11 @@ Should contain in order: gamma, delta, given_median, given_first_quartile.}
 
 \item{baseline_data}{Numeric vector, baseline risk data for each age.}
 
-\item{af}{Numeric, allele frequency of the risk allele in the population.}
+\item{prev}{Numeric, prevalence of the risk allele in the population.}
+
+\item{geno_freq}{Numeric vector, represents the frequency of the risk type and its complement in the population.}
+
+\item{trans}{Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.}
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.}
 

@@ -12,6 +12,8 @@ drawEmpirical(empirical_density, sex, tested, sex_specific = TRUE)
 \item{sex}{Numeric, the sex of the individual (1 for male, 2 for female).}
 
 \item{tested}{Logical, indicating whether the individual was tested (has a non-NA 'geno' value).}
+
+\item{sex_specific}{Logical, indicating whether the imputation should be sex-specific. Default is TRUE.}
 }
 \value{
 A single age value drawn from the appropriate empirical density data.

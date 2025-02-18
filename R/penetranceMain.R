@@ -7,13 +7,14 @@
 #' @param pedigree A data frame containing the pedigree data in the required format. It should include the following columns:
 #'   - `PedigreeID`: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
 #'   - `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
-#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. 
+#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. Unknown sex needs to be coded as `NA`. 
 #'   - `MotherID`: A numeric value representing the unique identifier for an individual's mother.
 #'   - `FatherID`: A numeric value representing the unique identifier for an individual's father.
 #'   - `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
-#'   - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`.
-#'   - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals and `0` otherwise. Missing entries are not supported.
-#'   - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`.
+#'   - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`. Unknown ages can be left empty or coded as `NA`. 
+#'   - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals,
+#'     `0` for unaffected individuals, and `NA` for unknown status.
+#'   - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`. Unknown ages can be left empty or coded as `NA`. 
 #'   - `geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
 #' @param twins A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: `twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))`.
 #' @param n_chains Integer, the number of chains for parallel computation. Default is 1.
@@ -30,8 +31,7 @@
 #' @param thinning_factor Integer, the factor by which to thin the results. Default is 1 (no thinning).
 #' @param imp_interval Integer, the interval at which age imputation should be performed when age_imputation = TRUE.
 #' @param distribution_data Data for generating prior distributions.
-#' @param af Numeric, allele frequency for the risk allele. Default is 0.0001.
-#' @param max_penetrance Numeric, the maximum penetrance considered for analysis. Default is 1.
+#' @param prev Numeric, prevalence of the carrier status. Default is 0.0001.
 #' @param sample_size Optional numeric, sample size for distribution generation.
 #' @param ratio Optional numeric, ratio parameter for distribution generation.
 #' @param prior_params List, parameters for prior distributions.
@@ -51,6 +51,62 @@
 #'
 #' @importFrom stats rbeta runif
 #' @importFrom parallel makeCluster stopCluster parLapply
+#' 
+#' @examples
+#' # Create example baseline data (simplified for demonstration)
+#' baseline_data_default <- data.frame(
+#'   Age = 1:94,
+#'   Female = rep(0.01, 94),
+#'   Male = rep(0.01, 94)
+#' )
+#'
+#' # Create example distribution data
+#' distribution_data_default <- data.frame(
+#'   Age = 1:94,
+#'   Risk = rep(0.01, 94)
+#' )
+#'
+#' # Create example prior parameters
+#' prior_params_default <- list(
+#'   shape = 2,
+#'   scale = 50
+#' )
+#'
+#' # Create example risk proportion
+#' risk_proportion_default <- 0.5
+#'
+#' # Create a simple example pedigree
+#' example_pedigree <- data.frame(
+#'   PedigreeID = rep(1, 4),
+#'   ID = 1:4,
+#'   Sex = c(1, 0, 1, 0),  # 1 for male, 0 for female
+#'   MotherID = c(NA, NA, 2, 2),
+#'   FatherID = c(NA, NA, 1, 1),
+#'   isProband = c(0, 0, 1, 0),
+#'   CurAge = c(70, 68, 45, 42),
+#'   isAff = c(0, 0, 1, 0),
+#'   Age = c(NA, NA, 40, NA),
+#'   geno = c(NA, NA, 1, NA)
+#' )
+#' 
+#' # Basic usage with minimal iterations
+#' result <- penetrance(
+#'   pedigree = list(example_pedigree),
+#'   n_chains = 1,
+#'   n_iter_per_chain = 10,  # Very small number for example
+#'   ncores = 1,             # Single core for example
+#'   summary_stats = TRUE,
+#'   plot_trace = FALSE,     # Disable plots for quick example
+#'   density_plots = FALSE,
+#'   penetrance_plot = FALSE,
+#'   penetrance_plot_pdf = FALSE,
+#'   plot_loglikelihood = FALSE,
+#'   plot_acf = FALSE
+#' )
+#' 
+#' # View basic results
+#' head(result$summary_stats)
+#' 
 #' @export
 penetrance <- function(pedigree,
                        twins = NULL,
@@ -68,8 +124,7 @@ penetrance <- function(pedigree,
                        thinning_factor = 1,
                        imp_interval = 100,
                        distribution_data = distribution_data_default,
-                       af = 0.0001,
-                       max_penetrance = 1,
+                       prev = 0.0001,
                        sample_size = NULL,
                        ratio = NULL,
                        prior_params = prior_params_default,
@@ -97,15 +152,16 @@ penetrance <- function(pedigree,
     }
 
     # Check for NA values in critical columns
-    critical_columns <- c("PedigreeID", "ID", "isAff")
+    critical_columns <- c("PedigreeID", "ID")
     for (col in critical_columns) {
       if (any(is.na(pedigree[[i]][[col]]))) {
         stop(paste("Error: NA values found in the", col, "column of pedigree", i, ". Please check your data."))
       }
     }
 
-    if (!all(pedigree[[i]]$isAff %in% c(0, 1))) {
-      stop(paste("Error: 'isAff' column in pedigree", i, "should only contain 0 or 1."))
+    # Check isAff values
+    if (!all(pedigree[[i]]$isAff %in% c(0, 1, NA))) {
+      stop(paste("Error: 'isAff' column in pedigree", i, "should only contain 0, 1, or NA."))
     }
   }
   if (missing(n_chains) || !is.numeric(n_chains) || n_chains <= 0) {
@@ -117,8 +173,8 @@ penetrance <- function(pedigree,
   if (n_chains > parallel::detectCores()) {
     stop("Error: 'n_chains' exceeds the number of available CPU cores.")
   }
-  if (af < 0 || af > 1) {
-    stop("Error: 'af' must be between 0 and 1.")
+  if (prev < 0 || prev > 1) {
+    stop("Error: 'prev' must be between 0 and 1.")
   }
 
   # Check the length of var based on sex_specific
@@ -183,7 +239,7 @@ penetrance <- function(pedigree,
     "transformDF", "lik.fn", "lik_noSex", "mvrnorm", "var", "calculateEmpiricalDensity", "baseline_data",
     "seeds", "n_iter_per_chain", "burn_in", "imputeAges", "imputeAgesInit",
     "drawBaseline", "calculateNCPen", "drawEmpirical", "imp_interval",
-    "data", "twins", "prop", "af", "max_age", "BaselineNC", "median_max", "ncores",
+    "data", "twins", "prop", "prev", "max_age", "BaselineNC", "median_max", "ncores",
     "remove_proband", "sex_specific"
   ), envir = environment())
 
@@ -198,8 +254,7 @@ penetrance <- function(pedigree,
       ncores = ncores,
       prior_distributions = prop,
       max_age = max_age,
-      af = af,
-      max_penetrance = max_penetrance,
+      prev = prev,
       median_max = median_max,
       baseline_data = baseline_data,
       BaselineNC = BaselineNC,
@@ -291,3 +346,5 @@ penetrance <- function(pedigree,
 
   return(output)
 }
+
+

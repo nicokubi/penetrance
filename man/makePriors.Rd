@@ -7,7 +7,6 @@
 makePriors(
   data,
   sample_size,
-  cancer,
   ratio,
   prior_params,
   risk_proportion,
@@ -18,8 +17,6 @@ makePriors(
 \item{data}{A data frame containing age and risk data. If NULL or contains NA values, default parameters are used.}
 
 \item{sample_size}{Numeric, the total sample size used for risk proportion calculations.}
-
-\item{cancer}{Character string, specifying the type of cancer, used in OR/RR ratio calculations.}
 
 \item{ratio}{Numeric, the odds ratio (OR) or relative risk (RR) used in asymptote parameter calculations.}
 

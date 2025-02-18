@@ -18,7 +18,7 @@ lik.fn(
   max_age,
   baselineRisk,
   BaselineNC,
-  af
+  prev
 )
 }
 \arguments{
@@ -48,7 +48,7 @@ lik.fn(
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on SEER data.}
 
-\item{af}{Numeric, allele frequency of the risk allele in the population.}
+\item{prev}{Numeric, prevalence of the risk allele in the population.}
 }
 \value{
 Numeric vector, containing penetrance values for unaffected and affected individuals.

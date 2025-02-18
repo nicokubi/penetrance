@@ -57,7 +57,6 @@ distribution_data_default <- data.frame(
 #'
 #' @param data A data frame containing age and risk data. If NULL or contains NA values, default parameters are used.
 #' @param sample_size Numeric, the total sample size used for risk proportion calculations.
-#' @param cancer Character string, specifying the type of cancer, used in OR/RR ratio calculations.
 #' @param ratio Numeric, the odds ratio (OR) or relative risk (RR) used in asymptote parameter calculations.
 #' @param prior_params List, containing prior parameters for the beta distributions. If NULL, default parameters are used.
 #' @param risk_proportion Data frame, with default proportions of people at risk.
@@ -75,7 +74,8 @@ distribution_data_default <- data.frame(
 #'
 #' @seealso \code{\link{qbeta}}, \code{\link{runif}}
 #' 
-makePriors <- function(data, sample_size, cancer, ratio, prior_params, risk_proportion, baseline_data) {
+#' @export
+makePriors <- function(data, sample_size, ratio, prior_params, risk_proportion, baseline_data) {
   # Helper function definitions
   normalize_median <- function(x) {
     return((x - min_age) / (max_age - min_age))
@@ -143,14 +143,24 @@ makePriors <- function(data, sample_size, cancer, ratio, prior_params, risk_prop
     )
   }
   
-  if (!is.null(ratio) && !is.null(cancer)) {
-  # Calculate the minimal value between Male and Female for each age
-  SERR_baseline_min <- pmin(baseline_data_default$Female, baseline_data_default$Male)
-    
-  # Calculate the cumulative sum of the minimal risk and pick the lifetime risk
-  SEER_lifetime <- max(cumsum(SERR_baseline_min))
-  prior_params$asymptote <- list(g1 = SEER_lifetime * ratio, g2 = SEER_lifetime * ratio)
-  }
+ if (!is.null(ratio)) {
+   # Calculate the minimal value between Male and Female for each age
+   SEER_baseline_min <- pmin(baseline_data$Female, baseline_data$Male)
+
+   # Calculate the cumulative sum of the minimal risk and pick the lifetime risk
+   SEER_lifetime <- max(cumsum(SEER_baseline_min))
+
+   # Set mean of beta distribution to ratio * baseline risk
+   # If we want mean = SEER_lifetime * ratio, then:
+   # mean = g1 / (g1 + g2)
+   # SEER_lifetime * ratio = g1 / (g1 + g2)
+   # Set total weight to 10 to have some variance
+   total_weight <- 10 
+   g1 <- SEER_lifetime * ratio * total_weight
+   g2 <- total_weight - g1
+
+   prior_params$asymptote <- list(g1 = g1, g2 = g2)
+ }
   
   asymptote_distribution <- function(n) {
     qbeta(runif(n), prior_params$asymptote$g1, prior_params$asymptote$g2)

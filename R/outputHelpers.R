@@ -58,7 +58,11 @@ generate_summary <- function(data) {
 #' @param data A list with combined results.
 #' 
 generate_density_plots <- function(data) {
-  # Set the plotting parameters
+  # Save old par settings
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
+  
+  # Set new par settings
   par(mfrow = c(3, 2), las = 1, mar = c(5, 4, 4, 2) + 0.1)
   
   # Determine which set of parameters to plot: sex-specific or non-sex-specific
@@ -133,13 +137,17 @@ generate_density_plots <- function(data) {
 #' @param n_chains The number of chains.
 #' @export
 plot_trace <- function(results, n_chains) {
-  # Set up a grid for the plots based on the number of chains
-  if (n_chains <= 3) {
-    par(mfrow = c(n_chains * 2, 2)) # Up to 3 chains: 3 rows, 4 columns
-  } else {
-    par(mfrow = c(ceiling(n_chains), 4)) # More than 3 chains: 2 rows, 8 columns
-  }
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
   
+  # Set up grid layout
+  if (n_chains <= 3) {
+    par(mfrow = c(n_chains, 2))
+  } else {
+    par(mfrow = c(ceiling(n_chains), 4))
+  }
+
+  # Plot trace plots for each chain
   for (chain_id in 1:n_chains) {
     if (!is.null(results[[chain_id]]$median_male_samples) || !is.null(results[[chain_id]]$median_female_samples)) {
       # Plot sex-specific parameters if available

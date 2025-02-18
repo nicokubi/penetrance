@@ -10,7 +10,7 @@ mhLogLikelihood_clipp(
   twins,
   max_age,
   baseline_data,
-  af,
+  prev,
   geno_freq,
   trans,
   BaselineNC,
@@ -30,7 +30,11 @@ given_median_male, given_median_female, given_first_quartile_male, given_first_q
 
 \item{baseline_data}{Numeric matrix, baseline risk data for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.}
 
-\item{af}{Numeric, allele frequency of the risk allele in the population.}
+\item{prev}{Numeric, prevalence of the risk allele in the population.}
+
+\item{geno_freq}{Numeric vector, represents the frequency of the risk type and its complement in the population.}
+
+\item{trans}{Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.}
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.}
 
@@ -41,7 +45,4 @@ Numeric, the calculated log likelihood.
 }
 \description{
 This function calculates the log likelihood using the clipp package for a set of parameters and data.
-}
-\references{
-Details about the clipp package and methods can be found in the package documentation.
 }

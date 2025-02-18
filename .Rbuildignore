@@ -1,7 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^\.git$
-^\.gitignore$
+^data-raw$
+^cran-comments\.md$
 ^README\.Rmd$
 ^README_files$
 ^vignettes/README.Rmd$
@@ -12,3 +12,17 @@
 ^_pkgdown\.yml$
 ^pkgdown$
 ^\.github$
+^README\.html$
+^404\.html$
+^articles$
+^authors\.html$
+^deps$
+^index\.html$
+^katex-auto\.js$
+^lightswitch\.js$
+^link\.svg$
+^pkgdown\.js$
+^pkgdown\.yml$
+^reference$
+^search\.json$
+^sitemap\.xml$

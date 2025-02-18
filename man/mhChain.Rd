@@ -15,9 +15,8 @@ mhChain(
   max_age,
   baseline_data,
   prior_distributions,
-  af,
+  prev,
   median_max,
-  max_penetrance,
   BaselineNC,
   var,
   age_imputation,
@@ -47,11 +46,9 @@ mhChain(
 
 \item{prior_distributions}{List, containing prior distributions for the parameters being estimated.}
 
-\item{af}{Numeric, the allele frequency of the risk allele in the population.}
+\item{prev}{Numeric, the prevalence of the risk allele in the population.}
 
 \item{median_max}{Logical, indicates if the maximum median age should be used for the Weibull distribution.}
-
-\item{max_penetrance}{Numeric, the maximum penetrance value allowed.}
 
 \item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on SEER data.}
 
