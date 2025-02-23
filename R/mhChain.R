@@ -25,6 +25,78 @@
 #'
 #' @return A list containing samples, log likelihoods, log-acceptance ratio, and rejection rate for each iteration.
 #'
+#' @examples
+#' # Create sample data in PanelPRO format
+#' data <- data.frame(
+#'   ID = 1:10,
+#'   PedigreeID = rep(1, 10),
+#'   Sex = c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1),  # 0=female, 1=male
+#'   MotherID = c(NA, NA, 1, 1, 3, 3, 5, 5, 7, 7),
+#'   FatherID = c(NA, NA, 2, 2, 4, 4, 6, 6, 8, 8),
+#'   isProband = c(1, rep(0, 9)),
+#'   CurAge = c(45, 35, 55, 40, 50, 45, 60, 38, 52, 42),
+#'   isAff = c(1, 0, 1, 0, 1, 0, 1, 0, 1, 0),
+#'   Age = c(40, NA, 50, NA, 45, NA, 55, NA, 48, NA),
+#'   Geno = c(1, NA, 1, 0, 1, 0, NA, NA, 1, NA)
+#' )
+#' 
+#' # Transform data into required format
+#' data <- transformDF(data)
+#' 
+#' # Set parameters for the chain
+#' seed <- 123
+#' n_iter <- 10
+#' burn_in <- 0.1  # 10% burn-in
+#' chain_id <- 1
+#' ncores <- 1
+#' max_age <- 100
+#' 
+#' # Create baseline data (simplified example)
+#' baseline_data <- matrix(
+#'   c(rep(0.005, max_age), rep(0.008, max_age)),  # Increased baseline risks
+#'   ncol = 2,
+#'   dimnames = list(NULL, c("Male", "Female"))
+#' )
+#' 
+#' # Set prior distributions with carefully chosen bounds
+#' prior_distributions <- list(
+#'   prior_params = list(
+#'     asymptote = list(g1 = 2, g2 = 3),  # Mode around 0.4
+#'     threshold = list(min = 20, max = 30),  # Narrower range for threshold
+#'     median = list(m1 = 3, m2 = 2),  # Mode around 0.6
+#'     first_quartile = list(q1 = 2, q2 = 3)  # Mode around 0.4
+#'   )
+#' )
+#' 
+#' # Create variance vector for all 8 parameters in sex-specific case
+#' # Using very small variances for initial stability
+#' var <- c(0.005, 0.005,  # asymptotes (smaller variance since between 0-1)
+#'          1, 1,          # thresholds
+#'          1, 1,          # medians
+#'          1, 1)          # first quartiles
+#' 
+#' # Run the chain
+#' results <- mhChain(
+#'   seed = seed,
+#'   n_iter = n_iter,
+#'   burn_in = burn_in,
+#'   chain_id = chain_id,
+#'   ncores = ncores,
+#'   data = data,
+#'   twins = NULL,
+#'   max_age = max_age,
+#'   baseline_data = baseline_data,
+#'   prior_distributions = prior_distributions,
+#'   prev = 0.05,  # Increased prevalence
+#'   median_max = FALSE,  # Changed to FALSE for simpler median constraints
+#'   BaselineNC = TRUE,
+#'   var = var,
+#'   age_imputation = FALSE,
+#'   imp_interval = 10,
+#'   remove_proband = TRUE,
+#'   sex_specific = TRUE
+#' )
+#'
 #' @export
 mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_age, baseline_data,
                     prior_distributions, prev, median_max, BaselineNC, var,
@@ -40,7 +112,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     init_result <- imputeAgesInit(data, threshold, max_age)
     data <- init_result$data
 
-    # Extract the NA indices
+    #  Extract the NA indices
     na_indices <- init_result$na_indices
   } else {
     # If age imputation is disabled, set unknown ages to 1 so they are disregarded in likelihood calculation
@@ -269,25 +341,25 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   num_rejections <- 0
   cat("Starting Chain", chain_id, "\n")
 
-    # Initialize the model
-    # geno_freq represents the frequency of the risk type and its complement in the population
-    # prev is the frequency of the risk allele.
-    geno_freq <- c(1 - prev, prev)
-    
-    # trans is a transition matrix that defines the probabilities of allele transmission from parents to offspring
-    # We are assuming that homozygous genotype is not viable
-    # Here, the rows correspond to the 4 possible joint parental genotypes and the two columns correspond to the 
-    # two possible offspring genotypes. Each number is the conditional probability of the offspring genotype, given the parental genotypes. 
-    # The first column corresponds to the wildtype and the second column to the heterozygous carrier (i.e. mutated) for the offspring.
-    trans <- matrix(
-      c(
-        1, 0,   # both parents are wild type
-        0.5, 0.5, # mother is wildtype and father is a heterozygous carrier
-        0.5, 0.5, # father is wildtype and mother is a heterozygous carrier
-        1 / 3, 2 / 3  # both parents are heterozygous carriers
-      ),
-      nrow = 4, ncol = 2, byrow = TRUE
-    )
+  # Initialize the model
+  # geno_freq represents the frequency of the risk type and its complement in the population
+  # prev is the frequency of the risk allele.
+  geno_freq <- c(1 - prev, prev)
+
+  # trans is a transition matrix that defines the probabilities of allele transmission from parents to offspring
+  # We are assuming that homozygous genotype is not viable
+  # Here, the rows correspond to the 4 possible joint parental genotypes and the two columns correspond to the
+  # two possible offspring genotypes. Each number is the conditional probability of the offspring genotype, given the parental genotypes.
+  # The first column corresponds to the wildtype and the second column to the heterozygous carrier (i.e. mutated) for the offspring.
+  trans <- matrix(
+    c(
+      1, 0, # both parents are wild type
+      0.5, 0.5, # mother is wildtype and father is a heterozygous carrier
+      0.5, 0.5, # father is wildtype and mother is a heterozygous carrier
+      1 / 3, 2 / 3 # both parents are heterozygous carriers
+    ),
+    nrow = 4, ncol = 2, byrow = TRUE
+  )
 
   # Main loop of Metropolis-Hastings algorithm
   for (i in 1:n_iter) {
@@ -295,10 +367,10 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       # Calculate Weibull parameters for male and female
       weibull_params_male <- calculate_weibull_parameters(params_current$median_male, params_current$first_quartile_male, params_current$threshold_male)
       weibull_params_female <- calculate_weibull_parameters(params_current$median_female, params_current$first_quartile_female, params_current$threshold_female)
-      
+
       # Impute ages every imp_interval iterations, if age_imputation is TRUE.
       # Skip the first iteration since loglikelihood_current isn't available yet
-      if (age_imputation && i > 1 && i %% imp_interval == 0)  {
+      if (age_imputation && i > 1 && i %% imp_interval == 0) {
         data <- imputeAges(
           data = data,
           na_indices = na_indices,
@@ -365,7 +437,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     } else {
       # Non-sex-specific
       weibull_params <- calculate_weibull_parameters(params_current$median, params_current$first_quartile, params_current$threshold)
-      
+
       # Impute ages only after warmup_iterations, if age_imputation is TRUE
       if (age_imputation && i %% imp_interval == 0) {
         data <- imputeAges(
@@ -408,7 +480,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       )
 
       loglikelihood_current <- mhLogLikelihood_clipp_noSex(
-        params_current, data, twins, max_age, baseline_data, prev, geno_freq, trans,  BaselineNC, ncores
+        params_current, data, twins, max_age, baseline_data, prev, geno_freq, trans, BaselineNC, ncores
       )
       logprior_current <- calculate_log_prior(params_current, prior_distributions, max_age)
     }

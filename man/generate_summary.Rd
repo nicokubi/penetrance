@@ -4,13 +4,16 @@
 \alias{generate_summary}
 \title{Generate Summary}
 \usage{
-generate_summary(data)
+generate_summary(data, verbose = FALSE)
 }
 \arguments{
 \item{data}{A list with combined results.}
+
+\item{verbose}{Logical, whether to print summary to console. Default is FALSE.}
 }
 \value{
-A summary data frame containing Median, threshold, First Quartile, and Asymptote Value.
+A data.frame containing summary statistics (min, 1st quartile, median, mean, 3rd quartile, max)
+for each parameter.
 }
 \description{
 Function to generate summary statistics

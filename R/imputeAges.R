@@ -21,7 +21,44 @@
 #' @param trans Transmission probabilities
 #' @param lik Likelihood matrix
 #'
-#' @return A data frame with imputed ages
+#' @return A data frame with the following modifications:
+#'   \item{age}{Updated with imputed ages for previously missing values}
+#'   The rest of the data frame remains unchanged.
+#' 
+#' @examples
+#' # Create sample data
+#' data <- data.frame(
+#'   family = c(1,1),
+#'   individual = c(1,2),
+#'   sex = c(1,2),
+#'   aff = c(1,0),
+#'   age = c(NA,NA),
+#'   geno = c("1/2",NA)
+#' )
+#' na_indices <- which(is.na(data$age))
+#' geno_freq <- c(0.999, 0.001)
+#' trans <- matrix(c(1,0,0.5,0.5), nrow=2)
+#' lik <- matrix(1, nrow=nrow(data), ncol=2)
+#' 
+#' # Create baseline data
+#' baseline <- data.frame(
+#'   age = 20:94,
+#'   cum_prob = (1:75)/75
+#' )
+#' 
+#' # Impute ages
+#' \dontrun{
+#' imputed_data <- imputeAges(
+#'   data = data,
+#'   na_indices = na_indices,
+#'   max_age = 94,
+#'   baseline = baseline,  # Add baseline data
+#'   geno_freq = geno_freq,
+#'   trans = trans,
+#'   lik = lik,
+#'   sex_specific = FALSE  # Use non-sex-specific imputation for example
+#' )
+#' }
 #' @export
 imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL,
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,

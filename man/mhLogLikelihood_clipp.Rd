@@ -18,31 +18,55 @@ mhLogLikelihood_clipp(
 )
 }
 \arguments{
-\item{paras}{Numeric vector, the parameters for the Weibull distribution and scaling factors.
-Should contain in order: gamma_male, gamma_female, delta_male, delta_female,
-given_median_male, given_median_female, given_first_quartile_male, given_first_quartile_female.}
+\item{paras}{Numeric vector of parameters}
 
-\item{families}{Data frame, containing pedigree information with columns for 'sex', 'age', 'aff' (affection status), and 'geno' (genotype).}
+\item{families}{Data frame of pedigree information}
 
-\item{twins}{Information on monozygous twins or triplets in the pedigrees.}
+\item{twins}{Information on monozygous twins}
 
-\item{max_age}{Integer, maximum age considered in the analysis.}
+\item{max_age}{Integer, maximum age}
 
-\item{baseline_data}{Numeric matrix, baseline risk data for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.}
+\item{baseline_data}{Numeric matrix of baseline risk data}
 
-\item{prev}{Numeric, prevalence of the risk allele in the population.}
+\item{prev}{Numeric, prevalence}
 
-\item{geno_freq}{Numeric vector, represents the frequency of the risk type and its complement in the population.}
+\item{geno_freq}{Numeric vector of frequencies}
 
-\item{trans}{Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.}
+\item{trans}{Numeric matrix of transmission probabilities}
 
-\item{BaselineNC}{Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.}
+\item{BaselineNC}{Logical for baseline choice}
 
-\item{ncores}{Integer, number of cores to use for parallel computation.}
+\item{ncores}{Integer for parallel computation}
 }
 \value{
-Numeric, the calculated log likelihood.
+Numeric value representing the calculated log likelihood.
 }
 \description{
-This function calculates the log likelihood using the clipp package for a set of parameters and data.
+Calculate Log Likelihood using clipp Package
+}
+\examples{
+\dontrun{
+# Create example parameters and data
+paras <- c(0.8, 0.7, 20, 25, 50, 45, 30, 35)  # Example parameters
+families <- data.frame(
+  sex = c(1,2),
+  age = c(50,45),
+  aff = c(1,0),
+  geno = c("1/2", NA)
+)
+
+# Calculate log likelihood
+loglik <- mhLogLikelihood_clipp(
+  paras = paras,
+  families = families,
+  twins = NULL,
+  max_age = 94,
+  baseline_data = baseline_data_default,
+  prev = 0.001,
+  geno_freq = c(0.999, 0.001),
+  trans = matrix(c(1,0,0.5,0.5), nrow=2),
+  BaselineNC = TRUE,
+  ncores = 1
+)
+}
 }

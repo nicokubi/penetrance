@@ -192,23 +192,44 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
 
 #' Calculate Log Likelihood using clipp Package
 #'
-#' This function calculates the log likelihood using the clipp package for a set of parameters and data.
+#' @param paras Numeric vector of parameters
+#' @param families Data frame of pedigree information
+#' @param twins Information on monozygous twins
+#' @param max_age Integer, maximum age
+#' @param baseline_data Numeric matrix of baseline risk data
+#' @param prev Numeric, prevalence
+#' @param geno_freq Numeric vector of frequencies
+#' @param trans Numeric matrix of transmission probabilities
+#' @param BaselineNC Logical for baseline choice
+#' @param ncores Integer for parallel computation
 #'
-#' @param paras Numeric vector, the parameters for the Weibull distribution and scaling factors. 
-#'        Should contain in order: gamma_male, gamma_female, delta_male, delta_female, 
-#'        given_median_male, given_median_female, given_first_quartile_male, given_first_quartile_female.
-#' @param families Data frame, containing pedigree information with columns for 'sex', 'age', 'aff' (affection status), and 'geno' (genotype).
-#' @param twins Information on monozygous twins or triplets in the pedigrees.
-#' @param max_age Integer, maximum age considered in the analysis.
-#' @param baseline_data Numeric matrix, baseline risk data for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.
-#' @param prev Numeric, prevalence of the risk allele in the population.
-#' @param geno_freq Numeric vector, represents the frequency of the risk type and its complement in the population.
-#' @param trans Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.
-#' @param BaselineNC Logical, indicates if non-carrier penetrance should be based on the baseline data or the calculated non-carrier penetrance.
-#' @param ncores Integer, number of cores to use for parallel computation.
+#' @return Numeric value representing the calculated log likelihood.
 #'
-#' @return Numeric, the calculated log likelihood.
-#'
+#' @examples
+#' \dontrun{
+#' # Create example parameters and data
+#' paras <- c(0.8, 0.7, 20, 25, 50, 45, 30, 35)  # Example parameters
+#' families <- data.frame(
+#'   sex = c(1,2),
+#'   age = c(50,45),
+#'   aff = c(1,0),
+#'   geno = c("1/2", NA)
+#' )
+#' 
+#' # Calculate log likelihood
+#' loglik <- mhLogLikelihood_clipp(
+#'   paras = paras,
+#'   families = families,
+#'   twins = NULL,
+#'   max_age = 94,
+#'   baseline_data = baseline_data_default,
+#'   prev = 0.001,
+#'   geno_freq = c(0.999, 0.001),
+#'   trans = matrix(c(1,0,0.5,0.5), nrow=2),
+#'   BaselineNC = TRUE,
+#'   ncores = 1
+#' )
+#' }
 #' @export
 mhLogLikelihood_clipp <- function(paras, families, twins, max_age, baseline_data, prev, geno_freq, trans, BaselineNC, ncores) {
   paras <- unlist(paras)

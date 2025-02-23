@@ -347,4 +347,53 @@ penetrance <- function(pedigree,
   return(output)
 }
 
+#' Plot Penetrance Curves
+#'
+#' @param combined_chains List of combined MCMC chain results containing posterior samples
+#'   for penetrance parameters.
+#' @param prob Numeric, probability level for confidence intervals (between 0 and 1).
+#' @param max_age Integer, maximum age to plot.
+#'
+#' @return No return value, called for side effects. Creates penetrance plots.
+#'
+#' @examples
+#' \dontrun{
+#' # Create example combined chains
+#' combined_chains <- list(
+#'   median_male_results = rnorm(1000, 50, 5),
+#'   median_female_results = rnorm(1000, 45, 5)
+#' )
+#' 
+#' # Generate penetrance plot
+#' plot_penetrance(combined_chains, prob = 0.95, max_age = 94)
+#' }
+#' @export
+plot_penetrance <- function(combined_chains, prob, max_age) {
+  # Implementation of plot_penetrance function
+}
 
+#' Plot Probability Density Function
+#'
+#' @param combined_chains List of combined MCMC chain results containing posterior samples
+#'   for penetrance parameters.
+#' @param prob Numeric, probability level for confidence intervals (between 0 and 1).
+#' @param max_age Integer, maximum age to plot.
+#' @param sex Character, one of "Male", "Female", or "NA" for non-sex-specific. Default is "NA".
+#'
+#' @return No return value, called for side effects. Creates PDF plots.
+#'
+#' @examples
+#' \dontrun{
+#' # Create example combined chains
+#' combined_chains <- list(
+#'   median_results = rnorm(1000, 50, 5),
+#'   threshold_results = runif(1000, 20, 30)
+#' )
+#' 
+#' # Generate PDF plot
+#' plot_pdf(combined_chains, prob = 0.95, max_age = 94)
+#' }
+#' @export
+plot_pdf <- function(combined_chains, prob, max_age, sex = "NA") {
+  # Implementation of plot_pdf function
+}
