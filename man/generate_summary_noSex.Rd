@@ -4,13 +4,16 @@
 \alias{generate_summary_noSex}
 \title{Generate Summary for Non-Sex-Specific Estimation}
 \usage{
-generate_summary_noSex(data)
+generate_summary_noSex(data, verbose = FALSE)
 }
 \arguments{
 \item{data}{A list containing combined results of MCMC chains, typically the output of \code{combine_chains_noSex}.}
+
+\item{verbose}{Logical, whether to print summary to console. Default is FALSE.}
 }
 \value{
-A summary data frame containing median, threshold, first quartile, and asymptote values.
+A data.frame containing summary statistics (min, 1st quartile, median, mean, 3rd quartile, max)
+for median, threshold, first quartile, and asymptote values.
 }
 \description{
 Generates summary statistics for the combined MCMC results for non-sex-specific estimations.

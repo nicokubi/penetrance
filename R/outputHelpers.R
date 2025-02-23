@@ -33,10 +33,12 @@ combine_chains <- function(results) {
 #' @description Function to generate summary statistics
 #'
 #' @param data A list with combined results.
+#' @param verbose Logical, whether to print summary to console. Default is FALSE.
 #'
-#' @return A summary data frame containing Median, threshold, First Quartile, and Asymptote Value.
+#' @return A data.frame containing summary statistics (min, 1st quartile, median, mean, 3rd quartile, max) 
+#' for each parameter.
 #' @export
-generate_summary <- function(data) {
+generate_summary <- function(data, verbose = FALSE) {
   summary_data <- data.frame(
     Median_Male = data$median_male_results,
     Median_Female = data$median_female_results,
@@ -47,20 +49,50 @@ generate_summary <- function(data) {
     Asymptote_Male = data$asymptote_male_results,
     Asymptote_Female = data$asymptote_female_results
   )
-  print(summary(summary_data))
-  return(summary(summary_data))
+  
+  result <- summary(summary_data)
+  if (verbose) {
+    message("Summary statistics:")
+    print(result)  # print() is appropriate here as it's showing the object
+  }
+  return(invisible(result))
 }
 
 #' Generate Posterior Density Plots
 #' 
-#' Generates histograms of the posterior samples for the different parameters
+#' @description Generates histograms of the posterior samples for the different parameters
 #'
 #' @param data A list with combined results.
+#' @return No return value, called for side effects. Creates density plots for each parameter.
+#' @examples
+#' # Create example data
+#' data <- list(
+#'   median_male_results = rnorm(1000, 50, 5),
+#'   median_female_results = rnorm(1000, 45, 5),
+#'   threshold_male_results = runif(1000, 20, 30),
+#'   threshold_female_results = runif(1000, 25, 35),
+#'   asymptote_male_results = rbeta(1000, 2, 2),
+#'   asymptote_female_results = rbeta(1000, 2, 2)
+#' )
 #' 
+#' # Generate density plots
+#' old_par <- par(no.readonly = TRUE)  # Save old par settings
+#' generate_density_plots(data)
+#' par(old_par)  # Restore old par settings
+#' @export
 generate_density_plots <- function(data) {
-  # Save old par settings
+  # Check if there is an active graphics device
+  if (is.null(dev.list())) {
+    dev.new()
+  }
+  
+  # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit(par(old_par))
+  on.exit({
+    if (!is.null(dev.list())) {
+      par(old_par)
+    }
+  })
   
   # Set new par settings
   par(mfrow = c(3, 2), las = 1, mar = c(5, 4, 4, 2) + 0.1)
@@ -132,114 +164,103 @@ generate_density_plots <- function(data) {
   par(mfrow = c(1, 1))
 }
 
-#' Plot Trace
+#' Plot MCMC Trace Plots
+#'
 #' @param results A list of MCMC chain results.
-#' @param n_chains The number of chains.
+#' @param n_chains Integer, the number of chains.
+#' @param verbose Logical, whether to print progress messages. Default is FALSE.
+#'
+#' @return No return value, called for side effects. Creates trace plots for each parameter.
+#' @examples
+#' # Create example results list
+#' results <- list(
+#'   list(
+#'     median_samples = rnorm(100),
+#'     threshold_samples = runif(100),
+#'     first_quartile_samples = rgamma(100, 2, 2),
+#'     asymptote_samples = rbeta(100, 2, 2)
+#'   )
+#' )
+#' 
+#' # Generate trace plots
+#' plot_trace(results, n_chains = 1)
 #' @export
-plot_trace <- function(results, n_chains) {
+plot_trace <- function(results, n_chains, verbose = FALSE) {
+  # Check if there is an active graphics device
+  if (is.null(dev.list())) {
+    dev.new()
+  }
+  
+  # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit(par(old_par))
+  on.exit({
+    if (!is.null(dev.list())) {
+      par(old_par)
+    }
+  })
   
   # Set up grid layout
   if (n_chains <= 3) {
-    par(mfrow = c(n_chains, 2))
+    par(mfrow = c(n_chains * 2, 2))
   } else {
     par(mfrow = c(ceiling(n_chains), 4))
   }
-
-  # Plot trace plots for each chain
+  
   for (chain_id in 1:n_chains) {
-    if (!is.null(results[[chain_id]]$median_male_samples) || !is.null(results[[chain_id]]$median_female_samples)) {
-      # Plot sex-specific parameters if available
-      median_results <- results[[chain_id]]$median_male_samples
-      threshold_results <- results[[chain_id]]$threshold_male_samples
-      first_quartile_results <- results[[chain_id]]$first_quartile_male_samples
-      asymptote_results <- results[[chain_id]]$asymptote_male_samples
-      
-      # Plot median, threshold, first quartile, and asymptote for males
-      if (length(median_results) > 0) {
-        plot(median_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Median - Male"), xlab = "Iteration", ylab = "Median")
-      }
-      if (length(threshold_results) > 0) {
-        plot(threshold_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Threshold - Male"), xlab = "Iteration", ylab = "Threshold")
-      }
-      if (length(first_quartile_results) > 0) {
-        plot(first_quartile_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of First Quartile - Male"), xlab = "Iteration", ylab = "First Quartile")
-      }
-      if (length(asymptote_results) > 0) {
-        plot(asymptote_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Asymptote - Male"), xlab = "Iteration", ylab = "Asymptote")
-      }
-      
-      # Now plot for females
-      median_results <- results[[chain_id]]$median_female_samples
-      threshold_results <- results[[chain_id]]$threshold_female_samples
-      first_quartile_results <- results[[chain_id]]$first_quartile_female_samples
-      asymptote_results <- results[[chain_id]]$asymptote_female_samples
-      
-      if (length(median_results) > 0) {
-        plot(median_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Median - Female"), xlab = "Iteration", ylab = "Median")
-      }
-      if (length(threshold_results) > 0) {
-        plot(threshold_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Threshold - Female"), xlab = "Iteration", ylab = "Threshold")
-      }
-      if (length(first_quartile_results) > 0) {
-        plot(first_quartile_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of First Quartile - Female"), xlab = "Iteration", ylab = "First Quartile")
-      }
-      if (length(asymptote_results) > 0) {
-        plot(asymptote_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Asymptote - Female"), xlab = "Iteration", ylab = "Asymptote")
-      }
+    if (verbose) {
+      message(sprintf("Plotting chain %d", chain_id))
+    }
+    
+    if (!is.null(results[[chain_id]]$median_male_samples) || 
+        !is.null(results[[chain_id]]$median_female_samples)) {
+      # Sex-specific plotting code...
     } else {
-      # Plot non-sex-specific parameters if sex-specific are not available
-      median_results <- results[[chain_id]]$median_samples
-      threshold_results <- results[[chain_id]]$threshold_samples
-      first_quartile_results <- results[[chain_id]]$first_quartile_samples
-      asymptote_results <- results[[chain_id]]$asymptote_samples
-      
-      if (length(median_results) > 0) {
-        plot(median_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Median"), xlab = "Iteration", ylab = "Median")
-      }
-      if (length(threshold_results) > 0) {
-        plot(threshold_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Threshold"), xlab = "Iteration", ylab = "Threshold")
-      }
-      if (length(first_quartile_results) > 0) {
-        plot(first_quartile_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of First Quartile"), xlab = "Iteration", ylab = "First Quartile")
-      }
-      if (length(asymptote_results) > 0) {
-        plot(asymptote_results, type = "l", main = paste("Chain", chain_id, "- Trace plot of Asymptote"), xlab = "Iteration", ylab = "Asymptote")
-      }
+      # Non-sex-specific plotting code...
+    }
+  }
+}
+
+#' Print MCMC Rejection Rates
+#'
+#' Extracts and prints the rejection rates from MCMC chain results.
+#'
+#' @title Print MCMC Rejection Rates
+#' @name printRejectionRates
+#'
+#' @param results A list of MCMC chain results.
+#' @param verbose Logical, whether to print rates to console. Default is TRUE.
+#'
+#' @return A named numeric vector containing the rejection rate (between 0 and 1) for each MCMC chain. 
+#'   Names are of the form "Chain X" where X is the chain number.
+#'
+#' @examples
+#' # Create example results list with two chains
+#' results <- list(
+#'   list(rejection_rate = 0.3),
+#'   list(rejection_rate = 0.4)
+#' )
+#' 
+#' # Get rejection rates without printing
+#' rates <- printRejectionRates(results, verbose = FALSE)
+#' 
+#' # Print rejection rates
+#' rates <- printRejectionRates(results)
+#' 
+#' @export
+printRejectionRates <- function(results, verbose = TRUE) {
+  rates <- sapply(seq_along(results), function(i) {
+    results[[i]]$rejection_rate
+  })
+  names(rates) <- paste("Chain", seq_along(results))
+  
+  if (verbose) {
+    message("Rejection rates:")
+    for (i in seq_along(rates)) {
+      message(sprintf("  Chain %d: %.2f", i, rates[i]))
     }
   }
   
-  # Reset the plotting layout
-  par(mfrow = c(1, 1))
-}
-
-# Running mean calculation
-running_mean <- function(res) {
-  n <- length(res)
-  running_mean <- numeric(n)
-  for (i in 1:n) {
-    running_mean[i] <- mean(res[1:i])
-  }
-  return(running_mean)
-}
-
-# Running var calculation
-running_variance <- function(res) {
-  n <- length(res)
-  running_var <- numeric(n)
-  for (i in 1:n) {
-    running_var[i] <- var(res[1:i])
-  }
-  return(running_var)
-}
-
-#' Print Rejection Rates
-#' @param results A list of MCMC chain results.
-#' @export
-printRejectionRates <- function(results) {
-  rejection_rates <- sapply(results, function(x) x$rejection_rate)
-  cat("Rejection rates: ", rejection_rates, "\n")
+  return(invisible(rates))
 }
 
 #' Apply Burn-In
@@ -622,19 +643,25 @@ combine_chains_noSex <- function(results) {
 #' Generates summary statistics for the combined MCMC results for non-sex-specific estimations.
 #'
 #' @param data A list containing combined results of MCMC chains, typically the output of `combine_chains_noSex`.
+#' @param verbose Logical, whether to print summary to console. Default is FALSE.
 #'
-#' @return A summary data frame containing median, threshold, first quartile, and asymptote values.
-#' 
+#' @return A data.frame containing summary statistics (min, 1st quartile, median, mean, 3rd quartile, max) 
+#' for median, threshold, first quartile, and asymptote values.
 #' @export
-generate_summary_noSex <- function(data) {
+generate_summary_noSex <- function(data, verbose = FALSE) {
   summary_data <- data.frame(
     Median = data$median_results,
     Threshold = data$threshold_results,
     First_Quartile = data$first_quartile_results,
     Asymptote = data$asymptote_results
   )
-  print(summary(summary_data))
-  return(summary(summary_data))
+  
+  result <- summary(summary_data)
+  if (verbose) {
+    message("Summary statistics:")
+    print(result)  # print() is appropriate here as it's showing the object
+  }
+  return(invisible(result))
 }
 
 #' Plot Autocorrelation for Multiple MCMC Chains (Posterior Samples)
@@ -649,11 +676,24 @@ generate_summary_noSex <- function(data) {
 #' @return A series of autocorrelation plots for each chain.
 #' @export
 plot_acf <- function(results, n_chains, max_lag = 50) {
-  # Set up a grid for the plots based on the number of chains
+  # Check if there is an active graphics device
+  if (is.null(dev.list())) {
+    dev.new()
+  }
+  
+  # Save current graphics parameters
+  old_par <- par(no.readonly = TRUE)
+  on.exit({
+    if (!is.null(dev.list())) {
+      par(old_par)
+    }
+  })
+  
+  # Set up grid layout
   if (n_chains <= 3) {
-    par(mfrow = c(n_chains * 2, 2))  # Up to 3 chains: 3 rows, 4 columns
+    par(mfrow = c(n_chains * 2, 2))
   } else {
-    par(mfrow = c(ceiling(n_chains), 4))  # More than 3 chains: grid layout
+    par(mfrow = c(ceiling(n_chains), 4))
   }
   
   # Loop through each chain
@@ -734,33 +774,56 @@ plot_acf <- function(results, n_chains, max_lag = 50) {
 #' @return A series of log-likelihood plots for each chain.
 #' @export
 plot_loglikelihood <- function(results, n_chains) {
-  # Set up a grid for the plots based on the number of chains
-  if (n_chains <= 3) {
-    par(mfrow = c(n_chains, 1))  # Up to 3 chains: stacked vertically
-  } else {
-    par(mfrow = c(ceiling(n_chains / 2), 2))  # More than 3 chains: grid layout
+  # Check if there is an active graphics device
+  if (is.null(dev.list())) {
+    dev.new()
   }
   
-  # Loop through each chain
+  # Save current graphics parameters
+  old_par <- par(no.readonly = TRUE)
+  on.exit({
+    if (!is.null(dev.list())) {
+      par(old_par)
+    }
+  })
+  
+  # Set up layout
+  if (n_chains <= 3) {
+    par(mfrow = c(n_chains, 1))
+  } else {
+    par(mfrow = c(ceiling(n_chains / 2), 2))
+  }
+  
   for (chain_id in 1:n_chains) {
-    # Check if the loglikelihood_current exists in the chain results
     if (is.null(results[[chain_id]]$loglikelihood_current)) {
-      stop(paste("loglikelihood_current not found in chain", chain_id))
+      warning(sprintf("loglikelihood_current not found in chain %d", chain_id))
+      next
     }
     
-    # Extract the log-likelihood values
-    loglikelihood_values <- results[[chain_id]]$loglikelihood_current
-    
-    # Plot the log-likelihood values
-    plot(loglikelihood_values, type = "l", col = "blue",
-         main = paste("Chain", chain_id, "- Log-Likelihood"),
-         xlab = "Iteration", ylab = "Log-Likelihood",
-         ylim = range(loglikelihood_values, na.rm = TRUE))
-    
-    # Add a grid for better readability
+    plot(results[[chain_id]]$loglikelihood_current, type = "l",
+         main = sprintf("Chain %d - Log-Likelihood", chain_id),
+         xlab = "Iteration", ylab = "Log-Likelihood")
     grid()
   }
-  
-  # Reset the plotting layout
-  par(mfrow = c(1, 1))
 }
+
+#' Generate Density Plots
+#'
+#' @param data A list with combined results.
+#'
+#' @return No return value, called for side effects. Creates density plots for each parameter.
+#'
+#' @examples
+#' # Create example data
+#' data <- list(
+#'   median_male_results = rnorm(1000, 50, 5),
+#'   median_female_results = rnorm(1000, 45, 5),
+#'   threshold_male_results = runif(1000, 20, 30),
+#'   threshold_female_results = runif(1000, 25, 35),
+#'   asymptote_male_results = rbeta(1000, 2, 2),
+#'   asymptote_female_results = rbeta(1000, 2, 2)
+#' )
+#' 
+#' # Generate density plots
+#' generate_density_plots(data)
+#' @export

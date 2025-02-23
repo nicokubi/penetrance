@@ -120,11 +120,24 @@ penetrance(
 A list containing combined results from all chains, including optional statistics and plots.
 }
 \description{
-A package for penetrance estimation in family-based penetrance studies.
+A comprehensive package for penetrance estimation in family-based studies. This package
+implements Bayesian methods using Metropolis-Hastings algorithm for estimating age-specific
+penetrance of genetic variants. It supports both sex-specific and non-sex-specific analyses,
+and provides various visualization tools for examining MCMC results.
 
 This function implements the Independent Metropolis-Hastings algorithm for Bayesian
 penetrance estimation of cancer risk. It utilizes parallel computing to run multiple
 chains and provides various options for analyzing and visualizing the results.
+}
+\details{
+Key features:
+\itemize{
+\item Bayesian estimation of penetrance using family-based data
+\item Support for sex-specific and non-sex-specific analyses
+\item Age imputation for missing data
+\item Visualization tools for MCMC diagnostics
+\item Integration with the clipp package for likelihood calculations
+}
 }
 \examples{
 # Create example baseline data (simplified for demonstration)

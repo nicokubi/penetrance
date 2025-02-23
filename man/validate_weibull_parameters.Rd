@@ -21,8 +21,18 @@ validate_weibull_parameters(
 \item{asymptote}{A constant asymptote value (gamma).}
 }
 \value{
-Boolean indicating whether the parameters are valid (TRUE) or not (FALSE).
+Logical value indicating whether the parameters are valid (TRUE) or not (FALSE)
 }
 \description{
 This function validates the given parameters for calculating Weibull distribution.
+}
+\examples{
+# Validate parameters
+is_valid <- validate_weibull_parameters(
+  given_first_quartile = 30,
+  given_median = 50,
+  threshold = 15,
+  asymptote = 0.8
+)
+print(is_valid)
 }
