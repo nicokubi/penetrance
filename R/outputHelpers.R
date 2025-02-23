@@ -352,60 +352,60 @@ apply_thinning <- function(results, thinning_factor) {
 
 #' Plot Weibull Distribution with Credible Intervals
 #'
-#' This function plots the Weibull distribution with credible intervals for the given data. 
-#' It allows for visualization of penetrance curves for individuals based on their genetic 
-#' and demographic information.
+#' This function plots the Weibull distribution with credible intervals for the given MCMC results. 
+#' It allows for visualization of penetrance curves based on the posterior samples.
 #'
-#' @param data Data frame, containing individual demographic and genetic information. Must include columns for 'sex', 'age', 'aff' (affection status), and 'geno' (genotype).
-#' @param prob Numeric, the probability level for the credible intervals. Must be between 0 and 1.
-#' @param max_age Integer, the maximum age considered in the analysis.
-#' @param sex Character, specifying the sex of the individuals for the plot ("Male", "Female", or "NA" for not applicable). Default is "NA".
+#' @param combined_chains List of combined MCMC chain results containing posterior samples
+#'   for penetrance parameters.
+#' @param prob Numeric, probability level for confidence intervals (between 0 and 1).
+#' @param max_age Integer, maximum age to plot.
+#' @param sex Character, one of "Male", "Female", or "NA" for non-sex-specific. Default is "NA".
 #'
 #' @return A plot showing the Weibull distribution with credible intervals.
 #' @export
-plot_penetrance <- function(data, prob, max_age, sex = "NA") {
+plot_penetrance <- function(combined_chains, prob, max_age, sex = "NA") {
   if (prob <= 0 || prob >= 1) {
     stop("prob must be between 0 and 1")
   }
   
   # Check if sex-specific parameters are present
-  sex_specific <- !is.null(data$median_male_results) && !is.null(data$median_female_results)
+  sex_specific <- !is.null(combined_chains$median_male_results) && !is.null(combined_chains$median_female_results)
   
   if (sex_specific) {
     # Use sex-specific parameters
     params_male <- calculate_weibull_parameters(
-      data$median_male_results,
-      data$first_quartile_male_results,
-      data$threshold_male_results
+      combined_chains$median_male_results,
+      combined_chains$first_quartile_male_results,
+      combined_chains$threshold_male_results
     )
     
     params_female <- calculate_weibull_parameters(
-      data$median_female_results,
-      data$first_quartile_female_results,
-      data$threshold_female_results
+      combined_chains$median_female_results,
+      combined_chains$first_quartile_female_results,
+      combined_chains$threshold_female_results
     )
     
     alphas_male <- params_male$alpha
     betas_male <- params_male$beta
-    thresholds_male <- data$threshold_male_results
+    thresholds_male <- combined_chains$threshold_male_results
     alphas_female <- params_female$alpha
     betas_female <- params_female$beta
-    thresholds_female <- data$threshold_female_results
+    thresholds_female <- combined_chains$threshold_female_results
     
-    asymptotes_male <- data$asymptote_male_results
-    asymptotes_female <- data$asymptote_female_results
+    asymptotes_male <- combined_chains$asymptote_male_results
+    asymptotes_female <- combined_chains$asymptote_female_results
   } else {
     # Use non-sex-specific parameters
     params <- calculate_weibull_parameters(
-      data$median_results,
-      data$first_quartile_results,
-      data$threshold_results
+      combined_chains$median_results,
+      combined_chains$first_quartile_results,
+      combined_chains$threshold_results
     )
     
     alphas <- params$alpha
     betas <- params$beta
-    thresholds <- data$threshold_results
-    asymptotes <- data$asymptote_results
+    thresholds <- combined_chains$threshold_results
+    asymptotes <- combined_chains$asymptote_results
   }
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
@@ -483,60 +483,60 @@ plot_penetrance <- function(data, prob, max_age, sex = "NA") {
 
 #' Plot Weibull Probability Density Function with Credible Intervals
 #'
-#' This function plots the Weibull PDF with credible intervals for the given data. 
-#' It allows for visualization of density curves for individuals based on their genetic 
-#' and demographic information.
+#' This function plots the Weibull PDF with credible intervals for the given MCMC results. 
+#' It allows for visualization of density curves based on the posterior samples.
 #'
-#' @param data Data frame, containing individual demographic and genetic information. Must include columns for 'sex', 'age', 'aff' (affection status), and 'geno' (genotype).
-#' @param prob Numeric, the probability level for the credible intervals. Must be between 0 and 1.
-#' @param max_age Integer, the maximum age considered in the analysis.
-#' @param sex Character, specifying the sex of the individuals for the plot ("Male", "Female", or "NA" for not applicable). Default is "NA".
+#' @param combined_chains List of combined MCMC chain results containing posterior samples
+#'   for penetrance parameters.
+#' @param prob Numeric, probability level for confidence intervals (between 0 and 1).
+#' @param max_age Integer, maximum age to plot.
+#' @param sex Character, one of "Male", "Female", or "NA" for non-sex-specific. Default is "NA".
 #'
 #' @return A plot showing the Weibull PDF with credible intervals.
 #' @export
-plot_pdf <- function(data, prob, max_age, sex = "NA") {
+plot_pdf <- function(combined_chains, prob, max_age, sex = "NA") {
   if (prob <= 0 || prob >= 1) {
     stop("prob must be between 0 and 1")
   }
   
   # Check if sex-specific parameters are present
-  sex_specific <- !is.null(data$median_male_results) && !is.null(data$median_female_results)
+  sex_specific <- !is.null(combined_chains$median_male_results) && !is.null(combined_chains$median_female_results)
   
   if (sex_specific) {
     # Use sex-specific parameters
     params_male <- calculate_weibull_parameters(
-      data$median_male_results,
-      data$first_quartile_male_results,
-      data$threshold_male_results
+      combined_chains$median_male_results,
+      combined_chains$first_quartile_male_results,
+      combined_chains$threshold_male_results
     )
     
     params_female <- calculate_weibull_parameters(
-      data$median_female_results,
-      data$first_quartile_female_results,
-      data$threshold_female_results
+      combined_chains$median_female_results,
+      combined_chains$first_quartile_female_results,
+      combined_chains$threshold_female_results
     )
     
     alphas_male <- params_male$alpha
     betas_male <- params_male$beta
-    thresholds_male <- data$threshold_male_results
+    thresholds_male <- combined_chains$threshold_male_results
     alphas_female <- params_female$alpha
     betas_female <- params_female$beta
-    thresholds_female <- data$threshold_female_results
+    thresholds_female <- combined_chains$threshold_female_results
     
-    asymptotes_male <- data$asymptote_male_results
-    asymptotes_female <- data$asymptote_female_results
+    asymptotes_male <- combined_chains$asymptote_male_results
+    asymptotes_female <- combined_chains$asymptote_female_results
   } else {
     # Use non-sex-specific parameters
     params <- calculate_weibull_parameters(
-      data$median_results,
-      data$first_quartile_results,
-      data$threshold_results
+      combined_chains$median_results,
+      combined_chains$first_quartile_results,
+      combined_chains$threshold_results
     )
     
     alphas <- params$alpha
     betas <- params$beta
-    thresholds <- data$threshold_results
-    asymptotes <- data$asymptote_results
+    thresholds <- combined_chains$threshold_results
+    asymptotes <- combined_chains$asymptote_results
   }
   
   x_values <- seq(0, max_age, length.out = max_age + 1)
