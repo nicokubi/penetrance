@@ -44,7 +44,7 @@ and demographic information."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Plot Weibull Distribution with Credible Intervals</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/main/R/outputHelpers.R" class="external-link"><code>R/outputHelpers.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/main/R/outputHelpers.R" class="external-link"><code>R/outputHelpers.R</code></a>, <a href="https://github.com/nicokubi/penetrance/blob/main/R/penetranceMain.R" class="external-link"><code>R/penetranceMain.R</code></a></small>
       <div class="d-none name"><code>plot_penetrance.Rd</code></div>
     </div>
 
@@ -56,34 +56,45 @@ and demographic information.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_penetrance</span><span class="op">(</span><span class="va">data</span>, <span class="va">prob</span>, <span class="va">max_age</span>, sex <span class="op">=</span> <span class="st">"NA"</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_penetrance</span><span class="op">(</span><span class="va">combined_chains</span>, <span class="va">prob</span>, <span class="va">max_age</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>Data frame, containing individual demographic and genetic information. Must include columns for 'sex', 'age', 'aff' (affection status), and 'geno' (genotype).</p></dd>
+<dl><dt id="arg-combined-chains">combined_chains<a class="anchor" aria-label="anchor" href="#arg-combined-chains"></a></dt>
+<dd><p>List of combined MCMC chain results</p></dd>
 
 
 <dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
-<dd><p>Numeric, the probability level for the credible intervals. Must be between 0 and 1.</p></dd>
+<dd><p>Numeric, probability level for confidence intervals</p></dd>
 
 
 <dt id="arg-max-age">max_age<a class="anchor" aria-label="anchor" href="#arg-max-age"></a></dt>
-<dd><p>Integer, the maximum age considered in the analysis.</p></dd>
-
-
-<dt id="arg-sex">sex<a class="anchor" aria-label="anchor" href="#arg-sex"></a></dt>
-<dd><p>Character, specifying the sex of the individuals for the plot ("Male", "Female", or "NA" for not applicable). Default is "NA".</p></dd>
+<dd><p>Integer, maximum age to plot</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A plot showing the Weibull distribution with credible intervals.</p>
+<p>No return value, called for side effects. Creates penetrance plots.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span><span class="co"># Create example combined chains</span></span></span>
+<span class="r-in"><span><span class="va">combined_chains</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  median_male_results <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1000</span>, <span class="fl">50</span>, <span class="fl">5</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  median_female_results <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1000</span>, <span class="fl">45</span>, <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Generate penetrance plot</span></span></span>
+<span class="r-in"><span><span class="fu">plot_penetrance</span><span class="op">(</span><span class="va">combined_chains</span>, prob <span class="op">=</span> <span class="fl">0.95</span>, max_age <span class="op">=</span> <span class="fl">94</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

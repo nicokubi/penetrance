@@ -80,9 +80,22 @@
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Boolean indicating whether the parameters are valid (TRUE) or not (FALSE).</p>
+    <p>Logical value indicating whether the parameters are valid (TRUE) or not (FALSE)</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Validate parameters</span></span></span>
+<span class="r-in"><span><span class="va">is_valid</span> <span class="op">&lt;-</span> <span class="fu">validate_weibull_parameters</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  given_first_quartile <span class="op">=</span> <span class="fl">30</span>,</span></span>
+<span class="r-in"><span>  given_median <span class="op">=</span> <span class="fl">50</span>,</span></span>
+<span class="r-in"><span>  threshold <span class="op">=</span> <span class="fl">15</span>,</span></span>
+<span class="r-in"><span>  asymptote <span class="op">=</span> <span class="fl">0.8</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">is_valid</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
