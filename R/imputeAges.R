@@ -26,39 +26,79 @@
 #'   The rest of the data frame remains unchanged.
 #' 
 #' @examples
-#' # Create sample data
+#' # Create sample data with the same structure as used in mhChain
 #' data <- data.frame(
-#'   family = c(1,1),
-#'   individual = c(1,2),
-#'   sex = c(1,2),
-#'   aff = c(1,0),
-#'   age = c(NA,NA),
-#'   geno = c("1/2",NA)
+#'   family = rep(1:2, each=5),
+#'   individual = rep(1:5, 2),
+#'   father = c(NA,1,1,1,1, NA,6,6,6,6),
+#'   mother = c(NA,2,2,2,2, NA,7,7,7,7),
+#'   sex = c(1,2,1,2,1, 1,2,1,2,1),
+#'   aff = c(1,0,1,0,NA, 1,0,1,0,NA),
+#'   age = c(45,NA,25,NA,20, 50,NA,30,NA,22),
+#'   geno = c("1/2",NA,"1/2",NA,NA, "1/2",NA,"1/2",NA,NA),
+#'   isProband = c(1,0,0,0,0, 1,0,0,0,0)
 #' )
+#' 
+#' # Initialize parameters
 #' na_indices <- which(is.na(data$age))
-#' geno_freq <- c(0.999, 0.001)
-#' trans <- matrix(c(1,0,0.5,0.5), nrow=2)
-#' lik <- matrix(1, nrow=nrow(data), ncol=2)
+#' geno_freq <- c(0.999, 0.001)  # Frequency of normal and risk alleles
+#' trans <- matrix(c(1,0,0.5,0.5), nrow=2)  # Transmission matrix
+#' lik <- matrix(1, nrow=nrow(data), ncol=2)  # Likelihood matrix
 #' 
-#' # Create baseline data
-#' baseline <- data.frame(
-#'   age = 20:94,
-#'   cum_prob = (1:75)/75
+#' # Create baseline data for both sex-specific and non-sex-specific cases
+#' age_range <- 20:94
+#' n_ages <- length(age_range)
+#' 
+#' # Sex-specific baseline data
+#' baseline_male <- data.frame(
+#'   age = age_range,
+#'   cum_prob = (1:n_ages)/n_ages * 0.8  # Male cumulative probabilities
 #' )
 #' 
-#' # Impute ages
-#' \dontrun{
-#' imputed_data <- imputeAges(
+#' baseline_female <- data.frame(
+#'   age = age_range,
+#'   cum_prob = (1:n_ages)/n_ages * 0.9  # Female cumulative probabilities
+#' )
+#' 
+#' # Non-sex-specific baseline data
+#' baseline <- data.frame(
+#'   age = age_range,
+#'   cum_prob = (1:n_ages)/n_ages * 0.85  # Overall cumulative probabilities
+#' )
+#' 
+#' # Example with sex-specific imputation
+#' imputed_data_sex <- imputeAges(
 #'   data = data,
 #'   na_indices = na_indices,
+#'   baseline_male = baseline_male,
+#'   baseline_female = baseline_female,
+#'   alpha_male = 3.5,
+#'   beta_male = 20,
+#'   delta_male = 20,
+#'   alpha_female = 3.2,
+#'   beta_female = 18,
+#'   delta_female = 18,
 #'   max_age = 94,
-#'   baseline = baseline,  # Add baseline data
+#'   sex_specific = TRUE,
 #'   geno_freq = geno_freq,
 #'   trans = trans,
-#'   lik = lik,
-#'   sex_specific = FALSE  # Use non-sex-specific imputation for example
+#'   lik = lik
 #' )
-#' }
+#' 
+#' # Example with non-sex-specific imputation
+#' imputed_data_nosex <- imputeAges(
+#'   data = data,
+#'   na_indices = na_indices,
+#'   baseline = baseline,
+#'   alpha = 3.3,
+#'   beta = 19,
+#'   delta = 19,
+#'   max_age = 94,
+#'   sex_specific = FALSE,
+#'   geno_freq = geno_freq,
+#'   trans = trans,
+#'   lik = lik
+#' )
 #' @export
 imputeAges <- function(data, na_indices, baseline_male = NULL, baseline_female = NULL,
                        alpha_male = NULL, beta_male = NULL, delta_male = NULL,

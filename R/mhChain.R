@@ -339,7 +339,7 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   }
 
   num_rejections <- 0
-  cat("Starting Chain", chain_id, "\n")
+  message("Starting Chain ", chain_id)
 
   # Initialize the model
   # geno_freq represents the frequency of the risk type and its complement in the population

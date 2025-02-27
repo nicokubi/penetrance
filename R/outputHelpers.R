@@ -88,11 +88,7 @@ generate_density_plots <- function(data) {
   
   # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit({
-    if (!is.null(dev.list())) {
-      par(old_par)
-    }
-  })
+  on.exit(par(old_par))
   
   # Set new par settings
   par(mfrow = c(3, 2), las = 1, mar = c(5, 4, 4, 2) + 0.1)
@@ -159,9 +155,6 @@ generate_density_plots <- function(data) {
          col = "lightblue" # Optional: color for the histogram
     )
   }
-  
-  # Reset to default single plot setting after plotting
-  par(mfrow = c(1, 1))
 }
 
 #' Plot MCMC Trace Plots
@@ -193,11 +186,7 @@ plot_trace <- function(results, n_chains, verbose = FALSE) {
   
   # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit({
-    if (!is.null(dev.list())) {
-      par(old_par)
-    }
-  })
+  on.exit(par(old_par))
   
   # Set up grid layout
   if (n_chains <= 3) {
@@ -683,11 +672,7 @@ plot_acf <- function(results, n_chains, max_lag = 50) {
   
   # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit({
-    if (!is.null(dev.list())) {
-      par(old_par)
-    }
-  })
+  on.exit(par(old_par))
   
   # Set up grid layout
   if (n_chains <= 3) {
@@ -758,9 +743,6 @@ plot_acf <- function(results, n_chains, max_lag = 50) {
       }
     }
   }
-  
-  # Reset the plotting layout
-  par(mfrow = c(1, 1))
 }
 
 #' Plot Log-Likelihood for Multiple MCMC Chains
@@ -781,11 +763,7 @@ plot_loglikelihood <- function(results, n_chains) {
   
   # Save current graphics parameters
   old_par <- par(no.readonly = TRUE)
-  on.exit({
-    if (!is.null(dev.list())) {
-      par(old_par)
-    }
-  })
+  on.exit(par(old_par))
   
   # Set up layout
   if (n_chains <= 3) {
