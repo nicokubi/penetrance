@@ -152,39 +152,79 @@ father, mother, sex, aff, age, geno, and isProband</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create sample data</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create sample data with the same structure as used in mhChain</span></span></span>
 <span class="r-in"><span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  individual <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  sex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  aff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>,<span class="cn">NA</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  geno <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1/2"</span>,<span class="cn">NA</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, each<span class="op">=</span><span class="fl">5</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  individual <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="fl">2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  father <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>, <span class="cn">NA</span>,<span class="fl">6</span>,<span class="fl">6</span>,<span class="fl">6</span>,<span class="fl">6</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  mother <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>,<span class="fl">2</span>,<span class="fl">2</span>,<span class="fl">2</span>,<span class="fl">2</span>, <span class="cn">NA</span>,<span class="fl">7</span>,<span class="fl">7</span>,<span class="fl">7</span>,<span class="fl">7</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  sex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">1</span>, <span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">1</span>,<span class="fl">2</span>,<span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  aff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">0</span>,<span class="cn">NA</span>, <span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">0</span>,<span class="cn">NA</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">45</span>,<span class="cn">NA</span>,<span class="fl">25</span>,<span class="cn">NA</span>,<span class="fl">20</span>, <span class="fl">50</span>,<span class="cn">NA</span>,<span class="fl">30</span>,<span class="cn">NA</span>,<span class="fl">22</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  geno <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1/2"</span>,<span class="cn">NA</span>,<span class="st">"1/2"</span>,<span class="cn">NA</span>,<span class="cn">NA</span>, <span class="st">"1/2"</span>,<span class="cn">NA</span>,<span class="st">"1/2"</span>,<span class="cn">NA</span>,<span class="cn">NA</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  isProband <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>, <span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Initialize parameters</span></span></span>
 <span class="r-in"><span><span class="va">na_indices</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">data</span><span class="op">$</span><span class="va">age</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">geno_freq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.999</span>, <span class="fl">0.001</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">trans</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">0.5</span>,<span class="fl">0.5</span><span class="op">)</span>, nrow<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, nrow<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span>, ncol<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">geno_freq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.999</span>, <span class="fl">0.001</span><span class="op">)</span>  <span class="co"># Frequency of normal and risk alleles</span></span></span>
+<span class="r-in"><span><span class="va">trans</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">0.5</span>,<span class="fl">0.5</span><span class="op">)</span>, nrow<span class="op">=</span><span class="fl">2</span><span class="op">)</span>  <span class="co"># Transmission matrix</span></span></span>
+<span class="r-in"><span><span class="va">lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, nrow<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span>, ncol<span class="op">=</span><span class="fl">2</span><span class="op">)</span>  <span class="co"># Likelihood matrix</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Create baseline data</span></span></span>
-<span class="r-in"><span><span class="va">baseline</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  age <span class="op">=</span> <span class="fl">20</span><span class="op">:</span><span class="fl">94</span>,</span></span>
-<span class="r-in"><span>  cum_prob <span class="op">=</span> <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">75</span><span class="op">)</span><span class="op">/</span><span class="fl">75</span></span></span>
+<span class="r-in"><span><span class="co"># Create baseline data for both sex-specific and non-sex-specific cases</span></span></span>
+<span class="r-in"><span><span class="va">age_range</span> <span class="op">&lt;-</span> <span class="fl">20</span><span class="op">:</span><span class="fl">94</span></span></span>
+<span class="r-in"><span><span class="va">n_ages</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">age_range</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Sex-specific baseline data</span></span></span>
+<span class="r-in"><span><span class="va">baseline_male</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  age <span class="op">=</span> <span class="va">age_range</span>,</span></span>
+<span class="r-in"><span>  cum_prob <span class="op">=</span> <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">n_ages</span><span class="op">)</span><span class="op">/</span><span class="va">n_ages</span> <span class="op">*</span> <span class="fl">0.8</span>  <span class="co"># Male cumulative probabilities</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Impute ages</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">imputed_data</span> <span class="op">&lt;-</span> <span class="fu">imputeAges</span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">baseline_female</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  age <span class="op">=</span> <span class="va">age_range</span>,</span></span>
+<span class="r-in"><span>  cum_prob <span class="op">=</span> <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">n_ages</span><span class="op">)</span><span class="op">/</span><span class="va">n_ages</span> <span class="op">*</span> <span class="fl">0.9</span>  <span class="co"># Female cumulative probabilities</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Non-sex-specific baseline data</span></span></span>
+<span class="r-in"><span><span class="va">baseline</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  age <span class="op">=</span> <span class="va">age_range</span>,</span></span>
+<span class="r-in"><span>  cum_prob <span class="op">=</span> <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">n_ages</span><span class="op">)</span><span class="op">/</span><span class="va">n_ages</span> <span class="op">*</span> <span class="fl">0.85</span>  <span class="co"># Overall cumulative probabilities</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Example with sex-specific imputation</span></span></span>
+<span class="r-in"><span><span class="va">imputed_data_sex</span> <span class="op">&lt;-</span> <span class="fu">imputeAges</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  data <span class="op">=</span> <span class="va">data</span>,</span></span>
 <span class="r-in"><span>  na_indices <span class="op">=</span> <span class="va">na_indices</span>,</span></span>
+<span class="r-in"><span>  baseline_male <span class="op">=</span> <span class="va">baseline_male</span>,</span></span>
+<span class="r-in"><span>  baseline_female <span class="op">=</span> <span class="va">baseline_female</span>,</span></span>
+<span class="r-in"><span>  alpha_male <span class="op">=</span> <span class="fl">3.5</span>,</span></span>
+<span class="r-in"><span>  beta_male <span class="op">=</span> <span class="fl">20</span>,</span></span>
+<span class="r-in"><span>  delta_male <span class="op">=</span> <span class="fl">20</span>,</span></span>
+<span class="r-in"><span>  alpha_female <span class="op">=</span> <span class="fl">3.2</span>,</span></span>
+<span class="r-in"><span>  beta_female <span class="op">=</span> <span class="fl">18</span>,</span></span>
+<span class="r-in"><span>  delta_female <span class="op">=</span> <span class="fl">18</span>,</span></span>
 <span class="r-in"><span>  max_age <span class="op">=</span> <span class="fl">94</span>,</span></span>
-<span class="r-in"><span>  baseline <span class="op">=</span> <span class="va">baseline</span>,  <span class="co"># Add baseline data</span></span></span>
+<span class="r-in"><span>  sex_specific <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
 <span class="r-in"><span>  geno_freq <span class="op">=</span> <span class="va">geno_freq</span>,</span></span>
 <span class="r-in"><span>  trans <span class="op">=</span> <span class="va">trans</span>,</span></span>
-<span class="r-in"><span>  lik <span class="op">=</span> <span class="va">lik</span>,</span></span>
-<span class="r-in"><span>  sex_specific <span class="op">=</span> <span class="cn">FALSE</span>  <span class="co"># Use non-sex-specific imputation for example</span></span></span>
+<span class="r-in"><span>  lik <span class="op">=</span> <span class="va">lik</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Example with non-sex-specific imputation</span></span></span>
+<span class="r-in"><span><span class="va">imputed_data_nosex</span> <span class="op">&lt;-</span> <span class="fu">imputeAges</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  data <span class="op">=</span> <span class="va">data</span>,</span></span>
+<span class="r-in"><span>  na_indices <span class="op">=</span> <span class="va">na_indices</span>,</span></span>
+<span class="r-in"><span>  baseline <span class="op">=</span> <span class="va">baseline</span>,</span></span>
+<span class="r-in"><span>  alpha <span class="op">=</span> <span class="fl">3.3</span>,</span></span>
+<span class="r-in"><span>  beta <span class="op">=</span> <span class="fl">19</span>,</span></span>
+<span class="r-in"><span>  delta <span class="op">=</span> <span class="fl">19</span>,</span></span>
+<span class="r-in"><span>  max_age <span class="op">=</span> <span class="fl">94</span>,</span></span>
+<span class="r-in"><span>  sex_specific <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
+<span class="r-in"><span>  geno_freq <span class="op">=</span> <span class="va">geno_freq</span>,</span></span>
+<span class="r-in"><span>  trans <span class="op">=</span> <span class="va">trans</span>,</span></span>
+<span class="r-in"><span>  lik <span class="op">=</span> <span class="va">lik</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
