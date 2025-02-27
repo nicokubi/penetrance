@@ -334,7 +334,7 @@ penetrance <- function(pedigree,
     },
     error = function(e) {
       # Handle errors here
-      cat("An error occurred in the output display: ", e$message, "\n")
+      message("An error occurred in the output display: ", e$message)
     }
   )
 
