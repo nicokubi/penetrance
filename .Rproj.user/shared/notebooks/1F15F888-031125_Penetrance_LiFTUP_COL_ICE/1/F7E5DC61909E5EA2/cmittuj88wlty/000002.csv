@@ -1,0 +1,28 @@
+"0","library(penetrance)"
+"0","library(ggplot2)"
+"0","library(ggridges)"
+"2","Warning:"
+"2"," package ‘ggridges’ was built under R version 4.2.3
+"
+"0","library(ggplot2)"
+"0","library(dplyr)"
+"0","library(survival)"
+"0","library(gridExtra)"
+"2","
+Attaching package: ‘gridExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    combine
+
+"
+"0","library(GGally)"
+"2","Warning:"
+"2"," package ‘GGally’ was built under R version 4.2.3
+"
+"2","Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+"
+"0","set.seed(2025)"

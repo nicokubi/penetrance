@@ -1,0 +1,82 @@
+"0","library(penetrance)"
+"2","Loading required package: clipp
+"
+"2","Loading required package: parallel
+"
+"2","Loading required package: MASS
+"
+"2","Loading required package: kinship2
+"
+"2","Warning:"
+"2"," package ‘kinship2’ was built under R version 4.2.3
+"
+"2","Loading required package: Matrix
+"
+"2","Loading required package: quadprog
+"
+"2","
+Attaching package: ‘penetrance’
+
+"
+"2","The following objects are masked _by_ ‘.GlobalEnv’:
+
+    generate_summary, plot_pdf, plot_penetrance, plot_trace, printRejectionRates
+
+"
+"0","library(PPP)"
+"2","Welcome to the PPP package, by the BayesMendel Lab!
+"
+"2","PPP version: 1.1.0
+"
+"0","library(ggplot2)"
+"2","Warning:"
+"2"," package ‘ggplot2’ was built under R version 4.2.3
+"
+"0","library(ggridges)"
+"2","Warning:"
+"2"," package ‘ggridges’ was built under R version 4.2.3
+"
+"0","library(ggplot2)"
+"0","library(dplyr)"
+"2","Warning:"
+"2"," package ‘dplyr’ was built under R version 4.2.3
+"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following object is masked from ‘package:MASS’:
+
+    select
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(survival)"
+"0","library(gridExtra)"
+"2","
+Attaching package: ‘gridExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    combine
+
+"
+"0","library(GGally)"
+"2","Warning:"
+"2"," package ‘GGally’ was built under R version 4.2.3
+"
+"2","Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+"
+"0","set.seed(2025)"

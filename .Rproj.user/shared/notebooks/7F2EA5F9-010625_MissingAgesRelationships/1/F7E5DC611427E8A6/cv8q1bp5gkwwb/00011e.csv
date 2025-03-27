@@ -1,0 +1,5 @@
+"0","analyze_missing_ages(dat)
+"
+"2","Error in data.frame(Relationship = simplified_relationships, Missing_CurAge = is.na(df$CurAge),  : 
+  arguments imply differing number of rows: 74, 0
+"

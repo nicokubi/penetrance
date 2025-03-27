@@ -1,0 +1,8 @@
+"0",""
+"0","# Bar plot for Age"
+"0","barplot(relationship_summary$Missing_Age_Pct,"
+"0","        names.arg = relationship_summary$Relationship,"
+"0","        main = ""Missing Age of Diagnosis by Relationship"","
+"0","        ylab = ""Percentage Missing (%)"","
+"0","        las = 2,"
+"0","        cex.names = 0.8)"

@@ -1,0 +1,1696 @@
+---
+title: "Penetrance"
+subtitle: "Simulation Study - Weibull Simulation - v2 - logit trans"
+format: 
+  html:
+    toc: true
+    toc-location: body
+date: 07-03-2025
+theme: lightly
+author:
+  - name: "Nicolas Kubista"
+    affiliations: "Harvard University"
+embed-resources: true
+toc: true
+toc-expand: 2
+toc-title: Contents
+page-layout: full
+code-fold: true
+editor: visual
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+# Load required libraries
+library(penetrance)
+library(PanelPRO)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(scales)
+library(truncnorm)
+library(PedUtils)
+source("~/Documents/Master Statistics/Master Thesis/Code/Submission/Additional Scripts/describeFamilies.R")
+
+# Function to deeply clone a database
+deep_clone <- function(x) {
+  rapply(x, function(y) if(is.list(y)) return(deep_clone(y)) else return(y), how = "replace")
+}
+
+# Create a directory for saving results if it doesn't exist
+results_dir <- "results"
+if (!dir.exists(results_dir)) {
+  dir.create(results_dir)
+}
+
+# Set up age sequence
+age <- 1:94
+
+# Define Weibull parameters for female penetrance
+alpha_f <- 2      # Shape parameter
+beta_f <- 50      # Scale parameter
+gamma_f <- 0.6    # Maximum penetrance (by age 94)
+delta_f <- 15     # Shift parameter (minimum age of onset)
+
+# Define Weibull parameters for male penetrance
+alpha_m <- 2      # Shape parameter
+beta_m <- 50      # Scale parameter
+gamma_m <- 0.9    # Maximum penetrance (by age 94)
+delta_m <- 30     # Shift parameter (minimum age of onset)
+
+# Generate penetrance values using Weibull distribution
+penetrance.mod.f <- dweibull(age - delta_f, alpha_f, beta_f) * gamma_f
+penetrance.mod.f[age <= delta_f] <- 0  # Zero penetrance before minimum age
+
+penetrance.mod.m <- dweibull(age - delta_m, alpha_m, beta_m) * gamma_m
+penetrance.mod.m[age <= delta_m] <- 0  # Zero penetrance before minimum age
+
+# Clone the original database to create a new simulation database
+db_sim <- deep_clone(PanelPRO::PanelPRODatabase)
+
+# Set MLH1 gene frequency
+gene_freq <- 0.1
+db_sim$AlleleFrequency[["MLH1_anyPV", 1]] <- gene_freq
+db_sim$AlleleFrequency[["MLH1_anyPV", 2]] <- gene_freq
+db_sim$AlleleFrequency[["MLH1_anyPV", 3]] <- gene_freq
+
+# Update the penetrance values in the database
+# For females
+gene <- "MLH1_hetero_anyPV"
+cancer <- "Colorectal"
+race <- "All_Races"
+sex <- "Female"
+type <- "Net"
+
+dim_names <- attr(db_sim$Penetrance, "dimnames")
+gene_index <- which(dim_names$Gene == gene)
+cancer_index <- which(dim_names$Cancer == cancer)
+race_index <- which(dim_names$Race == race)
+sex_index <- which(dim_names$Sex == sex)
+type_index <- which(dim_names$PenetType == type)
+
+db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index] <- penetrance.mod.f
+
+# For males
+sex <- "Male"
+sex_index <- which(dim_names$Sex == sex)
+db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index] <- penetrance.mod.m
+```
+
+# Data Generating Model
+
+Before starting the simulation, let's examine the true penetrance functions we'll use as our data generating model. These functions represent the cumulative risk of colorectal cancer for MLH1 mutation carriers by age and sex.
+
+```{r visualize_true_penetrance, echo=TRUE, fig.width=10, fig.height=6}
+# Get true penetrance values (non-cumulative)
+# These are the annual hazards generated from our Weibull model
+hazard_data <- data.frame(
+  Age = age,
+  Female = penetrance.mod.f,
+  Male = penetrance.mod.m
+)
+
+# Calculate cumulative penetrance
+true_female_cumulative <- cumsum(penetrance.mod.f)
+true_male_cumulative <- cumsum(penetrance.mod.m)
+
+# Create a data frame for plotting cumulative penetrance
+true_data <- data.frame(
+  Age = age,
+  Female = true_female_cumulative,
+  Male = true_male_cumulative
+)
+
+# Show the values at important age milestones
+milestone_ages <- c(20, 30, 40, 50, 60, 70, 80)
+milestone_data <- subset(true_data, Age %in% milestone_ages)
+knitr::kable(milestone_data, caption = "Cumulative risk at key ages")
+
+# Reshape to long format for ggplot
+true_data_long <- tidyr::pivot_longer(
+  true_data, 
+  cols = c(Female, Male),
+  names_to = "Sex", 
+  values_to = "Penetrance"
+)
+
+# Create the plot
+p <- ggplot(true_data_long, aes(x = Age, y = Penetrance, color = Sex)) +
+  geom_line(size = 1.5) +
+  labs(title = "True Penetrance Curves (Weibull Model)",
+       subtitle = "Cumulative penetrance of MLH1 mutations for colorectal cancer by sex",
+       x = "Age",
+       y = "Cumulative Penetrance",
+       color = "Sex") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12),
+    legend.position = "bottom"
+  ) +
+  scale_color_manual(values = c("Female" = "#CC0000", "Male" = "#0000CC")) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(accuracy = 1))
+
+# Display the plot
+print(p)
+
+# Reshape hazard data to long format for ggplot
+hazard_data_long <- tidyr::pivot_longer(
+  hazard_data, 
+  cols = c(Female, Male),
+  names_to = "Sex", 
+  values_to = "Annual_Risk"
+)
+
+# Create the hazard plot
+p_hazard <- ggplot(hazard_data_long, aes(x = Age, y = Annual_Risk, color = Sex)) +
+  geom_line(size = 1.5) +
+  labs(title = "Annual Colorectal Cancer Risk for MLH1 Carriers (Weibull Model)",
+       subtitle = "Non-cumulative annual risk by age and sex",
+       x = "Age",
+       y = "Annual Risk",
+       color = "Sex") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12),
+    legend.position = "bottom"
+  ) +
+  scale_color_manual(values = c("Female" = "#CC0000", "Male" = "#0000CC")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1))
+
+# Display the hazard plot
+print(p_hazard)
+
+# Display the Weibull parameters used
+params_table <- data.frame(
+  Parameter = c("Shape (α)", "Scale (β)", "Maximum Penetrance (γ)", "Minimum Age (δ)"),
+  Female = c(alpha_f, beta_f, gamma_f, delta_f),
+  Male = c(alpha_m, beta_m, gamma_m, delta_m)
+)
+
+knitr::kable(params_table, caption = "Weibull Parameters Used for Penetrance Simulation")
+```
+
+
+# Family Simulation Functions
+
+```{r simulation_functions, echo=TRUE}
+# Main simulation function
+simulateFamilies <- function(numberFamilies = 3000, gene_freq = 0.1) {
+  # Initialize lists for families data
+  families <- list()
+  probandIDS <- c()
+  probandGeneStatus <- c()
+  probandAffectionStatus <- c()
+  
+  # Use the already modified database from the setup chunk
+  # No need to clone again or modify allele frequencies
+  
+  # Simulate families
+  suppressMessages(suppressWarnings(capture.output(
+    for(i in 1:numberFamilies) {
+      # Cancers
+      cancers <- "Colorectal"
+      # Genes
+      genes <- "MLH1"
+      #family members
+      # Paternal aunts, paternal uncles
+      nSibsPatern <- floor(rtruncnorm(n=2, a=0, b=5, mean=1, sd=3))
+      # Maternal aunts, maternal uncles
+      nSibsMatern <- floor(rtruncnorm(n=2, a=0, b=5, mean=1, sd=3))
+      # Sisters and brothers
+      nSibs <- floor(rtruncnorm(n=2, a=0, b=3, mean=1, sd=1))
+      # We make the assumption that the number of sons and daughters for the
+      # proband and all siblings, is the same. Nieces and nephews of the proband
+      # are not sampled separately
+      nGrandchild <- floor(rtruncnorm(n=2, a=0, b=3, mean=0, sd=1))
+      nChild <- floor(rtruncnorm(n=2, a=0, b=3, mean=1, sd=1))
+      
+      # Simulate family using `PedUtils` code - use db_sim from setup
+      fam <- sim.runSimFam(
+        nSibsPatern, nSibsMatern, nSibs, nChild,
+        db_sim, genes, cancers,
+        includeGeno = TRUE, includeBiomarkers = FALSE, 
+        censoring = TRUE
+      )
+      
+      famDF <- as.data.frame(fam)
+      proband <- famDF %>% filter(isProband==1)
+      probandIDS <- c(probandIDS, proband$ID)
+      probandGeneStatus <- c(probandGeneStatus, proband$MLH1)
+      probandAffectionStatus <- c(probandAffectionStatus, proband$isAffCOL)
+      families[[i]] <- famDF
+    }
+  )))
+  
+  # Return the list of families and additional information
+  return(list(
+    families = families,
+    probandIDS = probandIDS,
+    probandGeneStatus = probandGeneStatus,
+    probandAffectionStatus = probandAffectionStatus
+  ))
+}
+
+# Process the simulation results
+processSimulation <- function(sim_result) {
+  # Extract families
+  families <- sim_result$families
+  
+  # Filter families with affected probands
+  carrierProbandfamilies <- Filter(function(fam) 
+    any(fam$isProband == 1 & fam$MLH1 == 1), families)
+  
+  # Hide genotype information for everyone but the proband
+  simFamiliesGeno <- function(fams) {
+    simFamilies <- list()
+    for (i in 1:length(fams)) {
+      family <- fams[[i]]
+      proband <- family %>% filter(isProband==1)
+      family$MLH1 <- ifelse(family$ID == proband$ID, family$MLH1, NA)
+      simFamilies[[i]] <- family
+    }
+    return(simFamilies)
+  }
+  
+  # Apply genotype masking
+  masked_families <- simFamiliesGeno(carrierProbandfamilies)
+  
+  return(masked_families)
+}
+
+# Function to get the default penetrance functions from PanelPRO
+get_panelpro_penetrance <- function() {
+  # Get the database
+  db <- PanelPRO::PanelPRODatabase
+  
+  # Extract MLH1 penetrance for colorectal cancer
+  # For females
+  female_penetrance <- db$Penetrance[
+    which(attr(db$Penetrance, "dimnames")$Cancer == "Colorectal"),
+    which(attr(db$Penetrance, "dimnames")$Gene == "MLH1_hetero_anyPV"),
+    which(attr(db$Penetrance, "dimnames")$Race == "All_Races"),
+    which(attr(db$Penetrance, "dimnames")$Sex == "Female"),
+    ,
+    which(attr(db$Penetrance, "dimnames")$PenetType == "Net")
+  ]
+  
+  # For males
+  male_penetrance <- db$Penetrance[
+    which(attr(db$Penetrance, "dimnames")$Cancer == "Colorectal"),
+    which(attr(db$Penetrance, "dimnames")$Gene == "MLH1_hetero_anyPV"),
+    which(attr(db$Penetrance, "dimnames")$Race == "All_Races"),
+    which(attr(db$Penetrance, "dimnames")$Sex == "Male"),
+    ,
+    which(attr(db$Penetrance, "dimnames")$PenetType == "Net")
+  ]
+  
+  # Return both
+  return(list(female = female_penetrance, male = male_penetrance))
+}
+
+# Function to filter families where the proband is a carrier
+filterCarrierProbands <- function(fams) {
+  carrier_families <- Filter(function(fam) 
+    any(fam$isProband == 1 & fam$MLH1 == 1), fams)
+  return(carrier_families)
+}
+
+# Function to reformat data for penetrance estimation
+reformatFamilies <- function(fams) {
+  # Create a copy to avoid modifying original data
+  dat <- fams
+  
+  # Apply reformatting
+  for (j in seq_along(dat)) {
+    if ("ID" %in% colnames(dat[[j]])) {
+      colnames(dat[[j]])[colnames(dat[[j]]) == "PedigreeID"] <- "FamilyID"
+    }
+  }
+  for (j in seq_along(dat)) {
+    # Add a new column "PedigreeID" with the list number
+    dat[[j]]$PedigreeID <- j
+  }
+  # Change "isAffCOL" to "isAff" if "isAffCOL" is a column
+  for (j in seq_along(dat)) {
+    if ("isAffCOL" %in% colnames(dat[[j]])) {
+      colnames(dat[[j]])[colnames(dat[[j]]) == "isAffCOL"] <- "isAff"
+    }
+  }
+  for (j in seq_along(dat)) {
+    if ("AgeCOL" %in% colnames(dat[[j]])) {
+      colnames(dat[[j]])[colnames(dat[[j]]) == "AgeCOL"] <- "Age"
+    }
+  }
+  for (j in seq_along(dat)) {
+    if ("MLH1" %in% colnames(dat[[j]])) {
+      colnames(dat[[j]])[colnames(dat[[j]]) == "MLH1"] <- "geno"
+    }
+  }
+  
+  return(dat)
+}
+```
+
+# Simulation
+
+```{r run_simulation, echo=TRUE, cache=TRUE}
+# Define sample sizes
+sample_sizes <- c(400)
+
+# Set seed for reproducibility
+set.seed(2024)
+
+# Simulation for each sample size
+message("Running simulations for each sample size...")
+sim_sets <- vector("list", length(sample_sizes))
+names(sim_sets) <- paste0("fam_weibull_", sample_sizes)
+
+for (i in seq_along(sample_sizes)) {
+  size <- sample_sizes[i]
+  set_name <- paste0("fam_weibull_", size)
+
+  # Set seed for reproducibility, but different for each sample size
+  set.seed(2024 + i)
+
+  message(paste0("\nSimulating for sample size ", size, "..."))
+
+  # Calculate how many families we need to simulate to get enough carrier probands
+  # Assuming ~10% carrier rate among probands based on gene frequency
+  target_families <- ceiling(size / 0.1)
+
+  # Simulate families
+  sim_result <- try(simulateFamilies(numberFamilies = target_families, gene_freq = 0.1), silent = TRUE)
+
+  if (!inherits(sim_result, "try-error")) {
+    # Process the simulation results
+    masked_families <- processSimulation(sim_result)
+    message(paste0("Generated ", length(masked_families), " families with carrier probands"))
+
+    # If we don't have enough families, try another round
+    while (length(masked_families) < size) {
+      message("Not enough carrier families. Running additional simulation...")
+      additional_sim <- try(simulateFamilies(numberFamilies = target_families, gene_freq = 0.1), silent = TRUE)
+      if (!inherits(additional_sim, "try-error")) {
+        additional_masked <- processSimulation(additional_sim)
+        masked_families <- c(masked_families, additional_masked)
+      }
+    }
+
+    # Select exactly the number we need
+    if (length(masked_families) > size) {
+      masked_families <- masked_families[1:size]
+    }
+
+    # Store the families
+    sim_sets[[set_name]] <- masked_families
+
+    # Save this sample with Weibull-specific naming
+    sample_data <- masked_families
+    save(sample_data, file = file.path(results_dir, paste0("sample_weibull_", size, "_panelpro.RData")))
+    message(paste0("Saved sample of size ", size))
+
+    # Reformat the data
+    reformatted_data <- reformatFamilies(masked_families)
+    save(reformatted_data, file = file.path(results_dir, paste0("reformatted_weibull_", size, ".RData")))
+    message(paste0("Saved reformatted data for sample size ", size))
+  } else {
+    message(paste0("Error in simulation for sample size ", size))
+  }
+}
+
+# Verify the number of families in each set
+for (i in seq_along(sample_sizes)) {
+  size <- sample_sizes[i]
+  set_name <- paste0("fam_weibull_", size)
+  cat(paste0(set_name, ": ", length(sim_sets[[set_name]]), " families\n"))
+}
+```
+
+# Analysis of Simulated Families
+
+Let's examine the characteristics of our generated family sets, including a Kaplan-Meier analysis of cancer-free survival.
+
+```{r analyze_families, echo=TRUE}
+sample_sizes <- c(400)
+
+# Descriptive Analysis of Simulated Families
+#Function to prepare families for analysis
+prepare_families_for_analysis <- function(families) {
+# Create a copy to avoid modifying original data
+prepared_families <- families
+# Rename columns to match what describeFamilies expects
+for (i in seq_along(prepared_families)) {
+# Ensure CurAge column exists (use currentAge if available)
+if (!"CurAge" %in% colnames(prepared_families[[i]])) {
+if ("currentAge" %in% colnames(prepared_families[[i]])) {
+prepared_families[[i]]$CurAge <- prepared_families[[i]]$currentAge
+} else {
+# If neither exists, create CurAge from Age
+prepared_families[[i]]$CurAge <- prepared_families[[i]]$Age
+}
+}
+# Ensure Sex column is properly formatted (0 for female, 1 for male)
+if ("Sex" %in% colnames(prepared_families[[i]])) {
+# If Sex is already 1/2, convert 2 to 0 (female)
+if (all(prepared_families[[i]]$Sex %in% c(1, 2, NA))) {
+prepared_families[[i]]$Sex <- ifelse(prepared_families[[i]]$Sex == 2, 0, prepared_families[[i]]$Sex)
+}
+}
+}
+return(prepared_families)
+}
+# Analysis of Simulated Families
+for (size in sample_sizes) { # sample_sizes contains [30, 130, 400, 1000]
+  cat("\n\n")
+  cat("=======================================================\n")
+  cat(paste0("FAMILY ANALYSIS FOR SAMPLE SIZE: ", size, "\n"))
+  cat("=======================================================\n\n")
+
+  # Load the reformatted data with Weibull-specific naming
+  data_file <- file.path(results_dir, paste0("reformatted_weibull_", size, ".RData"))
+  if (file.exists(data_file)) {
+    load(data_file) # This loads 'reformatted_data'
+
+    # Add CurAge column if it doesn't exist
+    for (i in seq_along(reformatted_data)) {
+      if (!"CurAge" %in% colnames(reformatted_data[[i]])) {
+        reformatted_data[[i]]$CurAge <- reformatted_data[[i]]$Age
+      }
+      # Convert Sex from 1/2 to 1/0 format (1 = male, 0 = female)
+      reformatted_data[[i]]$Sex <- ifelse(reformatted_data[[i]]$Sex == 2, 0, reformatted_data[[i]]$Sex)
+    }
+
+    # Run describeFamilies function
+    cat("\nDetailed Family Analysis:\n")
+    describeFamilies(reformatted_data)
+
+    # Add a separator for readability
+    cat("\n=======================================================\n\n")
+  } else {
+    cat(paste0("Data file not found for sample size ", size, "\n"))
+  }
+}
+```
+
+# Penetrance Estimation
+
+Now we'll prepare for penetrance estimation using our reformatted data sets.
+
+```{r prepare_penetrance_estimation, echo=TRUE}
+# In the penetrance estimation section, replace with:
+# Define a single sample size
+sample_size <- 400 # You can adjust this value as needed
+
+# Define multiple seeds for the estimation procedure
+estimation_seeds <- c(2024, 2025, 2026, 2027, 2028, 2029, 2030)
+
+# Function to run penetrance estimation with a specific seed
+run_penetrance_estimation <- function(size, est_seed, n_iter = 10000, n_chains = 1, ncores = 1) {
+  # Load the relevant data
+  data_file <- file.path(results_dir, paste0("reformatted_weibull_", size, ".RData"))
+  if (!file.exists(data_file)) {
+    message(paste0("Data file not found for sample size ", size))
+    return(NULL)
+  }
+
+  load(data_file) # loads 'reformatted_data'
+
+  # Define prior parameters
+  prior_params <- list(
+    asymptote = list(g1 = 1, g2 = 1),
+    threshold = list(min = 5, max = 40),
+    median = list(m1 = 2, m2 = 2),
+    first_quartile = list(q1 = 6, q2 = 3)
+  )
+
+  message(paste0(
+    "Running penetrance estimation for sample size ", size,
+    " with estimation seed ", est_seed, " and ", n_iter, " iterations"
+  ))
+
+  # Set up progress tracking
+  start_time <- Sys.time()
+
+  # Get allele frequency from PanelPRO database
+  prev <- PanelPRO::PanelPRODatabase$AlleleFrequency[paste0("MLH1", "_anyPV"), "nonAJ"]
+
+  # Set the seed for the estimation procedure
+  set.seed(est_seed)
+
+  # Add try-catch for error handling
+  result <- tryCatch(
+    {
+      # Call your penetrance function
+      penetrance(
+        pedigree = reformatted_data,
+        twins = NULL,
+        n_chains = n_chains,
+        n_iter_per_chain = n_iter,
+        ncores = ncores,
+        baseline_data = baseline_data_default,
+        prev = prev,
+        prior_params = prior_params_default,
+        imp_interval = 10,
+        burn_in = 0.1,
+        median_max = TRUE,
+        age_imputation = FALSE,
+        remove_proband = FALSE
+      )
+    },
+    error = function(e) {
+      message(paste0("Error in penetrance estimation for seed ", est_seed, ": ", e$message))
+      return(NULL)
+    }
+  )
+
+  end_time <- Sys.time()
+  time_taken <- difftime(end_time, start_time, units = "mins")
+  message(paste0(
+    "Completed penetrance estimation for seed ", est_seed,
+    " in ", round(time_taken, 2), " minutes"
+  ))
+
+  # Save the results with seed-specific naming
+  if (!is.null(result)) {
+    output_file <- file.path(results_dir, paste0("out_sim_weibull_COL_MLH1_sim", size, "_estseed_", est_seed, ".RData"))
+    save(result, file = output_file)
+    message(paste0("Saved results to ", output_file))
+  }
+
+  return(result)
+}
+
+# Run the penetrance estimation for all seeds
+results_list <- list()
+
+for (est_seed in estimation_seeds) {
+  # Adjust iterations based on computational resources
+  n_iter <- 5000
+  n_chains <- 1
+
+  # Run estimation with this seed
+  result <- run_penetrance_estimation(sample_size, est_seed, n_iter, n_chains, ncores = parallel::detectCores() - 1)
+
+  if (!is.null(result)) {
+    set_name <- paste0("est_seed_", est_seed)
+    results_list[[set_name]] <- result
+  }
+}
+
+# Save the combined results list
+save(results_list, file = file.path(results_dir, "all_penetrance_results_weibull_estimation_seeds.RData"))
+```
+
+# Evaluation
+
+Now we'll prepare for penetrance estimation using our reformatted data sets.
+
+```{r eval, echo=TRUE}  
+# Function to create a parametric penetrance curve from MCMC parameters using Weibull
+ generate_penetrance_curve <- function(asymptote, threshold, median, first_quartile, max_age = 100) {
+   # Ages for evaluation
+   ages <- 1:max_age
+
+   # Use the Weibull parameter calculation function
+   weibull_params <- calculate_weibull_parameters(median, first_quartile, threshold)
+   alpha <- weibull_params$alpha
+   beta <- weibull_params$beta
+
+   # Generate penetrance values using Weibull CDF
+   penetrance <- asymptote * pweibull(ages - threshold, shape = alpha, scale = beta)
+
+   # Zero penetrance before threshold
+   penetrance[ages <= threshold] <- 0
+
+   return(penetrance)
+ }
+# 1. First extract the original data-generating parameters
+# These were defined in the setup chunk
+original_params <- list(
+  female = list(
+    alpha = alpha_f,    # Shape parameter = 2
+    beta = beta_f,      # Scale parameter = 50
+    gamma = gamma_f,    # Maximum penetrance = 0.6
+    delta = delta_f     # Shift parameter = 15
+  ),
+  male = list(
+    alpha = alpha_m,    # Shape parameter = 2
+    beta = beta_m,      # Scale parameter = 50
+    gamma = gamma_m,    # Maximum penetrance = 0.9
+    delta = delta_m     # Shift parameter = 30
+  )
+)
+
+# 2. Ensure we're using the correct penetrance calculation function
+# This should match exactly how the original penetrance values were generated
+calculate_penetrance <- function(age, alpha, beta, gamma, delta) {
+  penetrance <- rep(0, length(age))
+  valid_idx <- age > delta
+  penetrance[valid_idx] <- dweibull(age[valid_idx] - delta, alpha, beta) * gamma
+  return(penetrance)
+}
+
+# 3. Calculate the true cumulative penetrance
+calculate_cumulative_penetrance <- function(age, alpha, beta, gamma, delta) {
+  penetrance <- calculate_penetrance(age, alpha, beta, gamma, delta)
+  cumulative <- cumsum(penetrance)
+  return(cumulative)
+}
+
+# 4. Define age range for evaluation
+age <- 1:94
+
+# 5. Generate the true penetrance curves
+true_female_pen <- calculate_cumulative_penetrance(
+  age, 
+  original_params$female$alpha,
+  original_params$female$beta,
+  original_params$female$gamma,
+  original_params$female$delta
+)
+
+true_male_pen <- calculate_cumulative_penetrance(
+  age, 
+  original_params$male$alpha,
+  original_params$male$beta,
+  original_params$male$gamma,
+  original_params$male$delta
+)
+
+# 6. Create data frame with true penetrance
+true_pen_df <- data.frame(
+  Age = age,
+  Female_True = true_female_pen,
+  Male_True = true_male_pen
+)
+# Define sample sizes
+sample_sizes <- c(400, 1000)
+
+# Function to extract parameter estimates and credible intervals from a result object
+extract_parameters <- function(result_obj) {
+  if (is.null(result_obj)) return(NULL)
+  
+  # Try to extract from combined_chains
+  if (!is.null(result_obj$combined_chains)) {
+    chains <- result_obj$combined_chains
+    
+    # Extract median values of parameters (from last 20% of MCMC samples for stability)
+    n_samples <- length(chains$asymptote_male_results)
+    start_idx <- floor(n_samples * 0.8)
+    
+    # Extract median estimates
+    params <- list(
+      asymptote_male = median(chains$asymptote_male_results[start_idx:n_samples]),
+      asymptote_female = median(chains$asymptote_female_results[start_idx:n_samples]),
+      threshold_male = median(chains$threshold_male_results[start_idx:n_samples]),
+      threshold_female = median(chains$threshold_female_results[start_idx:n_samples]),
+      median_male = median(chains$median_male_results[start_idx:n_samples]),
+      median_female = median(chains$median_female_results[start_idx:n_samples]),
+      first_quartile_male = median(chains$first_quartile_male_results[start_idx:n_samples]),
+      first_quartile_female = median(chains$first_quartile_female_results[start_idx:n_samples])
+    )
+    
+    # Extract 95% credible intervals
+    params$asymptote_male_lower <- quantile(chains$asymptote_male_results[start_idx:n_samples], 0.025)
+    params$asymptote_male_upper <- quantile(chains$asymptote_male_results[start_idx:n_samples], 0.975)
+    params$asymptote_female_lower <- quantile(chains$asymptote_female_results[start_idx:n_samples], 0.025)
+    params$asymptote_female_upper <- quantile(chains$asymptote_female_results[start_idx:n_samples], 0.975)
+    
+    params$threshold_male_lower <- quantile(chains$threshold_male_results[start_idx:n_samples], 0.025)
+    params$threshold_male_upper <- quantile(chains$threshold_male_results[start_idx:n_samples], 0.975)
+    params$threshold_female_lower <- quantile(chains$threshold_female_results[start_idx:n_samples], 0.025)
+    params$threshold_female_upper <- quantile(chains$threshold_female_results[start_idx:n_samples], 0.975)
+    
+    params$median_male_lower <- quantile(chains$median_male_results[start_idx:n_samples], 0.025)
+    params$median_male_upper <- quantile(chains$median_male_results[start_idx:n_samples], 0.975)
+    params$median_female_lower <- quantile(chains$median_female_results[start_idx:n_samples], 0.025)
+    params$median_female_upper <- quantile(chains$median_female_results[start_idx:n_samples], 0.975)
+    
+    params$first_quartile_male_lower <- quantile(chains$first_quartile_male_results[start_idx:n_samples], 0.025)
+    params$first_quartile_male_upper <- quantile(chains$first_quartile_male_results[start_idx:n_samples], 0.975)
+    params$first_quartile_female_lower <- quantile(chains$first_quartile_female_results[start_idx:n_samples], 0.025)
+    params$first_quartile_female_upper <- quantile(chains$first_quartile_female_results[start_idx:n_samples], 0.975)
+    
+    # Store raw samples for posterior visualization
+    params$samples <- list(
+      asymptote_male = chains$asymptote_male_results[start_idx:n_samples],
+      asymptote_female = chains$asymptote_female_results[start_idx:n_samples],
+      threshold_male = chains$threshold_male_results[start_idx:n_samples],
+      threshold_female = chains$threshold_female_results[start_idx:n_samples],
+      median_male = chains$median_male_results[start_idx:n_samples],
+      median_female = chains$median_female_results[start_idx:n_samples],
+      first_quartile_male = chains$first_quartile_male_results[start_idx:n_samples],
+      first_quartile_female = chains$first_quartile_female_results[start_idx:n_samples]
+    )
+    
+    return(params)
+  }
+  
+  # If combined_chains not available, try results component
+  if (!is.null(result_obj$results) && length(result_obj$results) > 0 && is.list(result_obj$results[[1]])) {
+    res <- result_obj$results[[1]]
+    
+    # Extract parameters if available
+    n_samples <- length(res$asymptote_male_samples)
+    start_idx <- floor(n_samples * 0.8)
+    
+    # Extract median estimates
+    params <- list(
+      asymptote_male = median(res$asymptote_male_samples[start_idx:n_samples]),
+      asymptote_female = median(res$asymptote_female_samples[start_idx:n_samples]),
+      threshold_male = median(res$threshold_male_samples[start_idx:n_samples]),
+      threshold_female = median(res$threshold_female_samples[start_idx:n_samples]),
+      median_male = median(res$median_male_samples[start_idx:n_samples]),
+      median_female = median(res$median_female_samples[start_idx:n_samples]),
+      first_quartile_male = median(res$first_quartile_male_samples[start_idx:n_samples]),
+      first_quartile_female = median(res$first_quartile_female_samples[start_idx:n_samples])
+    )
+    
+    # Extract 95% credible intervals
+    params$asymptote_male_lower <- quantile(res$asymptote_male_samples[start_idx:n_samples], 0.025)
+    params$asymptote_male_upper <- quantile(res$asymptote_male_samples[start_idx:n_samples], 0.975)
+    params$asymptote_female_lower <- quantile(res$asymptote_female_samples[start_idx:n_samples], 0.025)
+    params$asymptote_female_upper <- quantile(res$asymptote_female_samples[start_idx:n_samples], 0.975)
+    
+    params$threshold_male_lower <- quantile(res$threshold_male_samples[start_idx:n_samples], 0.025)
+    params$threshold_male_upper <- quantile(res$threshold_male_samples[start_idx:n_samples], 0.975)
+    params$threshold_female_lower <- quantile(res$threshold_female_samples[start_idx:n_samples], 0.025)
+    params$threshold_female_upper <- quantile(res$threshold_female_samples[start_idx:n_samples], 0.975)
+    
+    params$median_male_lower <- quantile(res$median_male_samples[start_idx:n_samples], 0.025)
+    params$median_male_upper <- quantile(res$median_male_samples[start_idx:n_samples], 0.975)
+    params$median_female_lower <- quantile(res$median_female_samples[start_idx:n_samples], 0.025)
+    params$median_female_upper <- quantile(res$median_female_samples[start_idx:n_samples], 0.975)
+    
+    params$first_quartile_male_lower <- quantile(res$first_quartile_male_samples[start_idx:n_samples], 0.025)
+    params$first_quartile_male_upper <- quantile(res$first_quartile_male_samples[start_idx:n_samples], 0.975)
+    params$first_quartile_female_lower <- quantile(res$first_quartile_female_samples[start_idx:n_samples], 0.025)
+    params$first_quartile_female_upper <- quantile(res$first_quartile_female_samples[start_idx:n_samples], 0.975)
+    
+    # Store raw samples for posterior visualization
+    params$samples <- list(
+      asymptote_male = res$asymptote_male_samples[start_idx:n_samples],
+      asymptote_female = res$asymptote_female_samples[start_idx:n_samples],
+      threshold_male = res$threshold_male_samples[start_idx:n_samples],
+      threshold_female = res$threshold_female_samples[start_idx:n_samples],
+      median_male = res$median_male_samples[start_idx:n_samples],
+      median_female = res$median_female_samples[start_idx:n_samples],
+      first_quartile_male = res$first_quartile_male_samples[start_idx:n_samples],
+      first_quartile_female = res$first_quartile_female_samples[start_idx:n_samples]
+    )
+    
+    return(params)
+  }
+  
+  return(NULL)
+}
+
+# Load and extract parameters for each sample size
+all_params <- list()
+result_objs <- list()
+
+for (size in sample_sizes) {
+  # Set up file path
+  file_path <- file.path(results_dir, paste0("out_sim_weibull_COL_MLH1_sim", size, ".RData"))
+  
+  if (file.exists(file_path)) {
+    # Load the result
+    result_obj <- NULL
+    tryCatch({
+      load(file_path)
+
+# Use
+      result_obj <- result  # Or whatever your actual object is named
+      params <- extract_parameters(result_obj)
+      
+      if (!is.null(params)) {
+        all_params[[paste0("n", size)]] <- params
+        cat("Extracted parameters for sample size", size, "\n")
+      } else {
+        cat("Could not extract parameters for sample size", size, "\n")
+      }
+    }, error = function(e) {
+      cat("Error loading results for sample size", size, ":", e$message, "\n")
+    })
+  } else {
+    cat("File not found:", file_path, "\n")
+  }
+}
+
+# Create parameter summary table
+  param_df <- data.frame()
+  
+  for (name in names(all_params)) {
+    params <- all_params[[name]]
+    size <- as.numeric(gsub("n", "", name))
+    
+    new_row <- data.frame(
+      SampleSize = size,
+      Asymptote_Male = params$asymptote_male,
+      Asymptote_Male_Lower = params$asymptote_male_lower,
+      Asymptote_Male_Upper = params$asymptote_male_upper,
+      Asymptote_Female = params$asymptote_female,
+      Asymptote_Female_Lower = params$asymptote_female_lower,
+      Asymptote_Female_Upper = params$asymptote_female_upper,
+      Threshold_Male = params$threshold_male,
+      Threshold_Male_Lower = params$threshold_male_lower,
+      Threshold_Male_Upper = params$threshold_male_upper,
+      Threshold_Female = params$threshold_female,
+      Threshold_Female_Lower = params$threshold_female_lower,
+      Threshold_Female_Upper = params$threshold_female_upper,
+      Median_Male = params$median_male,
+      Median_Male_Lower = params$median_male_lower,
+      Median_Male_Upper = params$median_male_upper,
+      Median_Female = params$median_female,
+      Median_Female_Lower = params$median_female_lower,
+      Median_Female_Upper = params$median_female_upper,
+      FirstQuartile_Male = params$first_quartile_male,
+      FirstQuartile_Male_Lower = params$first_quartile_male_lower,
+      FirstQuartile_Male_Upper = params$first_quartile_male_upper,
+      FirstQuartile_Female = params$first_quartile_female,
+      FirstQuartile_Female_Lower = params$first_quartile_female_lower,
+      FirstQuartile_Female_Upper = params$first_quartile_female_upper
+    )
+    
+    param_df <- rbind(param_df, new_row)
+  }
+  
+  # Create a simplified parameter table for publication
+  param_table_pub <- param_df %>%
+    select(SampleSize, 
+           Asymptote_Male, Asymptote_Female, 
+           Threshold_Male, Threshold_Female,
+           Median_Male, Median_Female,
+           FirstQuartile_Male, FirstQuartile_Female)
+  
+  # Display table of parameters
+  knitr::kable(param_table_pub, digits = 3, 
+              caption = "Parameter Estimates by Sample Size")
+  
+  # Create a table with estimates and CIs for key parameters
+  param_ci_table <- param_df %>%
+    select(SampleSize, 
+           Asymptote_Male, Asymptote_Male_Lower, Asymptote_Male_Upper,
+           Asymptote_Female, Asymptote_Female_Lower, Asymptote_Female_Upper) %>%
+    mutate(
+      Male_Asymptote_CI = paste0(format(round(Asymptote_Male, 2), nsmall = 2), 
+                               " (", format(round(Asymptote_Male_Lower, 2), nsmall = 2), 
+                               ", ", format(round(Asymptote_Male_Upper, 2), nsmall = 2), ")"),
+      Female_Asymptote_CI = paste0(format(round(Asymptote_Female, 2), nsmall = 2), 
+                                 " (", format(round(Asymptote_Female_Lower, 2), nsmall = 2), 
+                                 ", ", format(round(Asymptote_Female_Upper, 2), nsmall = 2), ")")
+    ) %>%
+    select(SampleSize, Male_Asymptote_CI, Female_Asymptote_CI)
+  
+  # Display table with confidence intervals
+  knitr::kable(param_ci_table, 
+              caption = "Asymptote Parameter Estimates with 95% Credible Intervals")
+  
+
+# Maximum age for evaluation
+max_age <- min(length(true_female_pen), length(true_male_pen))
+
+# Create a data frame with the true penetrance curves
+true_pen_df <- data.frame(
+  Age = 1:max_age,
+  Female_True = true_female_pen[1:max_age],
+  Male_True = true_male_pen[1:max_age]
+)
+
+# Function to generate credible intervals for penetrance curves
+generate_penetrance_curves_with_ci <- function(params, prob = 0.95, max_age = max_age) {
+  ages <- 1:max_age
+  n_samples <- length(params$samples$asymptote_female)
+  
+  # Initialize matrices to store penetrance values
+  female_matrix <- matrix(0, nrow = max_age, ncol = n_samples)
+  male_matrix <- matrix(0, nrow = max_age, ncol = n_samples)
+  
+  # Calculate penetrance for each MCMC sample
+  for (i in 1:n_samples) {
+    # Generate female curve for this sample
+    female_matrix[, i] <- generate_penetrance_curve(
+      params$samples$asymptote_female[i],
+      params$samples$threshold_female[i],
+      params$samples$median_female[i],
+      params$samples$first_quartile_female[i],
+      max_age = max_age
+    )
+    
+    # Generate male curve for this sample
+    male_matrix[, i] <- generate_penetrance_curve(
+      params$samples$asymptote_male[i],
+      params$samples$threshold_male[i],
+      params$samples$median_male[i],
+      params$samples$first_quartile_male[i],
+      max_age = max_age
+    )
+  }
+  
+  # Calculate quantiles for each age
+  alpha <- (1 - prob) / 2
+  female_lower <- apply(female_matrix, 1, quantile, probs = alpha)
+  female_upper <- apply(female_matrix, 1, quantile, probs = 1 - alpha)
+  female_median <- apply(female_matrix, 1, median)
+  
+  male_lower <- apply(male_matrix, 1, quantile, probs = alpha)
+  male_upper <- apply(male_matrix, 1, quantile, probs = 1 - alpha)
+  male_median <- apply(male_matrix, 1, median)
+  
+  return(list(
+    female = list(
+      median = female_median,
+      lower = female_lower,
+      upper = female_upper
+    ),
+    male = list(
+      median = male_median,
+      lower = male_lower,
+      upper = male_upper
+    )
+  ))
+}
+
+# Generate estimated penetrance curves for each sample size
+estimated_curves <- list()
+estimated_curves_with_ci <- list()
+
+for (name in names(all_params)) {
+  params <- all_params[[name]]
+  size <- as.numeric(gsub("n", "", name))
+  
+  # Generate estimated curves
+  female_est <- generate_penetrance_curve(
+    params$samples$asymptote_female, 
+    params$samples$threshold_female, 
+    params$samples$median_female, 
+    params$samples$first_quartile_female,
+    max_age = max_age
+  )
+  
+  male_est <- generate_penetrance_curve(
+    params$samples$asymptote_male, 
+    params$samples$threshold_male, 
+    params$samples$median_male, 
+    params$samples$first_quartile_male,
+    max_age = max_age
+  )
+  
+  # Generate credible intervals for curves
+  female_curves_with_ci <- generate_penetrance_curves_with_ci(params, prob = 0.95, max_age = max_age)
+  male_curves_with_ci <- generate_penetrance_curves_with_ci(params, prob = 0.95, max_age = max_age)
+  
+  # Create data frame
+  est_df <- data.frame(
+    Age = 1:max_age,
+    Female_Est = female_curves_with_ci$female$median,
+    Female_Lower = female_curves_with_ci$female$lower,
+    Female_Upper = female_curves_with_ci$female$upper,
+    Male_Est = male_curves_with_ci$male$median,
+    Male_Lower = male_curves_with_ci$male$lower,
+    Male_Upper = male_curves_with_ci$male$upper,
+    SampleSize = size
+  )
+  
+  estimated_curves[[name]] <- est_df
+  estimated_curves_with_ci[[name]] <- list(
+    female = female_curves_with_ci,
+    male = male_curves_with_ci
+  )
+}
+
+# Combine all curves into one data frame
+all_curves <- bind_rows(estimated_curves)
+
+# Merge with true penetrance
+plot_data <- all_curves %>%
+  merge(true_pen_df, by = "Age")
+
+# Create a function to plot comparison for a specific sample size - publication-ready version
+# Modified plot function with proper legend and aesthetics
+plot_comparison_publication <- function(data, size) {
+  subset_data <- data %>% filter(SampleSize == size)
+
+  # Convert data to long format for better legend handling
+  subset_data_long <- subset_data %>%
+    tidyr::pivot_longer(
+      cols = c(Female_Est, Male_Est, Female_True, Male_True),
+      names_to = c("Sex", "Type"),
+      names_pattern = "(.*)_(.*)",
+      values_to = "Value"
+    )
+
+  p <- ggplot() +
+    # Add shaded credible intervals
+    geom_ribbon(
+      data = subset_data,
+      aes(x = Age, ymin = Female_Lower, ymax = Female_Upper, fill = "Female"),
+      alpha = 0.2
+    ) +
+    geom_ribbon(
+      data = subset_data,
+      aes(x = Age, ymin = Male_Lower, ymax = Male_Upper, fill = "Male"),
+      alpha = 0.2
+    ) +
+    # Add curves with proper grouping for legend
+    geom_line(
+      data = subset_data_long,
+      aes(
+        x = Age, y = Value, color = Sex,
+        linetype = Type, group = interaction(Sex, Type)
+      )
+    ) +
+    # Formatting
+    labs(
+      x = "Age (years)",
+      y = "Cumulative Penetrance",
+      title = paste("Sample Size =", size, "Families"),
+      color = "Sex",
+      fill = "Sex",
+      linetype = "Type"
+    ) +
+    scale_color_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+    scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+    scale_linetype_manual(values = c("Est" = "dashed", "True" = "solid")) +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "bottom",
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(fill = NA, color = "gray80", size = 0.5),
+      plot.title = element_text(hjust = 0.5, size = 14),
+      legend.box = "vertical",
+      legend.margin = margin()
+    ) +
+    scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(accuracy = 1))
+
+  return(p)
+}
+
+# Calculate Mean Squared Error (MSE) for each sample size and sex
+mse_metrics <- data.frame()
+for (name in names(all_params)) {
+  size <- as.numeric(gsub("n", "", name))
+  est_data <- estimated_curves[[name]]
+  
+  # Calculate MSE across all ages
+  female_mse <- mean((est_data$Female_Est - true_pen_df$Female_True)^2)
+  male_mse <- mean((est_data$Male_Est - true_pen_df$Male_True)^2)
+  
+  mse_metrics <- rbind(mse_metrics, 
+                      data.frame(
+                        SampleSize = size,
+                        Female_MSE = female_mse,
+                        Male_MSE = male_mse
+                      ))
+}
+
+# Display MSE metrics
+knitr::kable(mse_metrics, digits = 6, 
+            caption = "Mean Squared Error by Sample Size")
+
+# Calculate coverage probability for 95% credible intervals
+coverage_metrics <- data.frame()
+for (name in names(all_params)) {
+  size <- as.numeric(gsub("n", "", name))
+  est_data <- estimated_curves[[name]]
+  
+  # Check if true value falls within CI for each age
+  female_coverage <- mean(true_pen_df$Female_True >= est_data$Female_Lower & 
+                        true_pen_df$Female_True <= est_data$Female_Upper)
+  male_coverage <- mean(true_pen_df$Male_True >= est_data$Male_Lower & 
+                      true_pen_df$Male_True <= est_data$Male_Upper)
+  
+  coverage_metrics <- rbind(coverage_metrics, 
+                          data.frame(
+                            SampleSize = size,
+                            Female_Coverage = female_coverage,
+                            Male_Coverage = male_coverage
+                          ))
+}
+
+# Display coverage metrics
+knitr::kable(coverage_metrics, digits = 3, 
+            caption = "Coverage Probability of 95% Credible Intervals")
+
+# Calculate Area Under the Curve (AUC) difference
+auc_metrics <- data.frame()
+for (name in names(all_params)) {
+  size <- as.numeric(gsub("n", "", name))
+  est_data <- estimated_curves[[name]]
+  
+  # Calculate AUC (approximate with trapezoidal rule)
+  female_true_auc <- sum(true_pen_df$Female_True) / length(true_pen_df$Female_True)
+  male_true_auc <- sum(true_pen_df$Male_True) / length(true_pen_df$Male_True)
+  female_est_auc <- sum(est_data$Female_Est) / length(est_data$Female_Est)
+  male_est_auc <- sum(est_data$Male_Est) / length(est_data$Male_Est)
+  
+  # Calculate differences
+  female_auc_diff <- abs(female_true_auc - female_est_auc)
+  male_auc_diff <- abs(male_true_auc - male_est_auc)
+  
+  auc_metrics <- rbind(auc_metrics, 
+                     data.frame(
+                       SampleSize = size,
+                       Female_AUC_Diff = female_auc_diff,
+                       Male_AUC_Diff = male_auc_diff
+                     ))
+}
+
+# Display AUC difference metrics
+knitr::kable(auc_metrics, digits = 4, 
+            caption = "Absolute Difference in Area Under the Curve")
+
+# Generate plots for each sample size
+plots <- list()
+
+# Display plots separately
+for (size in unique(all_curves$SampleSize)) {
+  print(plot_comparison_publication(plot_data, size))
+}
+
+# Create parameter posterior density plots for visual assessment
+create_parameter_density_plots <- function() {
+  # Extract posterior samples for a parameter
+  extract_posterior <- function(param_name, sex) {
+    posteriors <- data.frame()
+    
+    for (size in sample_sizes) {
+      name <- paste0("n", size)
+      if (!is.null(all_params[[name]])) {
+        # Extract samples
+        samples <- all_params[[name]]$samples[[paste0(param_name, "_", sex)]]
+        if (!is.null(samples)) {
+          size_data <- data.frame(
+            SampleSize = as.factor(size),
+            Value = samples
+          )
+          posteriors <- rbind(posteriors, size_data)
+        }
+      }
+    }
+    
+    return(posteriors)
+  }
+  
+  # Extract posteriors for key parameters
+  asymptote_m_posterior <- extract_posterior("asymptote", "male")
+  asymptote_f_posterior <- extract_posterior("asymptote", "female")
+  
+  # Plot densities for male asymptote
+  p1 <- ggplot(asymptote_m_posterior, aes(x = Value, fill = SampleSize)) +
+    geom_density(alpha = 0.4) +
+    labs(title = "Male Asymptote Posterior", x = "Value", y = "Density") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+  
+  # Plot densities for female asymptote
+  p2 <- ggplot(asymptote_f_posterior, aes(x = Value, fill = SampleSize)) +
+    geom_density(alpha = 0.4) +
+    labs(title = "Female Asymptote Posterior", x = "Value", y = "Density") +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+  
+  return(list(p1 = p1, p2 = p2))
+}
+
+# Generate and display density plots
+density_plots <- create_parameter_density_plots()
+gridExtra::grid.arrange(density_plots$p1, density_plots$p2, ncol = 2)
+
+# Calculate error metrics at key ages
+key_ages <- c(30, 50, 70)
+metrics <- data.frame()
+
+# Check if we have the estimated curves
+if (exists("estimated_curves") && length(estimated_curves) > 0) {
+  for (name in names(all_params)) {
+    params <- all_params[[name]]
+    size <- as.numeric(gsub("n", "", name))
+    
+    # Get the estimated curves
+    est_data <- estimated_curves[[name]]
+    
+    for (age in key_ages) {
+      if (age <= max_age) {
+        # Get values at this age
+        female_true <- true_pen_df$Female_True[age]
+        male_true <- true_pen_df$Male_True[age]
+        female_est <- est_data$Female_Est[age]
+        male_est <- est_data$Male_Est[age]
+        
+        # Calculate absolute and relative errors
+        female_abs_error <- abs(female_est - female_true)
+        male_abs_error <- abs(male_est - male_true)
+        female_rel_error <- female_abs_error / female_true
+        male_rel_error <- male_abs_error / male_true
+        
+        # Add to metrics data frame
+        metrics <- rbind(metrics, 
+                        data.frame(
+                          SampleSize = size,
+                          Age = age,
+                          Sex = "Female",
+                          TruePenetrance = female_true,
+                          EstimatedPenetrance = female_est,
+                          AbsoluteError = female_abs_error,
+                          RelativeError = female_rel_error
+                        ))
+        
+        metrics <- rbind(metrics, 
+                        data.frame(
+                          SampleSize = size,
+                          Age = age,
+                          Sex = "Male",
+                          TruePenetrance = male_true,
+                          EstimatedPenetrance = male_est,
+                          AbsoluteError = male_abs_error,
+                          RelativeError = male_rel_error
+                        ))
+      }
+    }
+  }
+} else {
+  cat("Error: estimated_curves object not found or empty. Cannot calculate metrics.\n")
+}
+
+# Add factor version of SampleSize for better plotting
+metrics$SampleSizeFactor <- factor(metrics$SampleSize, 
+                                 levels = sample_sizes,
+                                 ordered = TRUE)
+
+# Display the metrics table
+knitr::kable(metrics, digits = 3, 
+            caption = "Error Metrics at Key Ages")
+
+# Plot absolute error by sample size
+p1 <- ggplot(metrics, aes(x = SampleSizeFactor, y = AbsoluteError, color = Sex, group = interaction(Sex, Age))) +
+  geom_point(size = 3) +
+  geom_line() +
+  facet_wrap(~ Age, labeller = labeller(Age = function(x) paste0("Age ", x))) +
+  labs(
+    title = "Absolute Error by Sample Size",
+    x = "Sample Size",
+    y = "Absolute Error",
+    color = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 11),
+    legend.position = "bottom"
+  ) +
+  scale_color_manual(values = c("Female" = "#CC0000", "Male" = "#0000CC"))
+
+# Plot relative error by sample size
+p2 <- ggplot(metrics, aes(x = SampleSizeFactor, y = RelativeError, color = Sex, group = interaction(Sex, Age))) +
+  geom_point(size = 3) +
+  geom_line() +
+  facet_wrap(~ Age, labeller = labeller(Age = function(x) paste0("Age ", x))) +
+  labs(
+    title = "Relative Error by Sample Size",
+    x = "Sample Size",
+    y = "Relative Error",
+    color = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 11),
+    legend.position = "bottom"
+  ) +
+  scale_color_manual(values = c("Female" = "#CC0000", "Male" = "#0000CC"))
+
+# Display plots side by side
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+```{r}
+# Evaluation
+# Load and extract parameters for each seed
+all_params <- list()
+result_objs <- list()
+
+for (seed in seeds) {
+  # Set up file path
+  file_path <- file.path(results_dir, paste0("out_sim_weibull_COL_MLH1_sim", sample_size, "_seed_", seed, ".RData"))
+
+  if (file.exists(file_path)) {
+    # Load the result
+    result_obj <- NULL
+    tryCatch(
+      {
+        load(file_path)
+        result_obj <- result # Or whatever your actual object is named
+        params <- extract_parameters(result_obj)
+
+        if (!is.null(params)) {
+          all_params[[paste0("seed_", seed)]] <- params
+          cat("Extracted parameters for seed", seed, "\n")
+        } else {
+          cat("Could not extract parameters for seed", seed, "\n")
+        }
+      },
+      error = function(e) {
+        cat("Error loading results for seed", seed, ":", e$message, "\n")
+      }
+    )
+  } else {
+    cat("File not found:", file_path, "\n")
+  }
+}
+
+# Create parameter summary table
+param_df <- data.frame()
+
+for (name in names(all_params)) {
+  params <- all_params[[name]]
+  seed <- as.numeric(gsub("seed_", "", name))
+
+  new_row <- data.frame(
+    Seed = seed,
+    Asymptote_Male = params$asymptote_male,
+    Asymptote_Male_Lower = params$asymptote_male_lower,
+    Asymptote_Male_Upper = params$asymptote_male_upper,
+    Asymptote_Female = params$asymptote_female,
+    Asymptote_Female_Lower = params$asymptote_female_lower,
+    Asymptote_Female_Upper = params$asymptote_female_upper,
+    Threshold_Male = params$threshold_male,
+    Threshold_Male_Lower = params$threshold_male_lower,
+    Threshold_Male_Upper = params$threshold_male_upper,
+    Threshold_Female = params$threshold_female,
+    Threshold_Female_Lower = params$threshold_female_lower,
+    Threshold_Female_Upper = params$threshold_female_upper,
+    Median_Male = params$median_male,
+    Median_Male_Lower = params$median_male_lower,
+    Median_Male_Upper = params$median_male_upper,
+    Median_Female = params$median_female,
+    Median_Female_Lower = params$median_female_lower,
+    Median_Female_Upper = params$median_female_upper,
+    FirstQuartile_Male = params$first_quartile_male,
+    FirstQuartile_Male_Lower = params$first_quartile_male_lower,
+    FirstQuartile_Male_Upper = params$first_quartile_male_upper,
+    FirstQuartile_Female = params$first_quartile_female,
+    FirstQuartile_Female_Lower = params$first_quartile_female_lower,
+    FirstQuartile_Female_Upper = params$first_quartile_female_upper
+  )
+
+  param_df <- rbind(param_df, new_row)
+}
+
+# Display table of parameters
+knitr::kable(param_df %>% select(Seed, Asymptote_Male, Asymptote_Female, Threshold_Male, Threshold_Female),
+  digits = 3, caption = "Parameter Estimates by Seed"
+)
+
+# Create box plots for key parameters
+# Reshape data for plotting
+param_long <- param_df %>%
+  select(
+    Seed, Asymptote_Male, Asymptote_Female, Threshold_Male, Threshold_Female,
+    Median_Male, Median_Female, FirstQuartile_Male, FirstQuartile_Female
+  ) %>%
+  tidyr::pivot_longer(
+    cols = -Seed,
+    names_to = c("Parameter", "Sex"),
+    names_pattern = "(.*)_(.*)",
+    values_to = "Value"
+  )
+
+# Create box plots
+ggplot(param_long, aes(x = Parameter, y = Value, fill = Sex)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Parameter Estimates Across Seeds",
+    x = "Parameter",
+    y = "Value",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA"))
+
+# Add horizontal lines for true parameter values
+# Note: These aren't exact matches to your Weibull parameters, but approximations
+# You may need to adjust these based on your true parameter values
+true_params <- data.frame(
+  Parameter = c("Asymptote", "Asymptote", "Threshold", "Threshold"),
+  Sex = c("Male", "Female", "Male", "Female"),
+  TrueValue = c(gamma_m, gamma_f, delta_m, delta_f)
+)
+
+# Create box plots with true values
+ggplot() +
+  geom_boxplot(
+    data = param_long %>% filter(Parameter %in% c("Asymptote", "Threshold")),
+    aes(x = Parameter, y = Value, fill = Sex)
+  ) +
+  geom_hline(
+    data = true_params,
+    aes(yintercept = TrueValue, group = interaction(Parameter, Sex)),
+    linetype = "dashed", color = "red"
+  ) +
+  labs(
+    title = "Parameter Estimates vs. True Values",
+    subtitle = "Red dashed lines indicate true parameter values",
+    x = "Parameter",
+    y = "Value",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+  facet_wrap(~Parameter, scales = "free_y")
+
+# Generate estimated penetrance curves for each seed
+estimated_curves <- list()
+
+for (name in names(all_params)) {
+  params <- all_params[[name]]
+  seed <- as.numeric(gsub("seed_", "", name))
+
+  # Generate estimated curves
+  female_est <- generate_penetrance_curve(
+    params$asymptote_female,
+    params$threshold_female,
+    params$median_female,
+    params$first_quartile_female,
+    max_age = max_age
+  )
+
+  male_est <- generate_penetrance_curve(
+    params$asymptote_male,
+    params$threshold_male,
+    params$median_male,
+    params$first_quartile_male,
+    max_age = max_age
+  )
+
+  # Create data frame
+  est_df <- data.frame(
+    Age = 1:max_age,
+    Female_Est = female_est,
+    Male_Est = male_est,
+    Seed = seed
+  )
+
+  estimated_curves[[name]] <- est_df
+}
+
+# Combine all curves into one data frame
+all_curves <- bind_rows(estimated_curves)
+
+# Create a data frame with the true penetrance curves
+true_pen_df <- data.frame(
+  Age = 1:max_age,
+  Female_True = true_female_pen[1:max_age],
+  Male_True = true_male_pen[1:max_age]
+)
+
+# Calculate error at each age for each seed
+error_data <- data.frame()
+
+for (name in names(all_params)) {
+  seed <- as.numeric(gsub("seed_", "", name))
+  est_data <- estimated_curves[[name]]
+
+  # Calculate errors at each age
+  female_errors <- est_data$Female_Est - true_pen_df$Female_True
+  male_errors <- est_data$Male_Est - true_pen_df$Male_True
+
+  # Create data frame
+  seed_errors <- data.frame(
+    Age = 1:max_age,
+    Female_Error = female_errors,
+    Male_Error = male_errors,
+    Seed = seed
+  )
+
+  error_data <- rbind(error_data, seed_errors)
+}
+
+# Reshape for plotting
+error_long <- error_data %>%
+  tidyr::pivot_longer(
+    cols = c(Female_Error, Male_Error),
+    names_to = "Sex",
+    names_pattern = "(.*)_Error",
+    values_to = "Error"
+  )
+
+# Create box plot of errors by age (for selected ages)
+selected_ages <- seq(20, 80, by = 10)
+ggplot(
+  error_long %>% filter(Age %in% selected_ages),
+  aes(x = as.factor(Age), y = Error, fill = Sex)
+) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Estimation Errors Across Seeds",
+    subtitle = "Error = Estimated - True Penetrance",
+    x = "Age",
+    y = "Error",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black")
+
+# Plot all estimated curves with true curve
+# Reshape for plotting
+curves_long <- all_curves %>%
+  tidyr::pivot_longer(
+    cols = c(Female_Est, Male_Est),
+    names_to = "Sex",
+    names_pattern = "(.*)_Est",
+    values_to = "Penetrance"
+  )
+
+# Add true curves
+true_long <- true_pen_df %>%
+  tidyr::pivot_longer(
+    cols = c(Female_True, Male_True),
+    names_to = "Sex",
+    names_pattern = "(.*)_True",
+    values_to = "Penetrance"
+  ) %>%
+  mutate(Seed = "True")
+
+# Combine
+plot_data <- bind_rows(
+  curves_long,
+  true_long
+)
+
+# Create plot
+ggplot(plot_data, aes(x = Age, y = Penetrance, group = interaction(Seed, Sex), color = Sex)) +
+  geom_line(data = plot_data %>% filter(Seed != "True"), alpha = 0.3) +
+  geom_line(data = plot_data %>% filter(Seed == "True"), size = 1.5, linetype = "dashed") +
+  labs(
+    title = "Estimated Penetrance Curves Across Seeds",
+    subtitle = "Dashed lines represent true penetrance",
+    x = "Age",
+    y = "Cumulative Penetrance",
+    color = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_color_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+  scale_y_continuous(limits = c(0, 1), labels = scales::percent_format(accuracy = 1))
+
+# Calculate metrics for each seed
+metrics_by_seed <- data.frame()
+
+for (name in names(all_params)) {
+  seed <- as.numeric(gsub("seed_", "", name))
+  est_data <- estimated_curves[[name]]
+
+  # Calculate MSE
+  female_mse <- mean((est_data$Female_Est - true_pen_df$Female_True)^2)
+  male_mse <- mean((est_data$Male_Est - true_pen_df$Male_True)^2)
+
+  # Calculate errors at key ages
+  key_ages <- c(30, 50, 70)
+  for (age in key_ages) {
+    if (age <= max_age) {
+      female_error <- est_data$Female_Est[age] - true_pen_df$Female_True[age]
+      male_error <- est_data$Male_Est[age] - true_pen_df$Male_True[age]
+
+      metrics_by_seed <- rbind(
+        metrics_by_seed,
+        data.frame(
+          Seed = seed,
+          Age = age,
+          Sex = "Female",
+          Error = female_error,
+          MSE = female_mse
+        )
+      )
+
+      metrics_by_seed <- rbind(
+        metrics_by_seed,
+        data.frame(
+          Seed = seed,
+          Age = age,
+          Sex = "Male",
+          Error = male_error,
+          MSE = male_mse
+        )
+      )
+    }
+  }
+}
+
+# Display metrics table
+knitr::kable(metrics_by_seed,
+  digits = 4,
+  caption = "Error Metrics by Seed and Key Ages"
+)
+
+# Create box plot of errors at key ages
+ggplot(metrics_by_seed, aes(x = as.factor(Age), y = Error, fill = Sex)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Errors at Key Ages",
+    x = "Age",
+    y = "Error (Estimated - True)",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA")) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black")
+
+# Create box plot of MSE by sex
+ggplot(
+  metrics_by_seed %>%
+    select(Seed, Sex, MSE) %>%
+    distinct(),
+  aes(x = Sex, y = MSE, fill = Sex)
+) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Mean Squared Error Across Seeds",
+    x = "Sex",
+    y = "Mean Squared Error",
+    fill = "Sex"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold")
+  ) +
+  scale_fill_manual(values = c("Female" = "#CC6677", "Male" = "#4477AA"))
+```

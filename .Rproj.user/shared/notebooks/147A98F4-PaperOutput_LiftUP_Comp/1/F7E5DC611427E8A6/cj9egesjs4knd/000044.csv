@@ -1,0 +1,17 @@
+"0","plot_penetrance_comparison_cumulative("
+"0","  data         = dat$combined_chains,"
+"0","  data_noImp   = dat_noImp$combined_chains,"
+"0","  db_sim       = PanelPRODatabase,"
+"0","  prob         = 0.95,"
+"0","  max_age      = 84,   # or up to the length of your incidence vector"
+"0","  cancer       = ""Colorectal"","
+"0","  gene         = ""SEER"","
+"0","  sex          = ""Male"","
+"0","  race         = ""All_Races"","
+"0","  type         = ""Net"","
+"0","  competing_method_incidence = competing_method_incidence,"
+"0","  include_age_imputation = FALSE "
+"0",")"
+"1","[38;5;252mScale for [32mcolour[38;5;252m is already present.
+Adding another scale for [32mcolour[38;5;252m, which will replace the existing scale.[39m
+"

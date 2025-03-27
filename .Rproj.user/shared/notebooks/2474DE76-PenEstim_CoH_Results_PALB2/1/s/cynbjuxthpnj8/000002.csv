@@ -1,0 +1,6 @@
+"0","library(clipp)"
+"0","library(kinship2)"
+"0","library(penetrance)"
+"0","library(PPP)"
+"0",""
+"0","set.seed(2024)"

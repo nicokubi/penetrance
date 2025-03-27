@@ -1,0 +1,14 @@
+"0",""
+"0","# Generate plots for each sample size"
+"0","plots <- list()"
+"0",""
+"0","# Display plots separately"
+"0","for (size in unique(all_curves$SampleSize)) {"
+"0","  print(plot_comparison_publication(plot_data, size))"
+"0","}"
+"2","Warning:"
+"2"," [38;5;252mThe `size` argument of `element_rect()` is deprecated as of ggplot2 3.4.0.
+[36mℹ[38;5;252m Please use the `linewidth` argument instead.
+[90mThis warning is displayed once every 8 hours.[38;5;252m
+[90mCall `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.[38;5;252m[39m
+"

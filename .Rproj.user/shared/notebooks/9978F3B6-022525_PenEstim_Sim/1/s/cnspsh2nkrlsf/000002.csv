@@ -1,0 +1,11 @@
+"0","# Define sample sizes"
+"0","sample_sizes <- c(30, 130, 400, 1000)"
+"0",""
+"0","# Set seed for reproducibility"
+"0","set.seed(2024)"
+"0",""
+"0","# Try with a larger initial sample to ensure we get enough carrier probands"
+"0","message(""Running simulation with PanelPRO default penetrance..."")"
+"2","Running simulation with PanelPRO default penetrance...
+"
+"0","sim_result <- try(simulateFamilies(numberFamilies = 10000, gene_freq = 0.1), silent = TRUE)"

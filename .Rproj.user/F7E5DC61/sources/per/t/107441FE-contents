@@ -1,0 +1,1073 @@
+---
+title: "Testing - Breakloops"
+author: "Ryan Hernandez-Cancela"
+date: "2023-03-31"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# Make sure all tests passed
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(PanelPRO) # only used for GENE_TYPES
+library(tidyverse)
+library(kinship2)
+
+# Load pedigrees
+load("~/Partners HealthCare Dropbox/BayesMendel/Projects/Active/RHC-BreakLoops/Testing Breakloops/breakloops_ped.rda")
+load("~/Partners HealthCare Dropbox/BayesMendel/Projects/Active/RHC-BreakLoops/Testing Breakloops/breakloops_clones.rda")
+
+# Source breakloops function
+source("~/Partners HealthCare Dropbox/BayesMendel/Projects/Active/RHC-BreakLoops/Testing Breakloops/breakloops.R")  # make sure on latest feature commit
+# source("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/breakloops_debug.R")
+source("~/Partners HealthCare Dropbox/BayesMendel/Projects/Active/RHC-BreakLoops/Testing Breakloops/plotPed.R")
+
+# Define 'genes' for breakloops() calls
+genes <- PanelPRO:::GENE_TYPES
+
+# Initialize 'test'
+test <- NULL
+
+```
+
+# Introduction
+Hello! Here, I run some tests on the **breakloops** function, which should allow 
+PanelPRO to function if an input pedigree contains one or more loops. The purpose 
+of this testing is to make sure that **breakloops** can handle different variations
+of pedigree loops and that it's breaking these loops in the way that we would expect.  
+
+# List of Changes
+Here are the issues that have been resolved from the previous version
+of **breakloops**:  
+
+* Mating b/w siblings
+
+        + added an indicator variable to redirect pedigree from No-MM to MM 
+        algorithm, which succesfully breaks the loop
+* No-MM algorithm weighting
+
+        + changed from [# of genotypes] to *log*[# of genotypes] for 
+        consistency w/ manuscript
+* MM algorithm weighting
+
+        + changed from 'degree' to 'trimmed degree' for consistency w/ 
+        manuscript (makes more sense, too)
+* Proband clones being probands, as well
+
+        + added code that makes sure clones *aren't* probands  
+
+# Background
+## Loops and Graphs
+The **breakloops** function is designed to break *loops* in pedigrees, which occur
+when someone mates w/ a relative (Jianfeng). This mating results in a structure
+where more than one continuous path can be traced between two members (Romain).  
+
+To illustrate, here's a simple example of a pedigree with a loop:  
+
+```{r, echo=FALSE, fig.align='center'}
+example <- data.frame(ID = 1:9,
+                   Sex = c(1, 0, 0, 1, 0, 1, 1, 0, 0),
+                   FatherID = c(NA, NA, NA, 1, 1, NA, 4, 6, 7),
+                   MotherID = c(NA, NA, NA, 2, 2, NA, 3, 5, 8),
+                   isProband = 0,
+                   isDead = 0)
+
+# Plot
+plotPed(example)
+```
+
+For those unfamiliar with pedigrees, squares represent males, circles represent 
+females, and the lines b/w them represent matings and family relationships.  
+
+In this example, we have a mating b/w first cousins. We can trace a path from ID 
+9 to ID 1 if we pass through ID 7 and 4 OR if we pass through 8 and 5. Thus, this
+pedigree contains a loop.  
+
+The algorithms in **breakloops**, as well as the formula for determining if loops 
+are present, are based in "graph theory", so we need to convert our pedigree
+to a connected, undirected graph in order to use it.  
+
+Here's what the graph version of our example pedigree would look like:  
+
+```{r, echo=FALSE, out.width="70%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/graph_example.png", error=FALSE)
+```
+
+Everybody (regardless of gender) becomes a circular *vertex* in the graph, and
+the matings b/w individuals get their own square vertices, too. The connections
+between vertices are called *edges*, and I color-coded those to help visualize
+the different marriages.  
+
+(NOTE): I use "mating" and "marriage" interchangeably. Although it seems like
+"marriage" is the technical term, "mating" is easier for me to understand.  
+
+At this stage, the function will check for loops by counting the number of
+marriages [n,m], the number of offspring [n,o], and the total number of individuals
+[n,i] in the graph. If **[n,m] + [n,o] > [n,i] - 1**, then the pedigree contains at
+least one loop.  
+
+In our example, [n,m] = 4, [n,o] = 5, and [n,i] = 9, and since (4 + 5) > (9 - 1),
+the function correctly identifies that we have at least one loop in our pedigree.  
+
+To simplify our graph down to just the loop, the next step we do is "trim the
+leaves". A *leaf* is just a vertex w/ one edge connected to it (ex. ID 9). This
+is done recursively, but we don't have to worry about that in this example.  
+
+After trimming, you're left with a trimmed graph, and here's what that would
+look like for our example:  
+
+```{r, echo=FALSE, out.width="70%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/trimmed_leaves_example.png", error=FALSE)
+```
+
+Now we can see the loop more clearly, and the graph is ready to be plugged in
+to one of the two algorithms in **breakloops**.  
+
+## MM vs No-MM
+
+In **breakloops**, loops are categorized as either **MM** or **No-MM** loops.  
+
+A quick breakdown of terminology: **MM**, which stands for **multiple marriages**, 
+refers to the case where at least one person in the trimmed graph is connected
+to two or more marriages where they are a parent. This translates
+to an individual having kids with two or more different partners, and either
+the kids, the partners, or both are involved in a loop somehow.  
+
+To illustrate, here's a simple MM loop...  
+```{r, echo=FALSE, fig.align='center'}
+example_mm <- data.frame(ID = 1:6,
+                   Sex = c(1, 0, 1, 0, 1, 0),
+                   FatherID = c(NA, NA, NA, 1, 3, 5),
+                   MotherID = c(NA, NA, NA, 2, 2, 4),
+                   isProband = 0,
+                   isDead = 0)
+
+# Plot
+plotPed(example_mm)
+```
+
+...and here's its corresponding trimmed graph:  
+```{r, echo=FALSE, out.width="60%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/example_MM.png", error=FALSE)
+```
+
+The two marriages where ID 2 is a parent, **m1** and **m2**, are both in this loop. Thus,
+this would count as an *MM* loop. Inversely, a loop without multiple marriages 
+(each person in the trimmed graph has at most one marriage where they're the 
+parent) would be a *No-MM* loop. An example of a No-MM loop would be the loop 
+shown in the previous section.  
+
+Each type of loop has its own algorithm that's designed to break it. The reason 
+why we have two different algorithms is that the No-MM algorithm can't break loops 
+where at least one person is connected to 3 or more marriages in the trimmed 
+graph. These special scenarios are always MM loops, which is why the MM algorithm 
+was added as well. However, the naming is a little misleading: the No-MM algorithm 
+*can* break certain MM loops (like the example above), but it was decided to split 
+up the algorithms such that *all* MM loops are handled by the MM algorithm.  
+
+# Testing
+For each test case, I created a corresponding *clones* pedigree that serves as 
+like an answer key. This *clones* pedigree contains no loops and is what I expect 
+the output from **breakloops** to look like once it's done. My "expectation" is 
+based on reading the current **breakloops** manuscript and taking a look at the 
+**breakloops** code.  
+
+The general format of each test is the following: run **breakloops** on the test-case
+pedigree and compare the output to the *clones* pedigree using the **identical** 
+function. If both pedigrees are identical, then **breakloops** passed that test.  
+
+Since the **breakloops** function contains two different algorithms for different
+situations, I decided to first break up the testing by algorithm.  
+
+## No-MM (Prim's Algorithm)
+The algorithm that breaks no-MM loops is called Prim's algorithm. This algorithm
+is designed to solve the classic *minimum spanning tree* problem.  
+
+```{r, echo=FALSE, out.width="70%", fig.align='center'}
+# From https://en.wikipedia.org/wiki/Minimum_spanning_tree
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/mst.png", error=FALSE)
+```
+
+Essentially, the algorithm tries to connect all of the available points in an
+interconnected web (AKA "spanning tree") such that the sum of all the edge 
+weights is the lowest it can be. As an example, this would be useful for
+road building if each point represented a city, and we wanted to connect
+all of the cities w/ the least amount of road possible. Note that spanning
+trees don't contain loops.  
+
+With a little tweak, we can make the algorithm find the **maximum** spanning
+tree (MST), instead. This is a similar concept, except now the sum of weights is the
+*highest* it can be. This is useful if we want to keep the edges with the highest
+weights and identify which edges (with lower weights) weren't used.  
+
+In order to use this algorithm, we have to represent our pedigree loop such
+that the edges are individuals. The structure that we end up with is called a
+**subgraph**, where each point represents a marriage, and we only have one
+potential edge/individual between any two points.  
+
+Here's the subgraph for the pedigree from our first example:  
+```{r, echo=FALSE, out.width="60%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/subgraph_example.png", error=FALSE)
+```
+
+This allows us to apply Prim's to build an MST, and the individual that isn't 
+used is the ideal loop breaker.  
+
+```{r, echo=FALSE, out.width="60%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/subgraph_example_2.png", error=FALSE)
+```
+
+Weights in this case are the # of potential **genotypes** an individual might
+have, where each potential genotype is just a possible combination of germline
+mutations GIVEN a person's germline testing history/results (ex. BRCA1 Mutation - Yes, 
+ATM Mutation - No). This is supposed to represent how computationally demanding 
+it would be to break a loop with this person. Also, the more testing results a  
+person has, the fewer potential genotypes they have (fewer unknowns).  
+
+So, Prim's indirectly finds the ideal loop breaker, which in this case is just 
+the person in the loop with the lowest weight (that wasn't used).  
+
+(NOTE): Weights are technically log(# of genotypes), but the same conceptual
+framework applies.  
+
+### Small Loop
+I defined a small loop as a loop consisting of 3 individuals. In this case, those
+3 are 13, 14 (proband), and 18.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$small)
+```
+
+I've defined the pedigree such that ID 18 is the ideal breaker. I can do this
+by adding germline testing results to 18 such that her number of potential genotypes
+(and therefore weight) is lower.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$small)
+```
+
+Loop breaking entails making a *clone* of the ideal loop breaker. The clone
+is identical to the loop breaker except for the fact that the clone has no
+known parents. The clone replaces the loop breaker in their parental role in
+the pedigree.
+
+```{r}
+x <- breakloops(ped$small, genes = genes)
+identical(x, clones$small)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$small))
+```
+
+
+### Medium Loop
+I defined a medium loop as a loop consisting of 4 individuals. In this case, those
+4 are 13, 14 (proband), 19, and 21.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$medium)
+```
+
+I've defined the pedigree such that ID 21 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$medium)
+```
+
+
+```{r}
+x <- breakloops(ped$medium, genes = genes)
+identical(x, clones$medium)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$medium))
+```
+
+### Large Loop
+I defined a large loop as a loop consisting of 5 individuals. In this case, those
+5 are 7, 8, 14 (proband), 19, 21.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$large)
+```
+
+I've defined the pedigree such that ID 18 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$large)
+```
+
+
+```{r}
+x <- breakloops(ped$large, genes = genes)
+identical(x, clones$large)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$large))
+```
+
+### XL Loop
+This loop was inspired by one of Jane's test pedigrees that she drew up in this
+GitHub issue: https://github.com/bayesmendel/PanelPRO/issues/164  
+
+In this case, there are 7 individuals in the loop: 4, 5, 7, 9, 11 (proband), 12, 14  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$xl)
+```
+
+I've defined the pedigree such that ID 9 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$xl)
+```
+
+
+```{r}
+x <- breakloops(ped$xl, genes = genes)
+identical(x, clones$xl)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$xl))
+```
+
+### Multiple Loops
+Here, we've got 3 different loops that the algorithm has to break.
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$multi)
+```
+
+Loop 1, consisting of ID 13, 14 (Proband), and 18, was designed such that 18 is 
+the ideal loop breaker. 
+
+Loop 2, consisting of ID 7, 8, 14 (Proband), 19 and 21, was designed such that 
+21 is the ideal loop breaker. 
+
+Loop 3, consisting of ID 12, 14 (Proband), 15, 16, and 17, was designed such that 
+17 is the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$multi)
+```
+
+ID 21 is cloned first, then 17, then 18.  
+
+```{r}
+x <- breakloops(ped$multi, genes = genes)
+identical(x, clones$multi)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$multi))
+```
+
+### Same Weights
+Here, I wanted to see what happens when there isn't a clearly ideal loop breaker. Everyone in this loop has the same weight, so anyone could be the loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$same_weights)
+```
+
+This is basically the same loop as the **Small Loop** section, so we have the same 3 individuals involved: 13, 14 (proband), and 18. Based on how the algorithm works, 18 will be the chosen loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$same_weights)
+```
+
+```{r}
+x <- breakloops(ped$same_weights, genes = genes)
+identical(x, clones$same_weights)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$same_weights))
+```
+
+### Proband Ideal
+I was curious how the algorithm would handle cloning the proband: specifically, if the clone would also be a proband.
+
+```{r, echo=FALSE, fig.align='center'}
+plotPed(ped$proband_ideal)
+```
+
+Again, this is based on the **Small Loop** pedigree, so the individuals involved in the loop are ID 13, 14 (proband), and 18. However, this time,
+ID 14 is the ideal breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+plotPed(clones$proband_ideal)
+```
+
+```{r}
+x <- breakloops(ped$proband_ideal, genes = genes)
+identical(x, clones$proband_ideal)
+```
+
+Before, the clones of a proband would also be probands, but I added a quick
+line of code to fix that.  
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$proband_ideal))
+```
+
+## MM
+This algorithm is a little different than the one before. Instead of considering
+individuals as edges b/w marriage vertices in a subgraph, this algorithm only 
+sees individuals and their weights.  
+
+```{r, echo=FALSE, out.width="70%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/MM_example.png", error=FALSE)
+```
+
+Imagine every person involved in an MM loop standing side-by-side, and each
+person holds up a sign showing their *weight*. We've ordered everyone in the
+line by their IDs (in ascending order) such that the leftmost person has the
+smallest ID.  
+
+The algorithm finds out what the lowest weight value is among the group (using
+the **min** function), then looks for the first person whose weight matches
+this lowest value. So, the leftmost person with the smallest ID is looked at 
+first, then the second person, and so on.  
+
+```{r, echo=FALSE, out.width="70%", fig.align='center'}
+knitr::include_graphics("~/Desktop/BayesMendel/Breakloops/Testing Breakloops/MM_example_2.png", error=FALSE)
+```
+
+Once the algorithm finds the matching person, it's done. Unlike the No-MM
+algorithm, the MM algorithm can only identify one loop breaker at a time.
+
+It's also worth noting that *weight* is computed differently here, too. Here,
+we also consider a person's **degree** (number of marriages that they're 
+connected to) in the trimmed graph. This is sometimes a proxy for the number
+of loops a person is in, but not always. Ideally, we would use number of loops (k) 
+instead of trimmed degree, but we would need to write a new algorithm to find 'k',
+and we decided against that. Although this current method will still break loops, 
+it does so less efficiently than if 'k' was used in the weighting, which is a 
+limitation that needs to be addressed in the paper.  
+
+Anyways, the new weight formula for this algorithm is log[number of potential genotypes] / [trimmed degree].  
+
+### Small Loop (MM)
+I defined a small loop as a loop consisting of 3 individuals. In this case, those
+3 are 14 (proband), 18, and 23.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$small_mm)
+```
+
+I've defined the pedigree such that ID 18 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$small_mm)
+```
+
+
+```{r}
+x <- breakloops(ped$small_mm, genes = genes)
+identical(x, clones$small_mm)
+```
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$small_mm))
+```
+
+### Medium Loop (MM)
+I defined a medium loop as a loop consisting of 4 individuals. In this case, those
+4 are 14 (proband), 18, 23, and 24.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$medium_mm)
+```
+
+I've defined the pedigree such that ID 24 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$medium_mm)
+```
+
+
+```{r}
+x <- breakloops(ped$medium_mm, genes = genes)
+identical(x, clones$medium_mm)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$medium_mm))
+```
+
+### Large Loop (MM)
+I defined a large loop as a loop consisting of 5 individuals. In this case, those
+5 are 6, 12, 17, 24, and 25.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$large_mm)
+```
+
+I've defined the pedigree such that ID 6 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$large_mm)
+```
+
+
+```{r}
+x <- breakloops(ped$large_mm, genes = genes)
+identical(x, clones$large_mm)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$large_mm))
+```
+
+### XL Loop (MM)
+This loop was inspired by one of Jane's test pedigrees that she drew up in this
+GitHub issue: https://github.com/bayesmendel/PanelPRO/issues/164  
+
+In this case, there are 7 individuals in the loop: 4, 5, 7, 9, 11 (Proband), 12, 13  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$xl_mm)
+```
+
+I've defined the pedigree such that ID 9 is the ideal breaker.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$xl_mm)
+```
+
+
+```{r}
+x <- breakloops(ped$xl_mm, genes = genes)
+identical(x, clones$xl_mm)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$xl_mm))
+```
+
+### Multiple Loops (MM)
+Here, we've got 3 different loops that the algorithm has to break.
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$multi_mm)
+```
+
+Loop 1, consisting of ID 12, 17, and 24, was designed such that 24 is 
+the ideal loop breaker.  
+
+Loop 2, consisting of ID 14 (Proband), 18, and 25, was designed such that 
+18 is the ideal loop breaker.  
+
+Loop 3, consisting of ID 20, 21, and 29, was designed such that 
+20 is the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$multi_mm)
+```
+
+ID 18 is cloned first, then 20, then 24. ID 20 is involved in 2 marriages, but
+his marriage w/ 19 is the one that will be broken.  
+
+```{r}
+x <- breakloops(ped$multi_mm, genes = genes)
+identical(x, clones$multi_mm)
+```
+
+Notice that everyone is considered at once, regardless of which loop they're in. 
+The algorithm can't tell who's in what loop, but it still breaks all three
+(one at a time).  
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$multi_mm))
+```
+
+### Same Weights (MM)
+In this pedigree, everyone has the same degree (2) and the same number of
+potential genotypes (2^22), so everyone has the same weight.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$same_weights_mm)
+```
+
+Individuals 2, 6, and 13 are involved in this loop. Since ID 2 is the first
+person with the minimum weight that the algorithm sees, it'll be the person
+chosen to break the loop.  
+
+ID 2 has two marriages in this loop: one with ID 1, and one with ID 13. Since
+an individual's partners are sorted in ascending order, the algorithm will
+see the marriage w/ 1 first, so that's the one that will be broken.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$same_weights_mm)
+```
+
+```{r}
+x <- breakloops(ped$same_weights_mm, genes = genes)
+identical(x, clones$same_weights_mm)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$same_weights_mm))
+```
+
+### Proband Ideal (MM)
+Here's a small MM loop where the proband is the ideal loop breaker:  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$proband_ideal_mm)
+```
+
+This loop involves 14 (Proband), 18, and 23.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$proband_ideal_mm)
+```
+
+```{r}
+x <- breakloops(ped$proband_ideal_mm, genes = genes)
+identical(x, clones$proband_ideal_mm)
+```
+
+Again, the proband's clones are no longer probands themselves.    
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$proband_ideal_mm))
+```
+
+## Combination
+It may be the case that both algorithms have to work together to break all the loops in the pedigree. The way the **breakloops** function is set up, if the trimmed graph contains
+at least one MM loop, the MM algorithm will be called first. The MM algorithm will 
+go ahead breaking loops until either (a) there aren't any loops left, or (b) the 
+remaining loops are No-MM loops. In the case of (b), the No-MM algorithm will then
+take over and finish the job.  
+
+To test this functionality, I created two pedigrees with both types of loops.  
+
+### 1 MM + 2 No-MM
+The first pedigree consists of one MM loop and two No-MM loops.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$omni)
+```
+
+Loop 1 (MM), consisting of ID 14 (Proband), 18, and 23, was designed such that 23 is 
+the ideal loop breaker.  
+
+Loop 2, consisting of ID 7, 8, 14 (Proband), 19, and 21, was designed such that 
+21 is the ideal loop breaker.  
+
+Loop 3, consisting of ID 12, 14, 15, 16, and 17, was designed such that 
+17 is the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$omni)
+```
+
+Since we have an MM loop, the MM algorithm will be applied first.  
+
+ID 23 is cloned first b/c he's the first person with the lowest weight in the
+trimmed graph.  
+
+Afterward, the pedigree will only contain two No-MM loops, so the No-MM algorithm
+will be applied.  
+
+ID 21 is cloned before ID 17 b/c she connects marriages 4 and 9, whereas ID 17 connects marriages 6 and 8 (4 < 6).  
+
+```{r}
+x <- breakloops(ped$omni, genes = genes)
+identical(x, clones$omni)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$omni))
+```
+
+### 2 MM + 1 No-MM
+Similar situation here, except now we have 2 MM loops and 1 No-MM loop.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$omni2)
+```
+
+Loop 1 (MM), consisting of ID 2, 6, and 13, was designed such that 2 is 
+the ideal loop breaker.  
+
+Loop 2 (MM), consisting of ID 14 (Proband), 18, and 24, was designed such that 
+24 is the ideal loop breaker.  
+
+Loop 3, consisting of ID 5, 6, 7, and 8, was designed such that 
+8 is the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$omni2)
+```
+
+Since we have two MM loops, the MM algorithm will be applied first.  
+
+ID 2 is the first person with the lowest weight, so he's cloned first. He's
+involved as a parent in two marriages in the loop: one with ID 1, and one with
+ID 13. Since 1 < 13, the marriage b/w ID 2 and 1 will be broken first, meaning
+that the clone will be ID 5 and 6's new father.  
+
+At this point, ID 2 is no longer involved in any loops, so the marriage b/w
+ID 2 and 13 is left alone.  
+
+We still have an MM loop in our trimmed graph, so the MM algorithm is called
+again. This time, the first person with the lowest weight is ID 24, so he's
+cloned second.  
+
+Now, we only have one No-MM loop remaining, so the No-MM algorithm will be 
+applied. ID 8 has the lowest weight, so he's the final loop breaker.  
+
+
+```{r}
+x <- breakloops(ped$omni2, genes = genes)
+identical(x, clones$omni2)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$omni2))
+```
+
+## Special Cases
+Below are a list of special/specific cases that I thought were worth looking into.  
+
+### Missing One Parent
+The **breakloops** function is designed to be able to handle the case where one or more individuals are missing one of their parents (for example, if we only have information on someone's dad, but not their mom). This is handled by the **fixParents** function in the kinship2 package.  
+
+If one parent is missing, a "non-informative parent" is added. This parent only has non-NA values for *ID*, *Sex*, *isProband* (= 0), and *isAff__* (= 0). Columns *race*, *Ancestry*, *isDead*, and *Twins* get coerced later to "All_Races", "nonAJ", 0, and 0, respectively.  
+
+It's worth noting that this step happens before **breakloops** checks for loops. This is because the formula that's used to see if loops are present depends on everyone having two parents: if parents are missing, the function could think there are loops when there aren't any.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$medium)
+```
+
+It's basically a copy of our **Medium** (No-MM) loop from before, but I removed
+ID 11 and ID 20. The plotting function wouldn't let me plot a pedigree with
+parents missing, so the pedigree above is just that **Medium** loop again (pretend
+that 11 and 20 are gone).  
+
+Once again, ID 21 is the ideal loop breaker here.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$missing_parents |> 
+                mutate(isDead = case_when(ID %in% c(23,24) ~ 0,
+                                          TRUE ~ isDead)))
+```
+
+ID 23 takes the role of the missing ID 11, and ID 24 takes the role of the
+missing ID 20. ID 25 is just the clone of ID 21, the ideal loop breaker.  
+
+```{r}
+x <- breakloops(ped$missing_parents, genes = genes)
+identical(x, clones$missing_parents)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$missing_parents))
+```
+
+### Disconnected Families
+The **breakloops** function should be able to handle multiple different families 
+in a single pedigree data frame. The **makefamid** function from kinship2 is
+used to assign a "family id" to each separate family, and then the function
+starts with ID 1, 2, etc.  
+
+The pedigree below has 5 separate families. One of them, a singleton (ID 23), 
+isn't shown b/c the plotting function doesn't support this type of "family". The
+family order, from left to right, is Family 1, 2, 3, and 4. The singleton (not shown) 
+is assigned as Family 0.  
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$disconnect)
+```
+
+Family 0 (the singleton) should just be left alone.  
+
+Family 1 has a single loop involving ID 13, 14 (Proband), and 18, where 18 is
+the ideal loop breaker.  
+
+Family 2 has a loop between ID 24, 26 (Proband), and 28, where 28 is the ideal
+loop breaker.  
+
+Family 3 has a loop but doesn't have a proband, so it'll be removed from the
+pedigree altogether by the **removeDisconnected** function.  
+
+Family 4 will also be removed b/c it doesn't have a proband.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$disconnect)
+```
+
+```{r}
+x <- breakloops(ped$disconnect, genes = genes)
+identical(x, clones$disconnect)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$disconnect))
+```
+
+### Singleton
+Although not super common, **breakloops** should be able to handle singletons,
+as well. A *singleton* is a pedigree or family that consists of only one person: 
+the proband.  
+
+Hopefully, it's obvious that a singleton pedigree can't have a loop, so there's
+nothing to do here. Singletons should pass through the function unscathed, so
+I wanted to see if that was the case.
+
+```{r}
+x <- breakloops(ped$singleton, genes = genes)
+identical(x, ped$singleton)
+```
+
+
+### One Breaker
+I wanted to see what would happen if cloning one loop breaker broke multiple loops at once. This type of situation is what the MM algorithm strives for: if cloning one person breaks multiple loops, we can save on computation time.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$one_breaker)
+```
+
+In this case, the first loop consists of ID 12, 14 (Proband), 17, and 18. The
+second loop consists of 17, 18, 19, and 21. In both cases, ID 17 is ideal.  
+
+To break both loops, both of 17's marriages will be broken (17-18, 17-21).  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$one_breaker)
+```
+
+```{r}
+x <- breakloops(ped$one_breaker, genes = genes)
+identical(x, clones$one_breaker)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$one_breaker))
+```
+
+### Siblings
+This pedigree was inspired by the old *checkMating* function in PanelPRO. 
+Basically, we're just seeing what happens when two siblings mate.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$siblings)
+```
+
+Here, I designated ID 12 as the ideal breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$siblings)
+```
+
+Before, this pedigree would cause an error in the no-MM algorithm. This was because the no-MM algorithm assumes that only one edge/individual can connect any two marriages, but in this case, we have two individuals connecting the same two marriages.  
+
+As a result, I put in a quick patch that redirects such a pedigree (where two or more individuals connect the exact same marriages) to the MM algorithm. Although this isn't technically an MM case, that algorithm is capable of breaking a loop like this 
+without error.  
+
+```{r}
+x <- breakloops(ped$siblings, genes = genes)
+identical(x, clones$siblings)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$siblings))
+```
+
+### Cousins
+This is another specific case that was included in the old *checkMating* function. Here, we look at what happens when we have a mating b/w first cousins (ID 17 and 18).  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$cousins)
+```
+
+This no-MM loop consists of individuals 12, 14, 17, and 18. ID 12 is designed to be the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$cousins)
+```
+
+```{r}
+x <- breakloops(ped$cousins, genes = genes)
+identical(x, clones$cousins)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$cousins))
+```
+
+### Aunt/Uncle
+Another specific case from *checkMating*. What happens when we have a mating b/w a paternal aunt/uncle and a maternal aunt/uncle
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$aunt_uncle)
+```
+
+Here, the proband's maternal uncle (ID 8) and paternal aunt (ID 5) mate. This no-MM loop consisting of ID 5, 6, 7, and 8 is designed such that ID 8 is the ideal breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$aunt_uncle)
+```
+
+```{r}
+x <- breakloops(ped$aunt_uncle, genes = genes)
+identical(x, clones$aunt_uncle)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$aunt_uncle))
+```
+
+### Parent/Child
+Another from *checkMating*. Can the function handle a marriage b/w parent and child?  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$parent_child)
+```
+
+This MM loop consists of just ID 12 (parent) and 17 (child). ID 12 is designed to be the ideal breaker, and her marriage w/ 11 is the one that's going to be broken.  
+
+(NOTE): Just like the **Sibling** case, we have two individuals involved in the
+exact same marriages. However, since this is already an MM case, it would've
+gone through the MM algorithm regardless.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$parent_child)
+```
+
+```{r}
+x <- breakloops(ped$parent_child, genes = genes)
+identical(x, clones$parent_child)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$parent_child))
+```
+
+### Granddaughter/Nephew
+This was a specific loop that Jianfeng highlighted in the manuscript that the old *checkMating* function couldn't catch: the proband's granddaughter (ID 21) + proband's nephew (ID 17).  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$gd_nph)
+```
+
+This no-MM loop consisting of ID 12, 14 (Proband), 17, 19, and 21, is designed such that ID 19 is the ideal loop breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$gd_nph)
+```
+
+```{r}
+x <- breakloops(ped$gd_nph, genes = genes)
+identical(x, clones$gd_nph)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$gd_nph))
+```
+
+### Second Cousins
+This pedigree was specifically suggested by Danielle: a mating between second cousins (ID 21 + 23).  
+
+(I had to look this up, but apparently second cousins are individuals who
+share great-grandparents; in this case, the great-grandparents are ID 6 and 7).  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(ped$second_cousins)
+```
+
+This no-MM loop, which consists of IDs 12, 14 (Proband), 17, 19, 21, and 23, was designed such that ID 23 is the ideal breaker.  
+
+```{r, echo=FALSE, fig.align='center'}
+# Plot
+plotPed(clones$second_cousins)
+```
+
+```{r}
+x <- breakloops(ped$second_cousins, genes = genes)
+identical(x, clones$second_cousins)
+```
+
+```{r, include=FALSE}
+# Some code to make it easier to check that all the tests passed
+test <- c(test, identical(x, clones$second_cousins))
+```
+
+```{r, include=FALSE}
+# Did all the tests pass?
+if(sum(test) != length(test)) {
+        stop("At least one test failed.") # prevents knitting
+} else {
+        message("All passed.")
+}
+```

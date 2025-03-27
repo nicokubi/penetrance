@@ -1,0 +1,12 @@
+"2","Completed penetrance estimation for sample size 130 in 123.24 minutes
+"
+"2","Saved results to results/out_sim_COL_MLH1_sim130.RData
+"
+"2","Running penetrance estimation for sample size 400 with 10000 iterations
+"
+"2","Error in penetrance estimation for sample size 400: one node produced an error: Cluster setup failed. 7 of 7 workers failed to connect.
+"
+"2","Completed penetrance estimation for sample size 400 in 401.12 minutes
+"
+"2","Running penetrance estimation for sample size 1000 with 10000 iterations
+"

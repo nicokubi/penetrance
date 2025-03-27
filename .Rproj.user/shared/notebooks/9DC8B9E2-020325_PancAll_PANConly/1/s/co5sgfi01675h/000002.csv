@@ -1,0 +1,4 @@
+"0","# Load data"
+"0","dat_original <- load(""/Users/nicolaskubista/Partners HealthCare Dropbox/Nicolas Kubista/CCGCRN Hispanic Cohort Data/PenEstim/Data/geno_cancer_data.RData"")"
+"0",""
+"0","dat <- family_list"

@@ -1,0 +1,11 @@
+"0",""
+"0","cat(""\n\n## Cumulative Risk Table - 030125 Data\n"")"
+"1","
+
+## Cumulative Risk Table - 030125 Data
+"
+"0","print(knitr::kable("
+"0","  risk_table_030125_formatted[, c(""Age"", ""Risk_with_CI"")],"
+"0","  col.names = c(""Age"", ""Cumulative Risk (95% CI)""),"
+"0","  caption = ""Age-specific cumulative risk of ovarian cancer for PALB2 PGV carriers (030125 data)"""
+"0","))"

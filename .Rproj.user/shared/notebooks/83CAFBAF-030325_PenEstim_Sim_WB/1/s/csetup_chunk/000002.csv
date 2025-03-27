@@ -1,0 +1,110 @@
+"0","# Load required libraries"
+"0","library(penetrance)"
+"0","library(PanelPRO)"
+"2","Welcome to the PanelPRO package, by the BayesMendel Lab!
+"
+"2","PanelPRO version: 1.1.0
+"
+"2","[33m   ___                _____  ___  ____ [39m 
+[33m  / _ \___ ____  ___ / / _ \/ _ \/ __ \[39m 
+[33m / ___/ _ `/ _ \/ -_) / ___/ , _/ /_/ /[39m 
+[33m/_/   \_,_/_//_/\__/_/_/  /_/|_|\____/ [39m 
+
+"
+"0","library(ggplot2)"
+"2","Warning:"
+"2"," package ‘ggplot2’ was built under R version 4.2.3
+"
+"0","library(tidyr)"
+"2","Warning:"
+"2"," package ‘tidyr’ was built under R version 4.2.3
+"
+"0","library(dplyr)"
+"2","Warning:"
+"2"," package ‘dplyr’ was built under R version 4.2.3
+"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(scales)"
+"2","Warning:"
+"2"," package ‘scales’ was built under R version 4.2.3
+"
+"0","library(truncnorm)"
+"0","library(PedUtils)"
+"0","source(""~/Documents/Master Statistics/Master Thesis/Code/Submission/Additional Scripts/describeFamilies.R"")"
+"0",""
+"0","# Function to deeply clone a database"
+"0","deep_clone <- function(x) {"
+"0","  rapply(x, function(y) if(is.list(y)) return(deep_clone(y)) else return(y), how = ""replace"")"
+"0","}"
+"0",""
+"0","# Create a directory for saving results if it doesn't exist"
+"0","results_dir <- ""results"""
+"0","if (!dir.exists(results_dir)) {"
+"0","  dir.create(results_dir)"
+"0","}"
+"0",""
+"0","# Set up age sequence"
+"0","age <- 1:94"
+"0",""
+"0","# Define Weibull parameters for female penetrance"
+"0","alpha_f <- 2      # Shape parameter"
+"0","beta_f <- 50      # Scale parameter"
+"0","gamma_f <- 0.6    # Maximum penetrance (by age 94)"
+"0","delta_f <- 15     # Shift parameter (minimum age of onset)"
+"0",""
+"0","# Define Weibull parameters for male penetrance"
+"0","alpha_m <- 2      # Shape parameter"
+"0","beta_m <- 50      # Scale parameter"
+"0","gamma_m <- 0.9    # Maximum penetrance (by age 94)"
+"0","delta_m <- 30     # Shift parameter (minimum age of onset)"
+"0",""
+"0","# Generate penetrance values using Weibull distribution"
+"0","penetrance.mod.f <- dweibull(age - delta_f, alpha_f, beta_f) * gamma_f"
+"0","penetrance.mod.f[age <= delta_f] <- 0  # Zero penetrance before minimum age"
+"0",""
+"0","penetrance.mod.m <- dweibull(age - delta_m, alpha_m, beta_m) * gamma_m"
+"0","penetrance.mod.m[age <= delta_m] <- 0  # Zero penetrance before minimum age"
+"0",""
+"0","# Clone the original database to create a new simulation database"
+"0","db_sim <- deep_clone(PanelPRO::PanelPRODatabase)"
+"0",""
+"0","# Set MLH1 gene frequency"
+"0","gene_freq <- 0.1"
+"0","db_sim$AlleleFrequency[[""MLH1_anyPV"", 1]] <- gene_freq"
+"0","db_sim$AlleleFrequency[[""MLH1_anyPV"", 2]] <- gene_freq"
+"0","db_sim$AlleleFrequency[[""MLH1_anyPV"", 3]] <- gene_freq"
+"0",""
+"0","# Update the penetrance values in the database"
+"0","# For females"
+"0","gene <- ""MLH1_hetero_anyPV"""
+"0","cancer <- ""Colorectal"""
+"0","race <- ""All_Races"""
+"0","sex <- ""Female"""
+"0","type <- ""Net"""
+"0",""
+"0","dim_names <- attr(db_sim$Penetrance, ""dimnames"")"
+"0","gene_index <- which(dim_names$Gene == gene)"
+"0","cancer_index <- which(dim_names$Cancer == cancer)"
+"0","race_index <- which(dim_names$Race == race)"
+"0","sex_index <- which(dim_names$Sex == sex)"
+"0","type_index <- which(dim_names$PenetType == type)"
+"0",""
+"0","db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index] <- penetrance.mod.f"
+"0",""
+"0","# For males"
+"0","sex <- ""Male"""
+"0","sex_index <- which(dim_names$Sex == sex)"
+"0","db_sim$Penetrance[cancer_index, gene_index, race_index, sex_index, , type_index] <- penetrance.mod.m"

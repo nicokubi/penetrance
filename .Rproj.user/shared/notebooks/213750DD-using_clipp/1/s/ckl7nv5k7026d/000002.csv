@@ -1,0 +1,7 @@
+"0","penet.fn <- function(i, logodds1, logodds2) {"
+"0","  prob1 <- 1/(1 + exp(-logodds1))"
+"0","  prob2 <- 1/(1 + exp(-logodds2))"
+"0","  penet.i <- c(prob1, prob1, prob2)"
+"0","  if (dat_small$aff[i] == 0)  penet.i <- 1 - penet.i"
+"0","  return(penet.i)"
+"0","}"

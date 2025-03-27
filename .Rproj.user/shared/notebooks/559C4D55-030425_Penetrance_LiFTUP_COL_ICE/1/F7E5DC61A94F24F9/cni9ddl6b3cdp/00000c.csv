@@ -1,0 +1,9 @@
+"0","    list(
+        processed_data = dat_processed,
+        statistics = stats
+    )
+"
+"1","$processed_data
+"
+"1","$processed_data[[1]]
+"

@@ -1,0 +1,64 @@
+"0","library(penetrance)"
+"2","Loading required package: clipp
+"
+"2","Loading required package: parallel
+"
+"2","Loading required package: MASS
+"
+"2","
+Attaching package: ‘MASS’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    select
+
+"
+"2","Loading required package: kinship2
+"
+"2","Warning:"
+"2"," package ‘kinship2’ was built under R version 4.2.3
+"
+"2","Loading required package: Matrix
+"
+"2","Loading required package: quadprog
+"
+"2","
+Attaching package: ‘penetrance’
+
+"
+"2","The following objects are masked _by_ ‘.GlobalEnv’:
+
+    calculate_weibull_parameters, calculateBaseline, combine_chains_noSex,
+    generate_summary, generate_summary_noSex, penetrance, plot_acf, plot_loglikelihood,
+    plot_pdf, plot_penetrance, plot_trace, printRejectionRates
+
+"
+"0","library(ggplot2)"
+"0","library(ggridges)"
+"0","library(ggplot2)"
+"0","library(dplyr)"
+"0","library(survival)"
+"2","
+Attaching package: ‘survival’
+
+"
+"2","The following object is masked from ‘package:survminer’:
+
+    myeloma
+
+"
+"0","library(gridExtra)"
+"2","
+Attaching package: ‘gridExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    combine
+
+"
+"0","library(GGally)"
+"0",""
+"0",""
+"0","set.seed(2025)"

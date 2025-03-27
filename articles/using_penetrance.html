@@ -162,7 +162,8 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 <span><span class="co">#' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.</span></span>
 <span><span class="co">#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.</span></span>
 <span><span class="co">#' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span></code></pre></div>
+<span><span class="co">#' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span>
+<span><span class="co">#' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h3>
@@ -211,7 +212,7 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 <span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>, </span>
 <span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span>, af  <span class="op">=</span> <span class="fl">0.0001</span>, </span>
 <span>    prior_params <span class="op">=</span> <span class="va">prior_params_default</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,  </span>
-<span>    ageImputation <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>    ageImputation <span class="op">=</span> <span class="cn">TRUE</span>, sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>

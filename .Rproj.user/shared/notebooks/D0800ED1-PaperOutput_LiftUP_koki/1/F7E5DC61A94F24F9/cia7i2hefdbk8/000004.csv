@@ -1,0 +1,11 @@
+"0",""
+"0","cat(""\n\n## Cumulative Risk Table - Probands Removed\n"")"
+"1","
+
+## Cumulative Risk Table - Probands Removed
+"
+"0","print(knitr::kable("
+"0","  risk_table_removed_formatted[, c(""Age"", ""Risk_with_CI"")],"
+"0","  col.names = c(""Age"", ""Cumulative Risk (95% CI)""),"
+"0","  caption = ""Age-specific cumulative risk of ovarian cancer for PALB2 PGV carriers (with probands removed)"""
+"0","))"

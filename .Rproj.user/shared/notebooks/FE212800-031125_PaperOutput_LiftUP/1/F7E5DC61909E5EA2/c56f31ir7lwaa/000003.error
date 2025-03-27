@@ -1,0 +1,1 @@
+{"frames":[{"func":"plot_trace_log_posterior(dat_noImp$results[[1]])","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in plot_trace_log_posterior(dat_noImp$results[[1]]) : \n  object 'dat_noImp' not found\n"}

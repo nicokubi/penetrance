@@ -1,0 +1,15 @@
+"2","Completed penetrance estimation for sample size 30 in 99.97 minutes
+"
+"2","Saved results to results/out_sim_COL_MLH1_sim30.RData
+"
+"2","Running penetrance estimation for sample size 130 with 10000 iterations
+"
+"2","Warning in penetrance(pedigree = reformatted_data, twins = NULL, n_chains = n_chains,  :"
+"2","
+ "
+"2"," Low acceptance rate. Please consider running the chain longer.
+"
+"2","Rejection rates:
+"
+"2","  Chain 1: 0.93
+"

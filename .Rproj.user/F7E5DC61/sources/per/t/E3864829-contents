@@ -1,0 +1,916 @@
+#' Count the number of mating pairs
+#'
+#' Count the number of mating pairs (different marriages) in the pedigree.
+#'
+#' @param fff A pedigree data frame with at least three columns:
+#' `ID`, `FatherID`, and `MotherID`.
+#' Missing value should be encoded as -999.
+#' Missing one of the `FatherID` or `MotherID` is not accepted for this function.
+#' @return The number of mating pairs in the pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{checkloops}}
+countmatingpairs <- function(fff) {
+  mat_df <- matrix(0, nrow=nrow(fff), ncol=nrow(fff))
+  for (i in 1:nrow(fff)) {
+    if(fff$FatherID[i]!=-999) {
+      mat_df[which(fff$ID==fff$FatherID[i]), which(fff$ID==fff$MotherID[i])] <- 1
+    }
+  }
+  num <- sum(mat_df)
+  return(num)
+}
+
+#' Count the number of offspring
+#'
+#' Count the number of offspring in the pedigree. An offspring is defined as the
+#' individual who has parents in the pedigree. Each offspring in the pedigree
+#' should have known Father and Mother in the pedigree. Missing one of the
+#' `FatherID` or `MotherID` is not accepted for this function.
+#'
+#' @param fff A pedigree data frame with at least three columns:
+#' `ID`, `FatherID`, and `MotherID`.
+#' @return The number of offspring in the pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{checkloops}}
+countoffspring <- function(fff) {
+  # if the FatherID is -999, then the individual is not an offspring
+  num <- nrow(fff) - sum(fff$MotherID==-999)
+  return(num)
+}
+
+#' Check loops in the pedigree
+#'
+#' Fix missing parents and remove disconnected relatives from the pedigree
+#' with \code{\link{fixpedigree}}. Check loops in the pedigree. This function
+#' can only be applied on a single pedigree (a tree).
+#'
+#' @param fff A pedigree data frame with at least five columns:
+#' `ID`, `FatherID`, `MotherID`, `Sex`, and `isProband`.
+#' @return A numeric output:
+#' * Return 0 if no loop.
+#' * Return 1 if there is at least one loop.
+#' @seealso \code{\link{breakloops}}, \code{\link{countmatingpairs}},
+#'          \code{\link{countoffspring}}, \code{\link{fixpedigree}}
+#' @export
+checkloops <- function(fff) {
+  # Fix missing parents and remove disconnected relatives in the pedigree.
+  ped <- fixpedigree(fff)
+  # Using kinship2's makefamid() function, construct family groupings from the
+  # pedigree information.
+  fvec <- with(ped, {
+    FatherID <- as.character(FatherID)
+    MotherID <- as.character(MotherID)
+    FatherID[FatherID==-999] <- ""
+    MotherID[MotherID==-999] <- ""
+    kinship2::makefamid(ID, FatherID, MotherID)
+  })
+  # Identify the family group(s) ID (besides singleton proband(s))
+  proband_fam_id <- unique(fvec[which(ped$isProband==1)])
+  proband_fam_id <- proband_fam_id[which(proband_fam_id!=0)]
+  # Check loops for each separate pedigree
+  if (length(proband_fam_id)>0) {
+    for (i in 1:length(proband_fam_id)) {
+      # Subset the pedigree
+      fff_sub <- ped[which(fvec==proband_fam_id[i]),]
+      # Number of individuals in the pedigree
+      psize <- nrow(fff_sub)
+      # Numbers of mating pairs and offspring
+      num_mat <- countmatingpairs(fff_sub)
+      num_off <- countoffspring(fff_sub)
+      # If num_mat + num_off > psize - 1, then the pedigree contains loop.
+      if (num_mat+num_off > psize-1) {
+        return(1)
+      } else {
+        next
+      }
+    }
+  }
+  # If there is no loop, return 0.
+  return(0)
+}
+
+#' Create a marriage information matrix
+#'
+#' @param fff A pedigree data frame with at least three columns:
+#' `ID`, `FatherID`, and `MotherID`.
+#' @return A matrix with three columns: `ID`, `FatherID`, `MotherID`.
+#' For each row in matrix, (i,j,k) refers that in the i-th marriage,
+#' `ID` j is the father and `ID` k is the mother.
+#' @seealso \code{\link{breakloops}}, \code{\link{countmatingpairs}}
+createmarriagematrix <- function(fff) {
+  # The number of individuals in the pedigree.
+  psize <- nrow(fff)
+  # The total number of different marriages in the pedigree.
+  num_mating <- countmatingpairs(fff)
+  # "mat_df" represents the marriage information in the pedigree.
+  # Element(i,j)==1 refers that the i-th individual is in a marriage with the
+  # j-th individual.
+  mat_df <- matrix(0, nrow=psize, ncol=psize)
+  for (i in 1:psize) {
+    if(fff$FatherID[i]!=-999) {
+      mat_df[which(fff$ID==fff$FatherID[i]), which(fff$ID==fff$MotherID[i])] <- 1
+    }
+  }
+  # "marriage_df" also represents the marriage information in the pedigree,
+  # but in a different form.
+  marriage_df <- matrix(0, nrow=num_mating, ncol=3)
+  colnames(marriage_df) <- c("marriage_id", "FatherID", "MotherID")
+  marriage_df <- as.data.frame(marriage_df)
+  # Map each marriage from mat_df to marriage_df.
+  id <- 1
+  for (i in 1:psize) {
+    for (j in 1:psize) {
+      if (mat_df[i,j]==1) {
+        marriage_df[id,] <- c(id, fff$ID[i], fff$ID[j])
+        id <- id + 1
+      }
+    }}
+  return(marriage_df)
+}
+
+#' Convert the pedigree into an adjacency matrix
+#'
+#' The adjacency matrix describes the relationship in the pedigree.
+#' An adjacency matrix is a square matrix used to represent a finite graph.
+#' The elements of the matrix indicate whether pairs of vertices are adjacent
+#' or not in the graph. The graph in our study is undirected.
+#' Rownames are IDs and Colnames are marriage_ids.
+#'
+#' @details
+#' In the graph, each edge connects an individual vertex and a marriage vertex.
+#' In the matrix, each row represents an individual, each column represents a marriage.
+#' Element(i,j)==1 refers that individual i is connected with marriage j,
+#' which means that individual i could be one of the parents or
+#' the offspring of marriage j.
+#'
+#' @param fff A pedigree data frame with at least three columns:
+#' `ID`, `FatherID`, and `MotherID`.
+#'
+#' @return The adjacency matrix with IDs as its rows(rownames)
+#' and marriage_ids as its columns(colnames).
+#' @seealso \code{\link{breakloops}}, \code{\link{removeleaves}}
+adjacencymatrix <- function(fff) {
+  # The number of individuals in the pedigree.
+  psize <- nrow(fff)
+  # The total number of different marriages in the pedigree.
+  num_mating <- countmatingpairs(fff)
+  # Create the adjacency matrix (graph theory term).
+  ad_mat <- matrix(0, nrow=psize, ncol=num_mating)
+  rownames(ad_mat) <- fff$ID
+  colnames(ad_mat) <- 1:num_mating
+  # "marriage_df" represents the marriage information in the pedigree
+  marriage_df <- createmarriagematrix(fff)
+  # Connect parents and the offspring to each marriage.
+  for (i in 1:psize) {
+    if (fff$FatherID[i]!=-999) {
+      for (j in 1:nrow(marriage_df)) {
+        if (fff$FatherID[i]==marriage_df[j,2] & fff$MotherID[i]==marriage_df[j,3]) {
+          ad_mat[i,j] <- 1
+          ad_mat[which(fff$ID==fff$FatherID[i]),j] <- 1
+          ad_mat[which(fff$ID==fff$MotherID[i]),j] <- 1
+        }
+      }
+    }
+  }
+  return(ad_mat)
+}
+
+#' Remove the "leaves" from the adjacency matrix
+#'
+#' A leaf of an undirected graph is a vertex with degree equal to one.
+#' This step removes those individual and marriage vertices that
+#' do not participate in the loop(s).
+#'
+#' @param ad_mat The adjacency matrix with IDs as its rows(rownames)
+#' and marriage_ids as its columns(colnames).
+#' @return The trimmed adjacency matrix. Remove all the leaves from the input.
+#' @seealso \code{\link{breakloops}}, \code{\link{adjacencymatrix}}
+removeleaves <- function(ad_mat) {
+  t <- nrow(ad_mat)+ncol(ad_mat)
+  for (i in 1:nrow(ad_mat)) {
+    # Remove leaves
+    ad_mat <- ad_mat[which(apply(ad_mat, 1, sum)!=1),]
+    ad_mat <- ad_mat[,which(apply(ad_mat, 2, sum)!=1)]
+    ifelse(t==nrow(ad_mat)+ncol(ad_mat), return(ad_mat), t<-nrow(ad_mat)+ncol(ad_mat))
+  }
+}
+
+#' Check if there are multiple marriages
+#'
+#' Check if there are multiple marriages in the pedigree.
+#'
+#' @param fff The pedigree data frame.
+#' @param ad_mat The trimmed adjacency matrix.
+#' @return A numeric output:
+#' * Return 1 if there are multiple marriages in the pedigree.
+#' * Otherwise, return 0.
+#' @seealso \code{\link{breakloops}}, \code{\link{createmarriagematrix}}
+checkmultimarriages <- function(fff, ad_mat) {
+  # Check the marriage information in trimmed adjacency matrix.
+  marriage_df <- createmarriagematrix(fff)
+  # If the degree of any of the individual in the loop greater than 2,
+  # then there are multiple marriages, return 1.
+  if (any(apply(ad_mat, 1, sum)>2)) {return(1)}
+  # If there are two marriage have the same FatherID or MotherID,
+  # then there are multiple marriages, return 1.
+  sub_marriage <- marriage_df[as.numeric(colnames(ad_mat)),]
+  if (length(sub_marriage$FatherID)!=length(unique(sub_marriage$FatherID)) |
+      length(sub_marriage$MotherID)!=length(unique(sub_marriage$MotherID))) {
+    return(1)
+  }
+  # Otherwise, return 0.
+  return(0)
+}
+
+#' Find a loop breakers when there are multiple marriages
+#'
+#' The cost function is defined as \eqn{f(i)=log(|G_{i}|)/d(i)}, where \eqn{|G_{i}|}
+#' is total number of possible genotypes of the \eqn{i_{th}} loop breaker and
+#' \eqn{d(i)} is the degree of the loop breaker in the graph. The algorithm
+#' computes a cost \eqn{f(i)} for each individual and choose an individual \eqn{i}
+#' with the smallest cost as a loop breaker. After selecting the loop breaker,
+#' check the marriage information matrix to see where/how to break the loop(s).
+#' Once an individual is selected as a loop breaker, break all of its marriages
+#' by adding a clone of the individual in each marriage.
+#'
+#' @param fff The pedigree data frame.
+#' @param genotypes The total number of possible genotypes.
+#' @param ad_mat The trimmed adjacency matrix.
+#' @return An ID and a set of marriage_ids.
+#' The ID refers to the ID of the individual with the least cost,
+#' who was selected as the loop breaker.
+#' The marriage_id(s) indicates all the marriage(s) in which the individual
+#' is one of the parents.
+#' @seealso \code{\link{breakloops}}, \code{\link{adjacencymatrix}},
+#'          \code{\link{createmarriagematrix}}, \code{\link{addclone_multimarriages}}
+loopbreaker_multimarriages <- function(fff, genotypes, ad_mat) {
+  # The degree vector shows the degree of each individual in the trimmed graph.
+  degree <- apply(ad_mat, 1, sum)
+  # Get the degrees for the individuals in the trimmed adjacency matrix.
+  ad_mat_degree <- as.numeric(degree[rownames(ad_mat)])
+  # Get the total number of possible genotypes for the individuals.
+  ad_mat_genotypes <- genotypes[which(fff$ID %in% rownames(ad_mat))]
+  # Calculate the costs(weights) for the individuals in the trimmed adjacency matrix.
+  cost <- log(ad_mat_genotypes)/ad_mat_degree
+  # Choose the ID that has the minimum cost.
+  id <- rownames(ad_mat)[which(cost==min(cost))[1]]
+  # Find all the marriages related to ID id.
+  marriage_ids <- colnames(ad_mat)[which(ad_mat[which(rownames(ad_mat)==id),]==1)]
+  # create a vector to store the marriage in which ID is one of the parents.
+  marriage_ids_parent <- vector()
+  # Find all of the marriages in which ID is one of the parents.
+  marriage_df <- createmarriagematrix(fff)
+  for (i in 1:length(marriage_ids)) {
+    # We make sure that ID is one of the parents in that marriage.
+    if (id %in% marriage_df[as.numeric(marriage_ids[i]),][c("FatherID", "MotherID")]) {
+      marriage_ids_parent <- append(marriage_ids_parent, marriage_ids[i])
+    }
+  }
+  # Return the individual ID and the set of marriages we want to break.
+  return(list(id=as.numeric(id), marriage_set=as.numeric(marriage_ids_parent)))
+}
+
+#' Check loops for the subgraph
+#'
+#' Only use this function when there are no multiple marriages in the loop(s).
+#' Depth First Search (DFS) algorithm was used to check loops for the subgraph.
+#'
+#' @param subgraph A subgraph of the trimmed adjacency matrix.
+#' @return A numeric output:
+#' * Return 1 if there is at least one loop in the subgraph.
+#' * Otherwise, return 0.
+#' @seealso \code{\link{breakloops}}, \code{\link{Prims_algorithm}},
+#'          \code{\link{loopbreaker_nomultimarriages}},
+#'          \code{\link{addclone_nomultimarriages}}
+DFS_checkloops <- function(subgraph) {
+  # Copy the subgraph.
+  graph <- subgraph
+  # Select one node in the graph first, we take the first one.
+  parent <- c()
+  visited <- c(1)
+  for (i in 1:nrow(graph)) {
+    # Create a vector for the vertices which are not visited and are adjacent to
+    # the current node.
+    adjacent <- c()
+    # Recursively call the function for those vertices.
+    # If the recursive function returns true return true.
+    for (j in 1:length(visited)) {
+      # Find all the vertices which are not visited and are adjacent to the current node.
+      adjacent <- which(graph[visited[j],]!=0)
+      # If the adjacent node is not parent and already visited, then return true.
+      for (k in 1:length(adjacent)) {
+        if (adjacent[k]%in%visited & !(adjacent[k]%in%parent)) {
+          return(1)
+        }
+      }
+      # Add the visited node to parent_node.
+      parent <- append(parent, visited[j])
+      # Add the adjacent nodes to visited nodes.
+      visited <- append(visited, adjacent)
+      # Remove parent from visited.
+      visited <- visited[which(!(visited %in% parent))]
+      # If all the nodes are in parent and visited is empty, return 0.
+      if (length(visited)==0) {
+        return(0)
+      }
+      # Since visited vector is updated every time, we want to always start with
+      # the first element in the visited.
+      break
+    }
+  }
+}
+
+#' Prim’s algorithm
+#'
+#' Prim’s algorithm was applied on the subgraph to find a maximun spanning tree
+#' when there are no multiple marriage in the loop(s).
+#'
+#' @details
+#' Prim’s algorithm is a greedy algorithm, which works on the idea that
+#' a spanning tree must have all its vertices connected.
+#' The algorithm works by building the tree one vertex at a time, from an arbitrary
+#' starting vertex (In our study, the vertex in the first row of subgraph),
+#' and adding the most expensive possible connection from the tree
+#' to another vertex, which will give us the Maximum Spanning Tree (MST).
+#'
+#' @param subgraph The subgraph of the trimmed adjacency matrix.
+#' @return The Maximum Spanning Tree (MST) of the subgraph.
+#' @seealso \code{\link{breakloops}}, \code{\link{DFS_checkloops}},
+#'          \code{\link{loopbreaker_nomultimarriages}},
+#'          \code{\link{addclone_nomultimarriages}}
+Prims_algorithm <- function(subgraph) {
+  sub_graph <- subgraph
+  parent_node <- c(1)
+  MST <- matrix(0, nrow=ncol(sub_graph), ncol=ncol(sub_graph))
+  for (i in 1:nrow(sub_graph)) {
+    # Find the most expensive possible connection from the tree to another vertex.
+    # If the most expensive possible edge creates a loop, reset its weight as -1.
+    bool <- 0
+    # Iteration for sufficient times.
+    for (j in 1:(nrow(subgraph)^2+1)) {
+      for (k in 1:length(parent_node)) {
+        t <- which(sub_graph[parent_node[k],]!=0)
+        # If no edge left for the vertex, go for the next parent node.
+        if (length(t)==0) {next}
+        for (m in 1:length(t)) {
+          maximum <- max(sub_graph[parent_node,])
+          if (sub_graph[parent_node[k], t[m]]==maximum) {
+            copy <- MST
+            copy[parent_node[k], t[m]] <- sub_graph[parent_node[k], t[m]]
+            copy[t[m], parent_node[k]] <- sub_graph[parent_node[k], t[m]]
+            if (DFS_checkloops(copy)==0) {
+              MST <- copy
+              parent_node <- append(parent_node, t[m])
+              # Remove the edges between parent nodes.
+              sub_graph[parent_node, parent_node] <- 0
+              bool <- 1
+              break
+            } else {
+              sub_graph[parent_node[k], t[m]] <- -1
+              sub_graph[t[m], parent_node[k]] <- -1
+            }
+          }
+        }
+        if (bool==1) {break}
+      }
+      if (bool==1) {break}
+    }
+    # If we include all the vertices, break the iteration.
+    if (length(parent_node)==nrow(sub_graph)) {break}
+  }
+  # Compare MST and subgraph to see which vertices to clone and which edge to remove.
+  return(MST)
+}
+
+#' Find a set of loop breakers (NO multiple marriages)
+#'
+#' Only use this function when there are no multiple marriages in the loop(s).
+#' Finding a set of loop breakers when there are no multiple marriages in the pedigree
+#' is equivalent to the Maximum Spanning Tree problem.
+#'
+#' @details
+#' Here are several steps to find the set of loop breakers when there are no
+#' multiple marriages in the loop(s):
+#' * First, transform the trimmed adjacency matrix into a subgraph.
+#' The vertices of the subgraph is the marriage vertices. Every path, of the
+#' form, mi−−vi−−mj is replaced with an edge ei which connects directly the
+#' marriage vertices mi and mj.
+#' * Second, apply the Prim's algorithm to find the Maximum Spanning Tree (MST).
+#' Weights are equivalent to the total numbers of possible genotypes since the
+#' degrees are all the same (=2).
+#' * Third, compare the MST and the subgraph. Find the missing IDs in the MST
+#' as the loop breakers.
+#'
+#' @param fff The pedigree data frame.
+#' @param genotypes Total numbers of possible genotypes.
+#' @param ad_mat The trimmed adjacency matrix.
+#' @return A set of individuals as the group of loop breakers in the pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{Prims_algorithm}},
+#'          \code{\link{DFS_checkloops}},
+#'          \code{\link{addclone_nomultimarriages}}
+loopbreaker_nomultimarriages <- function(fff, genotypes, ad_mat) {
+  # Get the total number of genotypes for the individuals in the trimmed
+  # adjacency matrix.
+  # In no multiple marriages situation, degrees are the same for everyone,
+  # so that weights are equivalent to the total numbers of genotypes.
+  ad_mat_weights <- log(genotypes[which(fff$ID %in% rownames(ad_mat))])
+  # create a subgraph.
+  subgraph <- matrix(0, nrow=ncol(ad_mat), ncol=ncol(ad_mat))
+  # Iterate each individual and assign its weight to the subgraph.
+  for (i in 1:nrow(ad_mat)) {
+    subgraph[which(ad_mat[i,]==1)[1], which(ad_mat[i,]==1)[2]] <- ad_mat_weights[i]
+    subgraph[which(ad_mat[i,]==1)[2], which(ad_mat[i,]==1)[1]] <- ad_mat_weights[i]
+  }
+  # Apply Prim algorithm.
+  MST <- Prims_algorithm(subgraph)
+  # Compare MST and subgraph, find the IDs as the loop breakers.
+  # Return a list of IDs.
+  ids <- c()
+  for (i in 1:nrow(subgraph)) {
+    for (j in 1:nrow(subgraph)) {
+      if (subgraph[i,j]!=0 & MST[i,j]==0 & i<j) {
+        id <- rownames(ad_mat)[which(ad_mat[,i]==1 & ad_mat[,j]==1)]
+        ids <- append(ids, id)
+      }
+    }
+  }
+  return(as.numeric(ids))
+}
+
+#' Add a set of loop breakers to the pedigree (multiple marriages)
+#'
+#' Only use this function when there are multiple marriages in the loop(s).
+#'
+#' @param fff The pedigree data frame.
+#' @param id The ID of the selected loop breaker.
+#' @param marriage_set All the marriages in which the individual is one of the parents.
+#' @param maxid The maximum ID number in the pedigree.
+#' @return The modified pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{createmarriagematrix}},
+#'          \code{\link{loopbreaker_multimarriages}}
+addclone_multimarriages <- function(fff, id, marriage_set, maxid) {
+  # Copy the pedigree
+  new_fff <- fff
+  # Copy the maximum ID in the pedigree
+  maxID <- maxid
+  # Create marriage_df to show the marriage info.
+  marriage_df <- createmarriagematrix(fff)
+  # Iterate each marriage in the marriage_set
+  for (i in 1:length(marriage_set)) {
+    # Find the marriage to break
+    marriage_id <- marriage_set[i]
+    # Find the mother and father IDs for the marriage to break.
+    # "id" should be either the father's or the mother's.
+    fid <- marriage_df[marriage_id, 2]
+    mid <- marriage_df[marriage_id, 3]
+    # Create a new ID for the clone individual.
+    new_ID <- maxID + 1
+    # Copy the information and bind the new row at the end of the pedigree.
+    new_fff <- rbind(new_fff, fff[which(fff$ID==id),])
+    rownames(new_fff) <- 1:nrow(new_fff)
+    # Modify the information.
+    new_fff[nrow(new_fff), "ID"] <- new_ID
+    new_fff[nrow(new_fff), "MotherID"] <- -999
+    new_fff[nrow(new_fff), "FatherID"] <- -999
+    new_fff[nrow(new_fff), "isProband"] <- 0 # make sure clone isn't a proband
+    # Find the siblings of that marriage.
+    sib <- new_fff$ID[which(new_fff$FatherID==fid & new_fff$MotherID==mid)]
+    # Check the individual is a father or a mother.
+    # Change the FatherID or MotherID of the siblings.
+    ifelse(id==fid, new_fff[which(new_fff$ID %in% sib), "FatherID"] <- new_ID,
+           new_fff[which(new_fff$ID %in% sib), "MotherID"] <- new_ID)
+    # Warning message:
+    msg <- sprintf(paste("We break a loop by creating a loop breaker ID %s,",
+                         "who is a clone of ID %s.",
+                         "The %s of ID %s is now replaced by ID %s."),
+                   new_ID, id, ifelse(id==fid, "FatherID", "MotherID"),
+                   paste0(sib, collapse=","), new_ID)
+    warning(msg, call.=FALSE)
+    # Current maximum ID is the ID of the clone.
+    maxID <- maxID + 1
+    # If the individual is not in loops in the modified pedigree, or there are no
+    # loops in the modified pedigree, break iteration.
+    if (suppressWarnings(checkloops(new_fff))==1) {
+      adj_mat <- adjacencymatrix(new_fff)
+      adj_mat <- removeleaves(adj_mat)
+      ifelse(id %in% rownames(adj_mat), next, break)
+    } else {
+      break
+    }
+  }
+  return(new_fff)
+}
+
+#' Add a set of loop breakers to the pedigree (NO multiple marriages)
+#'
+#' Only use this function when there are NO multiple marriages in the loop(s).
+#'
+#' @param fff The pedigree data frame.
+#' @param ids A set of individuals as the group of loop breakers in the pedigree.
+#' @param maxid The maximum ID number in the pedigree.
+#' @return The modified pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{createmarriagematrix}},
+#'          \code{\link{loopbreaker_nomultimarriages}}
+addclone_nomultimarriages <- function(fff, ids, maxid) {
+  # Copy the pedigree and the maximum ID in the pedigree
+  new_fff <- fff
+  maxID <- maxid
+  # Break the loops one by one.
+  for (i in 1:length(ids)) {
+    id <- ids[i]
+    # Create a new ID for the clone individual.
+    new_ID <- maxID + 1
+    # Copy the information and bind the new row at the end of the pedigree.
+    new_fff <- rbind(new_fff, new_fff[which(fff$ID==id),])
+    rownames(new_fff) <- 1:nrow(new_fff)
+    # Modify the information.
+    new_fff[nrow(new_fff), "ID"] <- new_ID
+    new_fff[nrow(new_fff), "MotherID"] <- -999
+    new_fff[nrow(new_fff), "FatherID"] <- -999
+    new_fff[nrow(new_fff), "isProband"] <- 0 # make sure clone isn't a proband
+    # If the individual is a male:
+    if (id %in% new_fff$FatherID) {
+      # Find the siblings of the marriage.
+      sib <- new_fff$ID[which(new_fff$FatherID==id)]
+      new_fff[which(new_fff$ID %in% sib), "FatherID"] <- new_ID
+    } else {
+      sib <- new_fff$ID[which(new_fff$MotherID==id)]
+      new_fff[which(new_fff$ID %in% sib), "MotherID"] <- new_ID
+    }
+    # Warning message:
+    marriage_df <- createmarriagematrix(fff)
+    marriage_id <- which(marriage_df[,2]==id | marriage_df[,3]==id)
+    fid <- marriage_df[marriage_id, 2]
+    mid <- marriage_df[marriage_id, 3]
+    msg <- sprintf(paste("We break a loop by creating a loop breaker ID %s,",
+                         "who is a clone of ID %s.",
+                         "The %s of ID %s is now replaced by ID %s."),
+                   new_ID, id, ifelse(id==fid, "FatherID", "MotherID"),
+                   paste0(sib, collapse=","), new_ID)
+    warning(msg, call.=FALSE)
+    # Current maximum ID is the ID of the clone.
+    maxID <- maxID + 1
+  }
+  return(new_fff)
+}
+
+#' Calculate the total number of possible genotypes
+#'
+#' Calculate the total number of possible genotypes for each individual
+#' in the pedigree.
+#'
+#' @param fff The pedigree data frame.
+#' @param model_spec One of the following character strings indicating a 
+#' pre-specified model: `"BRCAPRO"`, `"BRCAPRO5"`, `"BRCAPRO6"`, `"MMRPRO"`, 
+#' `"PanPRO11"`, and `"PanPRO22"`. See `PanelPRO:::MODELPARAMS` for more 
+#' information.
+#' @param genes A character vector of the genes of interest. The default is 
+#' `NULL`.
+#' @return The total number of possible genotypes for each individual.
+#' @seealso \code{\link{breakloops}}, \code{\link{loopbreaker_nomultimarriages}},
+#'          \code{\link{loopbreaker_multimarriages}}
+calculategenotypes <- function(fff, model_spec="PanPRO22", genes=NULL) {
+  # Find the list of genes of interest
+  if (model_spec=="BRCAPRO") {
+    genes = c("BRCA1", "BRCA2")
+  }
+  if (model_spec=="BRCAPRO5") {
+    genes = c("BRCA1", "BRCA2", "ATM", "CHEK2", "PALB2")
+  }
+  if (model_spec=="BRCAPRO6") {
+    genes = c("BRCA1", "BRCA2", "MLH1", "MSH2", "MSH6", "CDKN2A")
+  }
+  if (model_spec=="MMRPRO") {
+    genes = c("MLH1", "MSH2", "MSH6")
+  }
+  if (model_spec=="PanPRO11") {
+    genes = c("BRCA1", "BRCA2", "ATM", "PALB2", "CHEK2", "EPCAM", "PMS2", 
+              "MLH1", "MSH2", "MSH6", "CDKN2A")
+  }
+  if (model_spec=="PanPRO22") {
+    if (is.null(genes)) {
+      genes = c("ATM", "BARD1", "BRCA1", "BRCA2", "BRIP1", "CDH1", "CDK4", "CDKN2A", 
+                "CHEK2", "EPCAM", "MLH1", "MSH2", "MSH6", "MUTYH", "NBN", "PALB2", 
+                "PMS2", "PTEN", "RAD51C", "RAD51D", "STK11", "TP53")
+    }
+  }
+  
+  # Count the total number of possible genotype for each individual
+  count <- rep(1,nrow(fff))
+  for (i in 1:length(genes)) {
+    # If the pedigree dataframe does not contain that gene, we skip it
+    if (genes[i] %in% colnames(fff)) {
+      # Find the test result of the gene
+      ts <- fff[,genes[i]]
+      # update the count
+      for (j in 1:length(count)) {
+        if(is.na(ts[j])) {
+          count[j] <- count[j]*2
+        }
+      }
+    }
+  }
+  
+  return(count)
+}
+
+#' Remove disconnected family members
+#'
+#' Remove disconnected family members from the pedigree.
+#'
+#' @param ped The pedigree data frame.
+#' @param proband A vector of the proband ID in `ped`.
+#' @return A modified pedigree data frame that only includes members connected
+#' to the proband.
+#' @seealso \code{\link{breakloops}}, \code{\link{fixpedigree}}
+removeDisconnected <- function(ped) {
+  # Using kinship2's makefamid() function, construct family groupings from the
+  # pedigree information.
+  fvec <- with(ped, {
+    FatherID <- as.character(FatherID)
+    MotherID <- as.character(MotherID)
+    FatherID[FatherID==-999] <- ""
+    MotherID[MotherID==-999] <- ""
+    kinship2::makefamid(ID, FatherID, MotherID)
+  })
+
+  # Identify the family group(s) that contains proband(s)
+  proband_fam_id <- fvec[which(ped$isProband==1)]
+  # find out singleton proband(s)
+  newped1 <- ped[which(fvec==0 & ped$isProband==1), ]
+  # Subset the pedigree to remove all members who are not part of the subfamily
+  newped2 <- ped[which(fvec %in% proband_fam_id[which(proband_fam_id!=0)]), ]
+  # rbind two subsets
+  newped <- rbind(newped1, newped2)
+
+  # Store the IDs in the new and original pedigrees.
+  newped_ids <- newped$ID
+  oriped_ids <- ped$ID
+
+  # Print warning message that disconnected relatives have been removed.
+  if (!identical(newped_ids, oriped_ids)) {
+    rlang::warn(sprintf(paste("Remove disconnected relatives:",
+                              "ID %s has been removed from pedigree since",
+                              "they are not connected with the proband(s)."),
+                        paste0(setdiff(oriped_ids, newped_ids), collapse = ",")))
+  }
+
+  return(newped)
+}
+
+#' Fix incomplete pedigree
+#'
+#' Fix missing parents and remove disconnected relatives in the pedigree.
+#'
+#' Definitions: An offspring is defined as the individual who has parents in the
+#' pedigree; A founder is defined as the individual who has no parents in the
+#' pedigree. Each offspring in the pedigree should have known Father and Mother.
+#' If not, missing `FatherID`, and `MotherID` should be encoded as -999.
+#' If the individual is a founder, then both the `FatherID`, and `MotherID`
+#' should be encoded as -999.
+#' kinship::fixParents() will be used to fix the missing parents.
+#' Disconnected individuals will also be removed from the pedigree.
+#' For more details about how we remove disconnected individuals, see
+#' \code{\link{removeDisconnected}} documentation.
+#'
+#'
+#' @param fff A pedigree data frame with at least five columns:
+#' `ID`, `FatherID`, `MotherID`, `Sex`, and `isProband`.
+#' @return The fixed pedigree.
+#' @seealso \code{\link{breakloops}}, \code{\link{checkloops}},
+#'          \code{\link{removeDisconnected}}
+fixpedigree <- function(fff) {
+  # Use kinship2::fixParents() to add missing parents.
+  fixdf <- with(fff, {
+    Sex[Sex == 0] <- 2
+    # Convert missing IDs to -999.
+    FatherID[FatherID == 0 | is.na(FatherID)] <- -999
+    MotherID[MotherID == 0 | is.na(MotherID)] <- -999
+    fdf <- kinship2::fixParents(ID, FatherID, MotherID, Sex, missid = -999)
+    # Apparently, fixParents uses 0 instead of missid when adding parents with
+    # missing IDs.
+    fdf$momid[fdf$momid == 0] <- -999
+    fdf$dadid[fdf$dadid == 0] <- -999
+    fdf$sex[fdf$sex == 2] <- 0
+    colnames(fdf) <- c("ID", "MotherID", "FatherID", "Sex")
+    fdf
+  })
+  # Print warning message that missing parents had been added.
+  if (!identical(fff$ID, fixdf$ID)) {
+    rlang::warn(sprintf(paste("Fix missing parents:",
+                              "ID %s has been added to the pedigree since some",
+                              "individuals only have one of their parents in the pedigree."),
+                        paste0(setdiff(fixdf$ID, fff$ID), collapse = ",")))
+  }
+  # Merge the data frame.
+  ped <- merge(fixdf[c("ID", "Sex", "FatherID", "MotherID")],
+               fff[!names(fff) %in% c("Sex", "FatherID", "MotherID")], all.x = TRUE)
+  ped$isProband[which(is.na(ped$isProband))] <- 0
+
+  # Remove disconnected IDs.
+  ped <- removeDisconnected(ped)
+
+  return(ped)
+}
+
+#' Break loops in the pedigree
+#'
+#' @description
+#' * We can break loops by creating copies of individuals, which are also called
+#' “clones” or “loop breakers”. The “loop breakers” are the copies of the original
+#' individuals and become additional founders in the modified pedigrees.
+#' * The most important step in breaking loops is to “optimally” select
+#' a set of “loop breakers”. The selection of loop breakers has significant impact
+#' on the running time of the subsequent linkage analysis. Many algorithms for
+#' breaking the loops are designed for the purpose of overcoming the computational
+#' challenge in genetic linkage analysis. Compared to the pedigree without loops,
+#' the complexity of computing the likelihood of a pedigree with \eqn{t} loop breakers
+#' increases by \eqn{G=G_{1}*G_{2}*...*G_{t}} times, where \eqn{G_{i}}
+#' is the number of possible genotypes for the \eqn{i_{th}} breaker.
+#' * If any individual in the loops has multiple marriages in the loops, we define 
+#' the cost function as \eqn{f(i)=log(|G_{i}|)/d(i)}, where \eqn{|G_{i}|}
+#' is total number of possible genotypes of the \eqn{i_{th}} loop breaker and
+#' \eqn{d(i)} is the degree of the loop breaker in the graph. The algorithm
+#' computes a cost \eqn{f(i)} for each individual and choose an individual \eqn{i}
+#' with the smallest cost as a loop breaker.
+#' * If any individual in the loops does not have multiple marriages in the loops, 
+#' the problem of finding loop breakers could be convert into a well-known problem 
+#' in graph theory called the Maximum Spanning Tree problem. The MST problem 
+#' could be solved by Kruskal's algorithm or Prim’s algorithm. Here, we use 
+#' the Prim's algorithm the find the MST. For more details about the 
+#' Prim’s algorithm, see the \code{\link{Prims_algorithm}} documentation.
+#'
+#' @details
+#' This function performs the following steps to break loops in the pedigree:
+#' * Step 1: Check if there are loops in the pedigree. If there are no loops,
+#' return the original pedigree. If there are at least one loop, go to Step 2.
+#' For more details about checking loops, see \code{\link{checkloops}} documentation.
+#' * Step 2: Fix missing parents and remove disconnected relatives from the pedigree
+#' with \code{\link{fixpedigree}}. Then, split the pedigree using `kinship2::makefamid` 
+#' and break loops for each disjointed pedigree following Step 3 & 4.
+#' * Step 3: For each disjointed pedigree, if any individual in the loops has 
+#' multiple marriages in the loops, we break the loops using the rules described 
+#' in the description until every individual in the loops does not have multiple 
+#' marriages in the loops. Then go to Step 4.
+#' * Step 4: If any individual in the loops does not have multiple marriages 
+#' in the loops, we break all the loops using the rules described in the description.
+#' * Step 5: Merge all the disjointed pedigree and return the modified pedigree.
+#'
+#' For more details about how we:
+#' * Calculate weights, see \code{\link{calculategenotypes}} documentation.
+#'
+#' @param fff A pedigree data frame with at least five columns:
+#' `ID`, `FatherID`, `MotherID`, `Sex`, and `isProband`.
+#' @param model_spec One of the following character strings indicating a 
+#' pre-specified model: `"BRCAPRO"`, `"BRCAPRO5"`, `"BRCAPRO6"`, `"MMRPRO"`, 
+#' `"PanPRO11"`, and `"PanPRO22"`. See `PanelPRO:::MODELPARAMS` for more 
+#' information.
+#' @param genes A character vector of the genes of interest. The default is 
+#' `NULL`.
+#' @return The modified pedigree data frame with fake "clone" individuals
+#' and modified "ID" relationship.
+#' @examples
+#' ## A one-loop example (without multiple marriages)
+#' errfam1 <- matrix(0, nrow=8, ncol=5)
+#' errfam1 <- as.data.frame(errfam1)
+#' colnames(errfam1) <- c("ID", "FatherID", "MotherID", "Sex", "isProband")
+#' errfam1[,1] <- c(101, 112, 123, 134, 145, 156 ,167, 178)
+#' errfam1[,2] <- c(-999, -999, 112, -999, 134, -999, 156, 167)
+#' errfam1[,3] <- c(-999, -999, 101, -999, 123, -999, 123, 145)
+#' errfam1[,4] <- c(0, 1, 0, 1, 0, 1, 1, 0)
+#' errfam1[,5] <- c(0,0,0,0,0,0,0,1)
+#'
+#' ## A two-loops example (without multiple marriages)
+#' errfam2 <- matrix(0, nrow=17, ncol=5)
+#' errfam2 <- as.data.frame(errfam2)
+#' colnames(errfam2) <- c("ID", "FatherID", "MotherID", "Sex", "isProband")
+#' errfam2[,1] <- 101:117
+#' errfam2[,2] <- c(-999, -999, -999, 115, 102, 102, 104, 104, 104, 113, 110, 115, -999, -999, -999, 108, 111)
+#' errfam2[,3] <- c(-999, -999, -999, 114, 101, 101, 103, 103, 103, 112, 109, 114, -999, -999, -999, 105, 116)
+#' errfam2[,4] <- c(0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1)
+#' errfam2[,5] <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1)
+#'
+#' ## A one-loop example (with multiple marriages)
+#' errfam3 <- matrix(0, nrow=7, ncol=5)
+#' errfam3 <- as.data.frame(errfam3)
+#' colnames(errfam3) <- c("ID", "FatherID", "MotherID", "Sex", "isProband")
+#' errfam3[,1] <- 101:107
+#' errfam3[,2] <- c(-999,-999,101,101,-999,103,104)
+#' errfam3[,3] <- c(-999,-999,102,102,-999,105,105)
+#' errfam3[,4] <- c(1,0,1,1,0,0,0)
+#' errfam3[,5] <- c(0,0,0,0,1,0,0)
+#'
+#' ## A comprehensive loops example (with multiple marriages)
+#' errfam4 <- matrix(0, nrow=20, ncol=5)
+#' errfam4 <- as.data.frame(errfam4)
+#' colnames(errfam4) <- c("ID", "FatherID", "MotherID", "Sex", "isProband")
+#' errfam4[,1] <- 101:120
+#' errfam4[,2] <- c(-999, -999, -999, 115, 102, 102, 104, 104, 104, 113, 110, 115, -999, -999, -999, 108, -999, 110, 111, 119)
+#' errfam4[,3] <- c(-999, -999, -999, 114, 101, 101, 103, 103, 103, 112, 109, 114, -999, -999, -999, 105, -999, 117, 118, 116)
+#' errfam4[,4] <- c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0)
+#' errfam4[,5] <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1)
+#'
+#' @export
+breakloops <- function(fff, model_spec="PanPRO22", genes=genes) {
+  # A Boolean, if the pedigree is modified, set TRUE
+  Modified <- FALSE
+  # Fix missing parents and remove disconnected relatives from the pedigree.
+  new_fff <- suppressWarnings(fixpedigree(fff))
+  # Fill in missing cancer status for fake individuals.
+  isAffcancercol <- which(grepl("isAff", colnames(new_fff)))
+  if (length(isAffcancercol)!=0) {
+    for (i in 1:length(isAffcancercol)) {
+      new_fff[,isAffcancercol[i]][which(is.na(new_fff[,isAffcancercol[i]]))] <- 0
+    }
+  }
+  # Using kinship2's makefamid() function, construct family groupings from the
+  # pedigree information.
+  fvec <- with(new_fff, {
+    FatherID <- as.character(FatherID)
+    MotherID <- as.character(MotherID)
+    FatherID[FatherID==-999] <- ""
+    MotherID[MotherID==-999] <- ""
+    kinship2::makefamid(ID, FatherID, MotherID)
+  })
+  # Identify the family group(s) ID (besides singleton proband(s))
+  proband_fam_id <- unique(fvec[which(new_fff$isProband==1)])
+  proband_fam_id <- proband_fam_id[which(proband_fam_id!=0)]
+  # Find out singleton proband(s)
+  newped0 <- new_fff[which(fvec==0 & new_fff$isProband==1), ]
+  newped1 <- c()
+
+  # Check and break loops for each separate pedigree
+  if (length(proband_fam_id)>0) {
+    for (i in 1:length(proband_fam_id)) {
+      # Subset the pedigree
+      fff_sub <- new_fff[which(fvec==proband_fam_id[i]),]
+      # number of individuals in the pedigree
+      psize <- nrow(fff_sub)
+      # numbers of mating pairs and offspring
+      num_mat <- countmatingpairs(fff_sub)
+      num_off <- countoffspring(fff_sub)
+      # if num_mat + num_off == psize - 1, then the pedigree contains no loop.
+      if (num_mat+num_off == psize-1) {
+        # rbind the subset
+        newped1 <- rbind(newped1, fff_sub)
+        next
+      }
+      # If there are loops in the pedigree, break the loops.
+      else {
+        # If this is the first time finding a loop.
+        if (!Modified) {
+          rlang::warn("There is at least one loop in the pedigree.")
+          # Show the warning messages from fixpedigree() if there are loops.
+          fixpedigree(fff)
+        }
+        # Iteration, make sure iterate enough times to break all the loops.
+        for (i in 1:nrow(fff_sub)^2) {
+          # Calculate the total numbers of possible genotypes for individuals.
+          genotypes <- calculategenotypes(fff_sub, model_spec=model_spec, genes=genes)
+          # Create an adjacency matrix.
+          ad_mat <- adjacencymatrix(fff_sub)
+          # Remove the leaves.
+          ad_mat <- removeleaves(ad_mat)
+          # If two individuals involved in exact same marriages, redirect
+          # pedigree to MM algorithm
+          if(sum(duplicated(ad_mat, MARGIN = 1)) != 0) {
+                  dup_indicator <- 1
+          } else {
+                  dup_indicator <- 0
+          }
+          # Check if multiple marriages.
+          # If there are multiple marriages in the loop(s):
+          if (checkmultimarriages(fff_sub, ad_mat)==1 | dup_indicator == 1) {
+            # Find a loop breaker and its information.
+            lb_info <- loopbreaker_multimarriages(fff_sub, genotypes, ad_mat)
+            # Find the current maximum ID
+            maxid <- max(new_fff$ID, newped1$ID, fff_sub$ID, na.rm=TRUE)
+            # Break all its marriages in the loops.
+            fff_sub <- addclone_multimarriages(fff_sub, lb_info$id, lb_info$marriage_set, maxid)
+            # If no loop, break; else, continue the iteration.
+            ifelse(suppressWarnings(checkloops(fff_sub))==0, break, next)
+            # If no multiple marriages:
+          } else {
+            # Find an optimal set of loop breakers.
+            ids <- loopbreaker_nomultimarriages(fff_sub, genotypes, ad_mat)
+            # Find the current maximum ID
+            maxid <- max(new_fff$ID, newped1$ID, fff_sub$ID, na.rm=TRUE)
+            # Add a clone of each of the loop breakers.
+            fff_sub <- addclone_nomultimarriages(fff_sub, ids, maxid)
+            break
+          }
+        }
+        # The pedigree has been modified.
+        Modified <- TRUE
+        # rbind the subset.
+        newped1 <- rbind(newped1, fff_sub)
+      }
+    }
+  }
+  # rbind two subsets.
+  newped <- rbind(newped0, newped1)
+  # Rename the rownames.
+  rownames(newped) <- 1:nrow(newped)
+  # If the pedigree has been modified, return the modified pedigree.
+  # Otherwise, return the original pedigree.
+  ifelse(Modified, return(newped), return(fff))
+}
+

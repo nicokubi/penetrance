@@ -1,0 +1,1 @@
+{"frames":[{"func":"process_pedigree_data(dat)","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in process_pedigree_data(dat) : object 'lfs_cancers' not found\n"}

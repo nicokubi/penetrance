@@ -1,0 +1,8 @@
+"0","#Run Estimation procedure with default prior setting "
+"0","system.time(out_liftup_Colorectal_v1119 <- penetrance("
+"0","    pedigree  = dat_adjusted, twins = NULL, n_chains = 1, n_iter_per_chain = 1000, ncores = 4, imp_interval = 1,"
+"0","    baseline_data = baseline_data_default, "
+"0","      af  = 0.0004380834,  "
+"0","    prior_params = prior_params_default, burn_in = 0.1, median_max = TRUE, thinning_factor = 1,"
+"0","    age_imputation = FALSE, remove_proband = FALSE, sex_specific = TRUE"
+"0","))"

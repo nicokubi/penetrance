@@ -1,0 +1,4 @@
+"0","library(clipp)"
+"0","MAF <- 0.1"
+"0","geno_freq <- geno_freq_monogenic(p_alleles = c(1 - MAF, MAF))"
+"0","trans <- trans_monogenic(n_alleles = 2)"

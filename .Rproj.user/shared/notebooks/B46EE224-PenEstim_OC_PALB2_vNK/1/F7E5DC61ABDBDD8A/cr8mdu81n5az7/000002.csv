@@ -1,0 +1,14 @@
+"2","Warning in for (pair in pairs) { :"
+"2","
+ "
+"2"," closing unused connection 3 (<-localhost:11993)
+"
+"0","# Load data"
+"0","load(""/Users/kokitakabatake/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/5_Data/PALB2_carrier_families.RData"")"
+"2","Warning in readChar(con, 5L, useBytes = TRUE) :"
+"2","
+ "
+"2"," cannot open compressed file '/Users/kokitakabatake/Partners HealthCare Dropbox/BayesMendel/Projects/Active/NK_PenetranceEstimation/5_Data/PALB2_carrier_families.RData', probable reason 'No such file or directory'
+"
+"2","Error in readChar(con, 5L, useBytes = TRUE) : cannot open the connection
+"

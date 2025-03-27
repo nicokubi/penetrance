@@ -1,0 +1,9 @@
+"0","# Prepare data for Kaplan-Meier analysis
+km_data <- prepare_km_data(dat_adjusted)
+# Prepare data for Kaplan-Meier analysis
+km_data <- prepare_km_data(dat_adjusted)
+# Create overall Kaplan-Meier curve
+km_fit <- survfit(Surv(time, event) ~ 1, data = km_data)
+"
+"2","Error in Surv(time, event) : Time variable is not numeric
+"

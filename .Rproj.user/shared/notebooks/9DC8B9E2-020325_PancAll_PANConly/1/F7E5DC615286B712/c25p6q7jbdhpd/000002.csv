@@ -1,0 +1,7 @@
+"0","# Load data"
+"0","dat_original <- load(""/Users/nicolaskubista/Partners HealthCare Dropbox/Nicolas Kubista/CCGCRN Hispanic Cohort Data/PenEstim/Data/geno_cancer_data.RData"")"
+"2","Warning:"
+"2"," internal error -3 in R_decompress1
+"
+"2","Error: lazy-load database '/Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/library/penetrance/R/penetrance.rdb' is corrupt
+"

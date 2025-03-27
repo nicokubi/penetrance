@@ -1,0 +1,93 @@
+# Breakloop paper
+# Goal: Estimating the running time of breakloop algorithm in PanelPRO
+# Date: 06/24/2022
+# Author: Jianfeng Ke
+
+# Load the raw data
+load("C:/Users/Mark Ke/Dropbox (Partners HealthCare)/Progeny_MGH_Export_2016_2018/ModelValidation/ModelValidation/Cleaned_Data/master_file_with_tests.RData")
+source(paste0(getwd(),"/Rscripts/breakloops_test.R"))
+MGH <- master.with.tests
+set.seed(42)
+# families with loops: c(1289, 1907, 2318, 2341, 2660, 3328, 3519, 3729, 4126, 1571, 2040, 2234)
+fam <- c(1289, 1907, 2318, 2341, 2660, 3328, 3519, 3729, 4126, 1571, 2040, 2234)
+subMGH <- MGH[which(MGH$FileID %in% paste0(fam,".csv")),]
+
+# Estimating running time of breaking loops
+BL_runningtime <- function(N=200) {
+  Table_1 <- matrix(0, nrow = 13, ncol = 7)
+  fam <- c(1289, 1907, 2318, 2341, 2660, 3328, 3519, 3729, 4126, 1571, 2040, 2234)
+  colnames(Table_1) <- c("# loops", "family size", "Fixpedigree", "Fill", 
+                         "makefamid", "breakloops", paste0("total RT (",N," times)"))
+  Table_1[1:12,1] <- c(1,1,1,1,1,2,1,1,1,1,1,1)
+  
+  t_1_all <- vector(length = N*12)
+  t_2_all <- vector(length = N*12)
+  t_3_all <- vector(length = N*12)
+  t_4_all <- vector(length = N*12)
+  t_all <- vector(length = N*12)
+  
+  for (i in 1:12) {
+    DF <- MGH[which(MGH$FileID == paste0(fam[i],".csv")),]
+    Table_1[i,2] <- nrow(DF)
+    
+    t <- vector(length = N)
+    t_1 <- vector(length = N)
+    t_2 <- vector(length = N)
+    t_3 <- vector(length = N)
+    t_4 <- vector(length = N)
+    
+    for (j in 1:N) {
+      x <- unlist(suppressWarnings(breakloops_time(DF))[2])
+      t_1[j] <- x[2]-x[1]
+      t_2[j] <- x[3]-x[2]
+      t_3[j] <- x[4]-x[3]
+      t_4[j] <- x[5]-x[4]
+      t[j] <- x[5]-x[1]
+    }
+    
+    t_1_all[((i-1)*N+1):(i*N)] <- t_1
+    t_2_all[((i-1)*N+1):(i*N)] <- t_2
+    t_3_all[((i-1)*N+1):(i*N)] <- t_3
+    t_4_all[((i-1)*N+1):(i*N)] <- t_4
+    t_all[((i-1)*N+1):(i*N)] <- t
+    
+    Table_1[i,3] <- paste0(round(mean(t_1),3)," (", round(quantile(t_1,0.025),3),",",round(quantile(t_1,0.975),3),")")
+    Table_1[i,4] <- paste0(round(mean(t_2),3)," (", round(quantile(t_2,0.025),3),",",round(quantile(t_2,0.975),3),")")
+    Table_1[i,5] <- paste0(round(mean(t_3),3)," (", round(quantile(t_3,0.025),3),",",round(quantile(t_3,0.975),3),")")
+    Table_1[i,6] <- paste0(round(mean(t_4),3)," (", round(quantile(t_4,0.025),3),",",round(quantile(t_4,0.975),3),")")
+    Table_1[i,7] <- paste0(round(mean(t),3)," (", round(quantile(t,0.025),3),",",round(quantile(t,0.975),3),")")
+  }
+  
+  Table_1[13,1] <- "/"
+  Table_1[13,2] <- round(mean(as.numeric(Table_1[1:12,2])),3)
+  Table_1[13,3] <- paste0(round(mean(t_1_all),3)," (", round(quantile(t_1_all,0.025),3),",",round(quantile(t_1_all,0.975),3),")")
+  Table_1[13,4] <- paste0(round(mean(t_2_all),3)," (", round(quantile(t_2_all,0.025),3),",",round(quantile(t_2_all,0.975),3),")")
+  Table_1[13,5] <- paste0(round(mean(t_3_all),3)," (", round(quantile(t_3_all,0.025),3),",",round(quantile(t_3_all,0.975),3),")")
+  Table_1[13,6] <- paste0(round(mean(t_4_all),3)," (", round(quantile(t_4_all,0.025),3),",",round(quantile(t_4_all,0.975),3),")")
+  Table_1[13,7] <- paste0(round(mean(t_all),3)," (", round(quantile(t_all,0.025),3),",",round(quantile(t_all,0.975),3),")")
+  return(Table_1)
+}
+
+Table_runningtime <- BL_runningtime(1000)
+
+BL_PanelPRO_RT <- x <- y <- vector(length = 12)
+for (i in 1:12) {
+  DF <- MGH[which(MGH$FileID == paste0(fam[i],".csv")),]
+  x[i] <- Sys.time()
+  PanelPRO::PanelPRO(DF, breakloop = T)
+  y[i] <- Sys.time()
+  BL_PanelPRO_RT[i] <- y-x
+}
+
+# Estimating PanelPRO running time
+# set.seed(42)
+# for (i in 1:10)
+# DF <- MGH[which(MGH$FileID == paste0(3328,".csv")),]
+# start_time <- Sys.time()
+# suppressWarnings(PanelPRO(DF, breakloop = T))
+# end_time <- Sys.time()
+# end_time - start_time
+
+# Also estimate the running time of PanelPRO on each family with loops.
+
+
