@@ -55,28 +55,10 @@
 
       <dl><dt>
 
-          <code><a href="ALL_GENE_VARIANT_TYPES.html">ALL_GENE_VARIANT_TYPES</a></code>
+          <code><a href="absValue.html">absValue()</a></code>
 
         </dt>
-        <dd>Mapping of genes to supported variants</dd>
-      </dl><dl><dt>
-
-          <code><a href="CANCER_NAME_MAP.html">CANCER_NAME_MAP</a></code>
-
-        </dt>
-        <dd>Mapping of short and long cancer names</dd>
-      </dl><dl><dt>
-
-          <code><a href="CANCER_TYPES.html">CANCER_TYPES</a></code>
-
-        </dt>
-        <dd>Currently supported cancer types</dd>
-      </dl><dl><dt>
-
-          <code><a href="GENE_TYPES.html">GENE_TYPES</a></code>
-
-        </dt>
-        <dd>Currently supported gene types</dd>
+        <dd>Function to return absolute values</dd>
       </dl><dl><dt>
 
           <code><a href="apply_burn_in.html">apply_burn_in()</a></code>
@@ -97,12 +79,6 @@
         <dd>Default Baseline Data</dd>
       </dl><dl><dt>
 
-          <code><a href="calcPedDegree.html">calcPedDegree()</a></code>
-
-        </dt>
-        <dd>Calculate Degree of Relationship in Pedigree</dd>
-      </dl><dl><dt>
-
           <code><a href="calculateBaseline.html">calculateBaseline()</a></code>
 
         </dt>
@@ -112,19 +88,13 @@
           <code><a href="calculateEmpiricalDensity.html">calculateEmpiricalDensity()</a></code>
 
         </dt>
-        <dd>Calculate Empirical Density for Non-Affected Individuals</dd>
+        <dd>Calculate Empirical Age Density</dd>
       </dl><dl><dt>
 
           <code><a href="calculateNCPen.html">calculateNCPen()</a></code>
 
         </dt>
         <dd>Calculate Age-Specific Non-Carrier Penetrance</dd>
-      </dl><dl><dt>
-
-          <code><a href="calculate_lifetime_risk.html">calculate_lifetime_risk()</a></code>
-
-        </dt>
-        <dd>Calculate Lifetime Risk of Cancer</dd>
       </dl><dl><dt>
 
           <code><a href="calculate_weibull_parameters.html">calculate_weibull_parameters()</a></code>
@@ -178,19 +148,25 @@
           <code><a href="generate_summary_noSex.html">generate_summary_noSex()</a></code>
 
         </dt>
-        <dd>Generate Summary</dd>
+        <dd>Generate Summary for Non-Sex-Specific Estimation</dd>
       </dl><dl><dt>
 
           <code><a href="imputeAges.html">imputeAges()</a></code>
 
         </dt>
-        <dd>Impute Ages Based on Affection Status and Sex</dd>
+        <dd>Impute Missing Ages in Family-Based Data</dd>
       </dl><dl><dt>
 
           <code><a href="imputeAgesInit.html">imputeAgesInit()</a></code>
 
         </dt>
-        <dd>Initialize Ages Using a Uniform Distribution</dd>
+        <dd>Initialize Age Imputation</dd>
+      </dl><dl><dt>
+
+          <code><a href="imputeUnaffectedAges.html">imputeUnaffectedAges()</a></code>
+
+        </dt>
+        <dd>Impute Ages for Unaffected Individuals</dd>
       </dl><dl><dt>
 
           <code><a href="lik.fn.html">lik.fn()</a></code>
@@ -214,13 +190,7 @@
           <code><a href="mhChain.html">mhChain()</a></code>
 
         </dt>
-        <dd>Execution of a Single Chain in Metropolis-Hastings for Cancer Risk Estimation with Sex Differentiation</dd>
-      </dl><dl><dt>
-
-          <code><a href="mhChain_noSex.html">mhChain_noSex()</a></code>
-
-        </dt>
-        <dd>Execution of a Single Chain in Metropolis-Hastings for Cancer Risk Estimation without Sex Differentiation</dd>
+        <dd>Execution of a Single Chain in Metropolis-Hastings for Cancer Risk Estimation</dd>
       </dl><dl><dt>
 
           <code><a href="mhLogLikelihood_clipp.html">mhLogLikelihood_clipp()</a></code>
@@ -244,7 +214,19 @@
           <code><a href="penetrance.html">penetrance()</a></code>
 
         </dt>
-        <dd>Bayesian Inference using Independent Metropolis-Hastings for Penetrance Estimation</dd>
+        <dd>penetrance: A Package for Penetrance Estimation</dd>
+      </dl><dl><dt>
+
+          <code><a href="plot_acf.html">plot_acf()</a></code>
+
+        </dt>
+        <dd>Plot Autocorrelation for Multiple MCMC Chains (Posterior Samples)</dd>
+      </dl><dl><dt>
+
+          <code><a href="plot_loglikelihood.html">plot_loglikelihood()</a></code>
+
+        </dt>
+        <dd>Plot Log-Likelihood for Multiple MCMC Chains</dd>
       </dl><dl><dt>
 
           <code><a href="plot_pdf.html">plot_pdf()</a></code>
@@ -262,28 +244,28 @@
           <code><a href="plot_trace.html">plot_trace()</a></code>
 
         </dt>
-        <dd>Plot Trace</dd>
+        <dd>Plot MCMC Trace Plots</dd>
       </dl><dl><dt>
 
           <code><a href="printRejectionRates.html">printRejectionRates()</a></code>
 
         </dt>
-        <dd>Print Rejection Rates</dd>
+        <dd>Print MCMC Rejection Rates</dd>
       </dl><dl><dt>
 
           <code><a href="prior_params_default.html">prior_params_default</a></code>
 
         </dt>
-        <dd>Default Parameter Settings for Prior Distributions</dd>
+        <dd>Default Prior Parameters</dd>
       </dl><dl><dt>
 
           <code><a href="risk_proportion_default.html">risk_proportion_default</a></code>
 
         </dt>
-        <dd>Default Risk Proportion Data</dd>
+        <dd>Default Risk Proportions</dd>
       </dl><dl><dt>
 
-          <code><a href="test_fam1.html">test_fam1</a></code>
+          <code><a href="simulated_families.html">simulated_families</a></code>
 
         </dt>
         <dd>Processed Family Data</dd>
@@ -310,7 +292,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

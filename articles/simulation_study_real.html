@@ -105,7 +105,7 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Set the allele frequency for MLH1 based on PanelPRO Database</span></span>
-<span><span class="va">af_MLH1</span> <span class="op">&lt;-</span> <span class="fl">0.0004453125</span> </span>
+<span><span class="va">prevMLH1</span> <span class="op">&lt;-</span> <span class="fl">0.0004453125</span> </span>
 <span></span>
 <span><span class="co"># We use the default baseline (non-carrier) penetrance</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">baseline_data_default</span><span class="op">)</span></span>
@@ -113,7 +113,7 @@
 <span><span class="co"># We run the estimation procedure with one chain and 20k iterations  </span></span>
 <span><span class="va">out_sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/penetrance.html">penetrance</a></span><span class="op">(</span></span>
 <span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>, </span>
-<span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span> , af <span class="op">=</span> <span class="va">af_MLH1</span>, </span>
+<span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span> , prev <span class="op">=</span> <span class="va">prevMLH1</span>, </span>
 <span>    prior_params <span class="op">=</span> <span class="va">prior_params</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,  </span>
 <span>    ageImputation <span class="op">=</span> <span class="cn">FALSE</span>, removeProband <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -130,7 +130,7 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

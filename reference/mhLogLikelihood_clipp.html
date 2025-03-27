@@ -56,7 +56,9 @@
 <span>  <span class="va">twins</span>,</span>
 <span>  <span class="va">max_age</span>,</span>
 <span>  <span class="va">baseline_data</span>,</span>
-<span>  <span class="va">af</span>,</span>
+<span>  <span class="va">prev</span>,</span>
+<span>  <span class="va">geno_freq</span>,</span>
+<span>  <span class="va">trans</span>,</span>
 <span>  <span class="va">BaselineNC</span>,</span>
 <span>  <span class="va">ncores</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -88,8 +90,16 @@ given_median_male, given_median_female, given_first_quartile_male, given_first_q
 <dd><p>Numeric matrix, baseline risk data for each age by sex. Rows correspond to sex (1 for male, 2 for female) and columns to age.</p></dd>
 
 
-<dt id="arg-af">af<a class="anchor" aria-label="anchor" href="#arg-af"></a></dt>
-<dd><p>Numeric, allele frequency of the risk allele in the population.</p></dd>
+<dt id="arg-prev">prev<a class="anchor" aria-label="anchor" href="#arg-prev"></a></dt>
+<dd><p>Numeric, prevalence of the risk allele in the population.</p></dd>
+
+
+<dt id="arg-geno-freq">geno_freq<a class="anchor" aria-label="anchor" href="#arg-geno-freq"></a></dt>
+<dd><p>Numeric vector, represents the frequency of the risk type and its complement in the population.</p></dd>
+
+
+<dt id="arg-trans">trans<a class="anchor" aria-label="anchor" href="#arg-trans"></a></dt>
+<dd><p>Numeric matrix, transition matrix that defines the probabilities of allele transmission from parents to offspring.</p></dd>
 
 
 <dt id="arg-baselinenc">BaselineNC<a class="anchor" aria-label="anchor" href="#arg-baselinenc"></a></dt>
@@ -104,17 +114,13 @@ given_median_male, given_median_female, given_first_quartile_male, given_first_q
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Numeric, the calculated log likelihood.</p>
     </div>
-    <div class="section level2">
-    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>Details about the clipp package and methods can be found in the package documentation.</p>
-    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

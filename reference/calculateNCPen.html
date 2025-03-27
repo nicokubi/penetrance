@@ -56,7 +56,7 @@ for genetic testing by incorporating the genetic risk attributable to specified 
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calculateNCPen</span><span class="op">(</span><span class="va">SEER_baseline</span>, <span class="va">alpha</span>, <span class="va">beta</span>, <span class="va">delta</span>, <span class="va">gamma</span>, <span class="va">af</span>, <span class="va">max_age</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calculateNCPen</span><span class="op">(</span><span class="va">SEER_baseline</span>, <span class="va">alpha</span>, <span class="va">beta</span>, <span class="va">delta</span>, <span class="va">gamma</span>, <span class="va">prev</span>, <span class="va">max_age</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -83,8 +83,8 @@ for genetic testing by incorporating the genetic risk attributable to specified 
 <dd><p>Numeric, scaling factor applied to the Weibull distribution to adjust carrier risk.</p></dd>
 
 
-<dt id="arg-af">af<a class="anchor" aria-label="anchor" href="#arg-af"></a></dt>
-<dd><p>Numeric, the allele frequency of the risk allele in the population.</p></dd>
+<dt id="arg-prev">prev<a class="anchor" aria-label="anchor" href="#arg-prev"></a></dt>
+<dd><p>Numeric, the prevalence of the risk allele in the population.</p></dd>
 
 
 <dt id="arg-max-age">max_age<a class="anchor" aria-label="anchor" href="#arg-max-age"></a></dt>
@@ -95,7 +95,7 @@ for genetic testing by incorporating the genetic risk attributable to specified 
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A list containing:</p>
 <dl><dt>weightedCarrierRisk</dt>
-<dd><p>Numeric vector, the weighted risk for carriers at each age based on allele frequency.</p></dd>
+<dd><p>Numeric vector, the weighted risk for carriers at each age based on prevalence.</p></dd>
 
 <dt>yearlyProb</dt>
 <dd><p>Numeric vector, the yearly probability of not getting the disease at each age.</p></dd>
@@ -110,7 +110,7 @@ for genetic testing by incorporating the genetic risk attributable to specified 
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

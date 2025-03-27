@@ -135,34 +135,35 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 </h2>
 <p>There are a few ways in which a user can specify how the estimation approach is run. Available options are:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">#' @param twins Identical twins or triplets in the family can be specifed. For example, to indicate that `ora024` and `ora027` are identical twins, and so are `aey063` and `aey064`, </span></span>
-<span><span class="co">#' then we can use the following as the twins arguement: twins &lt;- list(c("ora024", "ora027"), c("aey063", "aey064"))</span></span>
-<span><span class="co">#' @param n_chains Number of chains for parallel computation. Default is 1.</span></span>
-<span><span class="co">#' @param n_iter_per_chain Number of iterations for each chain. Default is 10000.</span></span>
-<span><span class="co">#' @param ncores Number of cores for parallel computation. Default is 6.</span></span>
-<span><span class="co">#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default is the allele frequency for MLH1 from the PanelPRO database.</span></span>
-<span><span class="co">#' @param max_age Maximum age considered for analysis. Default is 94.</span></span>
-<span><span class="co">#' @param removeProband Logical, indicating whether to remove probands from the analysis. Default is FALSE.</span></span>
-<span><span class="co">#' @param ageImputation Logical, indicating whether to perform age imputation. Default is FALSE.</span></span>
-<span><span class="co">#' @param median_max Boolean indicating whether to use the baseline median age or max_age as an upper bound for the median proposal. Default is TRUE.</span></span>
-<span><span class="co">#' @param BaselineNC Boolean indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.</span></span>
-<span><span class="co">#' @param var Vector of variances for the proposal distribution. Default is c(0.1, 0.1, 2, 2, 5, 5, 5, 5).</span></span>
-<span><span class="co">#' @param burn_in Fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).</span></span>
-<span><span class="co">#' @param thinning_factor Factor by which to thin the results. Default is 1 (no thinning).</span></span>
+<code class="sourceCode R"><span><span class="co">#' @param twins A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: `twins &lt;- list(c("ora024", "ora027"), c("aey063", "aey064"))`.</span></span>
+<span><span class="co">#' @param n_chains Integer, the number of chains for parallel computation. Default is 1.</span></span>
+<span><span class="co">#' @param n_iter_per_chain Integer, the number of iterations for each chain. Default is 10000.</span></span>
+<span><span class="co">#' @param ncores Integer, the number of cores for parallel computation. Default is 6.</span></span>
+<span><span class="co">#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.</span></span>
+<span><span class="co">#' @param max_age Integer, the maximum age considered for analysis. Default is 94.</span></span>
+<span><span class="co">#' @param remove_proband Logical, indicating whether to remove probands from the analysis. Default is FALSE.</span></span>
+<span><span class="co">#' @param age_imputation Logical, indicating whether to perform age imputation. Default is FALSE.</span></span>
+<span><span class="co">#' @param median_max Logical, indicating whether to use the baseline median age or `max_age` as an upper bound for the median proposal. Default is TRUE.</span></span>
+<span><span class="co">#' @param BaselineNC Logical, indicating that the non-carrier penetrance is assumed to be the baseline penetrance. Default is TRUE.</span></span>
+<span><span class="co">#' @param var Numeric vector, variances for the proposal distribution in the Metropolis-Hastings algorithm. Default is `c(0.1, 0.1, 2, 2, 5, 5, 5, 5)`.</span></span>
+<span><span class="co">#' @param burn_in Numeric, the fraction of results to discard as burn-in (0 to 1). Default is 0 (no burn-in).</span></span>
+<span><span class="co">#' @param thinning_factor Integer, the factor by which to thin the results. Default is 1 (no thinning).</span></span>
+<span><span class="co">#' @param imp_interval Integer, the interval at which age imputation should be performed when age_imputation = TRUE.</span></span>
 <span><span class="co">#' @param distribution_data Data for generating prior distributions.</span></span>
-<span><span class="co">#' @param af Allele frequency for the risk allele. Default is 0.0001.</span></span>
-<span><span class="co">#' @param max_penetrance Maximum penetrance considered for analysis. Default is 1.</span></span>
-<span><span class="co">#' @param sample_size Optional sample size for distribution generation.</span></span>
-<span><span class="co">#' @param ratio Optional ratio parameter for distribution generation.</span></span>
-<span><span class="co">#' @param prior_params Parameters for prior distributions.</span></span>
-<span><span class="co">#' @param risk_proportion Proportion of risk for distribution generation.</span></span>
-<span><span class="co">#' @param summary_stats Boolean indicating whether to include summary statistics in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param rejection_rates Boolean indicating whether to include rejection rates in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param density_plots Boolean indicating whether to include density plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param plot_trace Boolean indicating whether to include trace plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param penetrance_plot Boolean indicating whether to include penetrance plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param penetrance_plot_pdf Boolean indicating whether to include PDF plots in the output. Default is TRUE.</span></span>
-<span><span class="co">#' @param probCI Probability level for confidence intervals in penetrance plots. Default is 0.95.</span></span>
+<span><span class="co">#' @param prev Numeric, prevalence of the carrier status. Default is 0.0001.</span></span>
+<span><span class="co">#' @param sample_size Optional numeric, sample size for distribution generation.</span></span>
+<span><span class="co">#' @param ratio Optional numeric, ratio parameter for distribution generation.</span></span>
+<span><span class="co">#' @param prior_params List, parameters for prior distributions.</span></span>
+<span><span class="co">#' @param risk_proportion Numeric, proportion of risk for distribution generation.</span></span>
+<span><span class="co">#' @param summary_stats Logical, indicating whether to include summary statistics in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param rejection_rates Logical, indicating whether to include rejection rates in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param density_plots Logical, indicating whether to include density plots in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param plot_trace Logical, indicating whether to include trace plots in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param penetrance_plot Logical, indicating whether to include penetrance plots in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param penetrance_plot_pdf Logical, indicating whether to include PDF plots in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param plot_loglikelihood Logical, indicating whether to include log-likelihood plots in the output. Default is TRUE.</span></span>
+<span><span class="co">#' @param plot_acf Logical, indicating whether to include autocorrelation function (ACF) plots for posterior samples. Default is TRUE.</span></span>
+<span><span class="co">#' @param probCI Numeric, probability level for credible intervals in penetrance plots. Must be between 0 and 1. Default is 0.95.</span></span>
 <span><span class="co">#' @param sex_specific Logical, indicating whether to use sex-specific parameters in the analysis. Default is TRUE.</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
@@ -171,7 +172,7 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 <ul>
 <li>A single chain with 10k iterations of the adaptive MH algorithm. The number of cores for the paralellization is set to <code>ncores = 4</code>.</li>
 <li>The pedigree data are the test family 1.</li>
-<li>The allele frequency for the pathogenic variant is set at <code>af = 0.0001</code>.</li>
+<li>The prevalence is set at <code>prev = 0.0001</code>.</li>
 <li>The <code>penetrance</code> function takes baseline age-specific probabilitie of developing cancer as as input <code>baseline_data</code>. In the default setting with <code>BaselineNC = TRUE</code> this baseline is assumed to reflect the non-carrier penetrance. For rare mutations this is considered a reasonable assumption. The baseline_data must be a data frame with baseline penetrance for females and males.</li>
 </ul>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -205,15 +206,19 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 <li>The specified parameters for the prior distributions are as per the specification in the <code>prior_params_default</code> object (see above).</li>
 <li>The burn-in is set to <code>burn_in = 0.1</code>, which means the first 1000 iterations of the chain will be discarded (given 10k iterations of the algorithm).</li>
 <li>The median age of onset of the baseline (non-carrier) penentrance is set as the upper bound for the proposed median, given that <code>median_max = TRUE</code>.</li>
-<li>The automatic age imputation <code>AgeImputation</code> is performed (see above), given that <code>ageImputation = TRUE</code>.</li>
+<li>The automatic age imputation <code>AgeImputation</code> (see above) is not applied in the, given that <code>ageImputation = FALSE</code>.</li>
 </ul>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">output</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/penetrance.html">penetrance</a></span><span class="op">(</span></span>
-<span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>, </span>
-<span>    ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span>, af  <span class="op">=</span> <span class="fl">0.0001</span>, </span>
-<span>    prior_params <span class="op">=</span> <span class="va">prior_params_default</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,  </span>
-<span>    ageImputation <span class="op">=</span> <span class="cn">TRUE</span>, sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>    pedigree  <span class="op">=</span> <span class="va">dat</span>, twins <span class="op">=</span> <span class="cn">NULL</span>, n_chains <span class="op">=</span> <span class="fl">1</span>, n_iter_per_chain <span class="op">=</span> <span class="fl">20000</span>,</span>
+<span>   ncores <span class="op">=</span> <span class="fl">2</span>, baseline_data <span class="op">=</span> <span class="va">baseline_data_default</span>, prev  <span class="op">=</span> <span class="fl">0.0001</span>, </span>
+<span>    prior_params <span class="op">=</span> <span class="va">prior_params_default</span>, burn_in <span class="op">=</span> <span class="fl">0.1</span>, median_max <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    age_imputation <span class="op">=</span> <span class="cn">TRUE</span>, sex_specific <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>The exemplary output from the estimation procedure can be seen below.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_penetrance.html">plot_penetrance</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">output</span><span class="op">$</span><span class="va">combined_chains</span>, prob <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/plot_pdf.html">plot_pdf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">output</span><span class="op">$</span><span class="va">combined_chains</span>, prob <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -231,7 +236,7 @@ f(x; \alpha, \beta, \delta, \gamma) = \begin{cases}
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">

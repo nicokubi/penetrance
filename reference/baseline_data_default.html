@@ -42,7 +42,7 @@ As an example, the data is derived from the SEER program for colorectal cancer f
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Default Baseline Data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/HEAD/R/docData.R" class="external-link"><code>R/docData.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/nicokubi/penetrance/blob/HEAD/R/data.R" class="external-link"><code>R/data.R</code></a>, <a href="https://github.com/nicokubi/penetrance/blob/HEAD/R/docData.R" class="external-link"><code>R/docData.R</code></a></small>
       <div class="d-none name"><code>baseline_data_default.Rd</code></div>
     </div>
 
@@ -53,12 +53,24 @@ As an example, the data is derived from the SEER program for colorectal cancer f
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="va">baseline_data_default</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="va">baseline_data_default</span></span>
+<span></span>
+<span><span class="va">baseline_data_default</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
     <p>A data frame with 94 rows and 3 variables:</p><dl><dt>Age</dt>
+<dd><p>Age in years</p></dd>
+
+<dt>Female</dt>
+<dd><p>Female baseline risk</p></dd>
+
+<dt>Male</dt>
+<dd><p>Male baseline risk</p></dd>
+
+
+</dl><p>A data frame with 94 rows and 3 variables:</p><dl><dt>Age</dt>
 <dd><p>Age in years (1 to 94)</p></dd>
 
 <dt>Female</dt>
@@ -75,7 +87,7 @@ As an example, the data is derived from the SEER program for colorectal cancer f
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by BayesMendel Lab, Nicolas Kubista.</p>
+  <p>Developed by Nicolas Kubista, BayesMendel Lab.</p>
 </div>
 
 <div class="pkgdown-footer-right">
