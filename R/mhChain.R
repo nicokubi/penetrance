@@ -30,7 +30,7 @@
 #' data <- data.frame(
 #'   ID = 1:10,
 #'   PedigreeID = rep(1, 10),
-#'   Sex = c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1),  # 0=female, 1=male
+#'   Sex = c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1), # 0=female, 1=male
 #'   MotherID = c(NA, NA, 1, 1, 3, 3, 5, 5, 7, 7),
 #'   FatherID = c(NA, NA, 2, 2, 4, 4, 6, 6, 8, 8),
 #'   isProband = c(1, rep(0, 9)),
@@ -39,42 +39,44 @@
 #'   Age = c(40, NA, 50, NA, 45, NA, 55, NA, 48, NA),
 #'   Geno = c(1, NA, 1, 0, 1, 0, NA, NA, 1, NA)
 #' )
-#' 
+#'
 #' # Transform data into required format
 #' data <- transformDF(data)
-#' 
+#'
 #' # Set parameters for the chain
 #' seed <- 123
 #' n_iter <- 10
-#' burn_in <- 0.1  # 10% burn-in
+#' burn_in <- 0.1 # 10% burn-in
 #' chain_id <- 1
 #' ncores <- 1
 #' max_age <- 100
-#' 
+#'
 #' # Create baseline data (simplified example)
 #' baseline_data <- matrix(
-#'   c(rep(0.005, max_age), rep(0.008, max_age)),  # Increased baseline risks
+#'   c(rep(0.005, max_age), rep(0.008, max_age)), # Increased baseline risks
 #'   ncol = 2,
 #'   dimnames = list(NULL, c("Male", "Female"))
 #' )
-#' 
+#'
 #' # Set prior distributions with carefully chosen bounds
 #' prior_distributions <- list(
 #'   prior_params = list(
-#'     asymptote = list(g1 = 2, g2 = 3),  # Mode around 0.4
-#'     threshold = list(min = 20, max = 30),  # Narrower range for threshold
-#'     median = list(m1 = 3, m2 = 2),  # Mode around 0.6
-#'     first_quartile = list(q1 = 2, q2 = 3)  # Mode around 0.4
+#'     asymptote = list(g1 = 2, g2 = 3), # Mode around 0.4
+#'     threshold = list(min = 20, max = 30), # Narrower range for threshold
+#'     median = list(m1 = 3, m2 = 2), # Mode around 0.6
+#'     first_quartile = list(q1 = 2, q2 = 3) # Mode around 0.4
 #'   )
 #' )
-#' 
+#'
 #' # Create variance vector for all 8 parameters in sex-specific case
 #' # Using very small variances for initial stability
-#' var <- c(0.005, 0.005,  # asymptotes (smaller variance since between 0-1)
-#'          1, 1,          # thresholds
-#'          1, 1,          # medians
-#'          1, 1)          # first quartiles
-#' 
+#' var <- c(
+#'   0.005, 0.005, # asymptotes (smaller variance since between 0-1)
+#'   1, 1, # thresholds
+#'   1, 1, # medians
+#'   1, 1
+#' ) # first quartiles
+#'
 #' # Run the chain
 #' results <- mhChain(
 #'   seed = seed,
@@ -87,8 +89,8 @@
 #'   max_age = max_age,
 #'   baseline_data = baseline_data,
 #'   prior_distributions = prior_distributions,
-#'   prev = 0.05,  # Increased prevalence
-#'   median_max = FALSE,  # Changed to FALSE for simpler median constraints
+#'   prev = 0.05, # Increased prevalence
+#'   median_max = FALSE, # Changed to FALSE for simpler median constraints
 #'   BaselineNC = TRUE,
 #'   var = var,
 #'   age_imputation = FALSE,
