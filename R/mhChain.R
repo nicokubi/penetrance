@@ -30,7 +30,7 @@
 #' data <- data.frame(
 #'   ID = 1:10,
 #'   PedigreeID = rep(1, 10),
-#'   Sex = c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1),  # 0=female, 1=male
+#'   Sex = c(0, 1, 0, 1, 0, 1, 0, 1, 0, 1), # 0=female, 1=male
 #'   MotherID = c(NA, NA, 1, 1, 3, 3, 5, 5, 7, 7),
 #'   FatherID = c(NA, NA, 2, 2, 4, 4, 6, 6, 8, 8),
 #'   isProband = c(1, rep(0, 9)),
@@ -39,42 +39,44 @@
 #'   Age = c(40, NA, 50, NA, 45, NA, 55, NA, 48, NA),
 #'   Geno = c(1, NA, 1, 0, 1, 0, NA, NA, 1, NA)
 #' )
-#' 
+#'
 #' # Transform data into required format
 #' data <- transformDF(data)
-#' 
+#'
 #' # Set parameters for the chain
 #' seed <- 123
 #' n_iter <- 10
-#' burn_in <- 0.1  # 10% burn-in
+#' burn_in <- 0.1 # 10% burn-in
 #' chain_id <- 1
 #' ncores <- 1
 #' max_age <- 100
-#' 
+#'
 #' # Create baseline data (simplified example)
 #' baseline_data <- matrix(
-#'   c(rep(0.005, max_age), rep(0.008, max_age)),  # Increased baseline risks
+#'   c(rep(0.005, max_age), rep(0.008, max_age)), # Increased baseline risks
 #'   ncol = 2,
 #'   dimnames = list(NULL, c("Male", "Female"))
 #' )
-#' 
+#'
 #' # Set prior distributions with carefully chosen bounds
 #' prior_distributions <- list(
 #'   prior_params = list(
-#'     asymptote = list(g1 = 2, g2 = 3),  # Mode around 0.4
-#'     threshold = list(min = 20, max = 30),  # Narrower range for threshold
-#'     median = list(m1 = 3, m2 = 2),  # Mode around 0.6
-#'     first_quartile = list(q1 = 2, q2 = 3)  # Mode around 0.4
+#'     asymptote = list(g1 = 2, g2 = 3), # Mode around 0.4
+#'     threshold = list(min = 20, max = 30), # Narrower range for threshold
+#'     median = list(m1 = 3, m2 = 2), # Mode around 0.6
+#'     first_quartile = list(q1 = 2, q2 = 3) # Mode around 0.4
 #'   )
 #' )
-#' 
+#'
 #' # Create variance vector for all 8 parameters in sex-specific case
 #' # Using very small variances for initial stability
-#' var <- c(0.005, 0.005,  # asymptotes (smaller variance since between 0-1)
-#'          1, 1,          # thresholds
-#'          1, 1,          # medians
-#'          1, 1)          # first quartiles
-#' 
+#' var <- c(
+#'   0.005, 0.005, # asymptotes (smaller variance since between 0-1)
+#'   1, 1, # thresholds
+#'   1, 1, # medians
+#'   1, 1
+#' ) # first quartiles
+#'
 #' # Run the chain
 #' results <- mhChain(
 #'   seed = seed,
@@ -87,8 +89,8 @@
 #'   max_age = max_age,
 #'   baseline_data = baseline_data,
 #'   prior_distributions = prior_distributions,
-#'   prev = 0.05,  # Increased prevalence
-#'   median_max = FALSE,  # Changed to FALSE for simpler median constraints
+#'   prev = 0.05, # Increased prevalence
+#'   median_max = FALSE, # Changed to FALSE for simpler median constraints
 #'   BaselineNC = TRUE,
 #'   var = var,
 #'   age_imputation = FALSE,
@@ -131,6 +133,25 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   # Initialize variables for sex-specific or non-specific model
   if (sex_specific) {
     # Process baseline risk data for males and females
+    # Check if baseline data matches max_age
+    if (nrow(baseline_data) != max_age) {
+      warning(paste("Baseline data length (", nrow(baseline_data), ") does not match max_age (", max_age, "). Adjusting baseline data to match max_age.", sep=""))
+      
+      # If baseline data is longer than max_age, truncate it
+      if (nrow(baseline_data) > max_age) {
+        baseline_data <- baseline_data[1:max_age, ]
+      } else {
+        # If baseline data is shorter, extend it by repeating the last value
+        last_male <- baseline_data[nrow(baseline_data), "Male"]
+        last_female <- baseline_data[nrow(baseline_data), "Female"]
+        extension <- data.frame(
+          Male = rep(last_male, max_age - nrow(baseline_data)),
+          Female = rep(last_female, max_age - nrow(baseline_data))
+        )
+        baseline_data <- rbind(baseline_data, extension)
+      }
+    }
+    
     baseline_male <- as.numeric(baseline_data[, "Male"])
     baseline_female <- as.numeric(baseline_data[, "Female"])
     baseline_male_cum <- cumsum(baseline_male)
@@ -199,6 +220,21 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     }
   } else {
     # Use the baseline data directly as a vector for non-sex-specific
+    # Check if baseline data matches max_age
+    if (length(baseline_data) != max_age) {
+      warning(paste("Baseline data length (", length(baseline_data), ") does not match max_age (", max_age, "). Adjusting baseline data to match max_age.", sep=""))
+      
+      # If baseline data is longer than max_age, truncate it
+      if (length(baseline_data) > max_age) {
+        baseline_data <- baseline_data[1:max_age]
+      } else {
+        # If baseline data is shorter, extend it by repeating the last value
+        last_value <- baseline_data[length(baseline_data)]
+        extension <- rep(last_value, max_age - length(baseline_data))
+        baseline_data <- c(baseline_data, extension)
+      }
+    }
+    
     baseline_cum <- cumsum(baseline_data)
     baseline_df <- data.frame(
       age = 1:length(baseline_data),

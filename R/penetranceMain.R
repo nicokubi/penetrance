@@ -144,6 +144,11 @@ penetrance <- function(pedigree,
     stop("Error: 'pedigree' parameter is missing or invalid. Please provide a non-empty list of pedigrees.")
   }
 
+  # Check max_age is valid
+  if (!is.numeric(max_age) || max_age <= 0 || max_age > 150) {
+    stop("Error: 'max_age' must be a positive number not exceeding 150.")
+  }
+
   # Check pedigree data structure and content for each pedigree in the list
   required_columns <- c("PedigreeID", "ID", "Sex", "MotherID", "FatherID", "isProband", "CurAge", "isAff", "Age", "geno")
   for (i in seq_along(pedigree)) {
@@ -186,18 +191,31 @@ penetrance <- function(pedigree,
 
   # Check baseline_data structure
   if (sex_specific) {
-    if (!is.data.frame(baseline_data) || nrow(baseline_data) != 94 || ncol(baseline_data) != 3) {
-      stop("Error: 'baseline_data' must be a data frame with 94 rows and 3 columns (Age, Female, Male) when 'sex_specific' is TRUE.")
+    if (!is.data.frame(baseline_data)) {
+      stop("Error: 'baseline_data' must be a data frame when 'sex_specific' is TRUE.")
+    }
+    if (ncol(baseline_data) != 3) {
+      stop("Error: 'baseline_data' must have 3 columns (Age, Female, Male) when 'sex_specific' is TRUE.")
+    }
+    # Check if baseline_data matches max_age
+    if (nrow(baseline_data) < max_age) {
+      warning(paste("Baseline data has fewer rows (", nrow(baseline_data), ") than max_age (", max_age, "). The data will be extended.", sep=""))
+    } else if (nrow(baseline_data) > max_age) {
+      warning(paste("Baseline data has more rows (", nrow(baseline_data), ") than max_age (", max_age, "). The data will be truncated.", sep=""))
     }
   } else {
     if (!is.data.frame(baseline_data) && !is.vector(baseline_data)) {
-      stop("Error: 'baseline_data' must be either a data frame with 94 rows and 1 column or a numeric vector when 'sex_specific' is FALSE.")
+      stop("Error: 'baseline_data' must be either a data frame or a numeric vector when 'sex_specific' is FALSE.")
     }
-    if (is.data.frame(baseline_data) && (nrow(baseline_data) != 94 || ncol(baseline_data) != 1)) {
-      stop("Error: When 'baseline_data' is a data frame for non-sex-specific analysis, it must have 94 rows and 1 column.")
+    if (is.data.frame(baseline_data) && ncol(baseline_data) != 1) {
+      stop("Error: When 'baseline_data' is a data frame for non-sex-specific analysis, it must have 1 column.")
     }
-    if (is.vector(baseline_data) && length(baseline_data) != 94) {
-      stop("Error: When 'baseline_data' is a vector for non-sex-specific analysis, it must have exactly 94 elements.")
+    # Check length against max_age
+    data_length <- if(is.data.frame(baseline_data)) nrow(baseline_data) else length(baseline_data)
+    if (data_length < max_age) {
+      warning(paste("Baseline data has fewer elements (", data_length, ") than max_age (", max_age, "). The data will be extended.", sep=""))
+    } else if (data_length > max_age) {
+      warning(paste("Baseline data has more elements (", data_length, ") than max_age (", max_age, "). The data will be truncated.", sep=""))
     }
   }
 
