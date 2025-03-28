@@ -165,11 +165,11 @@ lik.fn <- function(i, data, alpha_male, alpha_female, beta_male, beta_female,
     } else {
       nc.pen <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
+        beta = beta, delta = delta, gamma = gamma, prev = prev, max_age = max_age
       )$weightedCarrierRisk[age_index]
       nc.pen.c <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
+        beta = beta, delta = delta, gamma = gamma, prev = prev, max_age = max_age
       )$cumulativeProb[age_index]
     }
     
@@ -390,7 +390,7 @@ lik_noSex <- function(i, data, alpha, beta, delta, gamma, max_age, baselineRisk,
     } else {
       nc_pen_results <- calculateNCPen(
         SEER_baseline = SEER_baseline_max, alpha = alpha,
-        beta = beta, delta = delta, gamma = gamma, max_age = max_age, prev
+        beta = beta, delta = delta, gamma = gamma, prev = prev, max_age = max_age
       )
       nc.pen <- nc_pen_results$weightedCarrierRisk[age_index]
       nc.pen.c <- nc_pen_results$cumulativeProb[age_index]

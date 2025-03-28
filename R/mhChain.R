@@ -133,6 +133,25 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
   # Initialize variables for sex-specific or non-specific model
   if (sex_specific) {
     # Process baseline risk data for males and females
+    # Check if baseline data matches max_age
+    if (nrow(baseline_data) != max_age) {
+      warning(paste("Baseline data length (", nrow(baseline_data), ") does not match max_age (", max_age, "). Adjusting baseline data to match max_age.", sep=""))
+      
+      # If baseline data is longer than max_age, truncate it
+      if (nrow(baseline_data) > max_age) {
+        baseline_data <- baseline_data[1:max_age, ]
+      } else {
+        # If baseline data is shorter, extend it by repeating the last value
+        last_male <- baseline_data[nrow(baseline_data), "Male"]
+        last_female <- baseline_data[nrow(baseline_data), "Female"]
+        extension <- data.frame(
+          Male = rep(last_male, max_age - nrow(baseline_data)),
+          Female = rep(last_female, max_age - nrow(baseline_data))
+        )
+        baseline_data <- rbind(baseline_data, extension)
+      }
+    }
+    
     baseline_male <- as.numeric(baseline_data[, "Male"])
     baseline_female <- as.numeric(baseline_data[, "Female"])
     baseline_male_cum <- cumsum(baseline_male)
@@ -201,6 +220,21 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     }
   } else {
     # Use the baseline data directly as a vector for non-sex-specific
+    # Check if baseline data matches max_age
+    if (length(baseline_data) != max_age) {
+      warning(paste("Baseline data length (", length(baseline_data), ") does not match max_age (", max_age, "). Adjusting baseline data to match max_age.", sep=""))
+      
+      # If baseline data is longer than max_age, truncate it
+      if (length(baseline_data) > max_age) {
+        baseline_data <- baseline_data[1:max_age]
+      } else {
+        # If baseline data is shorter, extend it by repeating the last value
+        last_value <- baseline_data[length(baseline_data)]
+        extension <- rep(last_value, max_age - length(baseline_data))
+        baseline_data <- c(baseline_data, extension)
+      }
+    }
+    
     baseline_cum <- cumsum(baseline_data)
     baseline_df <- data.frame(
       age = 1:length(baseline_data),
