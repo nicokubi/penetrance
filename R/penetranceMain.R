@@ -194,9 +194,13 @@ penetrance <- function(pedigree,
     if (!is.data.frame(baseline_data)) {
       stop("Error: 'baseline_data' must be a data frame when 'sex_specific' is TRUE.")
     }
-    if (ncol(baseline_data) != 3) {
-      stop("Error: 'baseline_data' must have 3 columns (Age, Female, Male) when 'sex_specific' is TRUE.")
+    
+    # Check for required columns - match actual usage in mhChain.R
+    required_columns <- c("Male", "Female")
+    if (!all(required_columns %in% colnames(baseline_data))) {
+      stop("Error: 'baseline_data' must have columns named 'Male' and 'Female' when 'sex_specific' is TRUE.")
     }
+    
     # Check if baseline_data matches max_age
     if (nrow(baseline_data) < max_age) {
       warning(paste("Baseline data has fewer rows (", nrow(baseline_data), ") than max_age (", max_age, "). The data will be extended.", sep=""))

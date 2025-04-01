@@ -180,29 +180,56 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       lower_bound <- prior_distributions$prior_params$threshold$min
       upper_bound <- prior_distributions$prior_params$threshold$max
 
-      threshold_male <- ifelse(length(data_male_affected$age) > 0,
-        quantile(data_male_affected$age, 0.1, na.rm = TRUE), NA
-      )
-      threshold_female <- ifelse(length(data_female_affected$age) > 0,
-        quantile(data_female_affected$age, 0.1, na.rm = TRUE), NA
-      )
+      # Add better NA handling for threshold calculations
+      threshold_male <- if(length(data_male_affected$age) > 0 && sum(!is.na(data_male_affected$age)) > 0) {
+        quantile(data_male_affected$age, 0.1, na.rm = TRUE)
+      } else {
+        (lower_bound + upper_bound) / 2  # Use middle of allowed range as default
+      }
+      
+      threshold_female <- if(length(data_female_affected$age) > 0 && sum(!is.na(data_female_affected$age)) > 0) {
+        quantile(data_female_affected$age, 0.1, na.rm = TRUE)
+      } else {
+        (lower_bound + upper_bound) / 2  # Use middle of allowed range as default
+      }
 
       threshold_male <- pmax(pmin(threshold_male, upper_bound, na.rm = TRUE), lower_bound, na.rm = TRUE)
       threshold_female <- pmax(pmin(threshold_female, upper_bound, na.rm = TRUE), lower_bound, na.rm = TRUE)
 
-      median_male <- ifelse(length(data_male_affected$age) > 0,
-        median(data_male_affected$age, na.rm = TRUE), 50
-      )
-      median_female <- ifelse(length(data_female_affected$age) > 0,
-        median(data_female_affected$age, na.rm = TRUE), 50
-      )
+      # Add better NA handling for median calculations
+      median_male <- if(length(data_male_affected$age) > 0 && sum(!is.na(data_male_affected$age)) > 0) {
+        median(data_male_affected$age, na.rm = TRUE)
+      } else {
+        50  # Default value when no data available
+      }
+      
+      median_female <- if(length(data_female_affected$age) > 0 && sum(!is.na(data_female_affected$age)) > 0) {
+        median(data_female_affected$age, na.rm = TRUE)
+      } else {
+        50  # Default value when no data available
+      }
 
-      first_quartile_male <- ifelse(length(data_male_affected$age) > 0,
-        max(min(quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE), median_male - 1), threshold_male + 1), 40
-      )
-      first_quartile_female <- ifelse(length(data_female_affected$age) > 0,
-        max(min(quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE), median_female - 1), threshold_female + 1), 40
-      )
+      # Add better NA handling for first quartile calculations
+      first_quartile_male <- if(length(data_male_affected$age) > 0 && sum(!is.na(data_male_affected$age)) > 0) {
+        q25 <- quantile(data_male_affected$age, probs = 0.25, na.rm = TRUE)
+        max(min(q25, median_male - 1), threshold_male + 1)
+      } else {
+        threshold_male + 0.3 * (median_male - threshold_male)  # Default position between threshold and median
+      }
+      
+      first_quartile_female <- if(length(data_female_affected$age) > 0 && sum(!is.na(data_female_affected$age)) > 0) {
+        q25 <- quantile(data_female_affected$age, probs = 0.25, na.rm = TRUE)
+        max(min(q25, median_female - 1), threshold_female + 1)
+      } else {
+        threshold_female + 0.3 * (median_female - threshold_female)  # Default position between threshold and median
+      }
+      
+      # Ensure parameter relationships are maintained
+      first_quartile_male <- max(first_quartile_male, threshold_male + 1)
+      first_quartile_female <- max(first_quartile_female, threshold_female + 1)
+      
+      median_male <- max(median_male, first_quartile_male + 1)
+      median_female <- max(median_female, first_quartile_female + 1)
 
       asymptote_male <- runif(1, max(baseline_male_cum), 1)
       asymptote_female <- runif(1, max(baseline_female_cum), 1)
@@ -251,19 +278,33 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
       lower_bound <- prior_distributions$prior_params$threshold$min
       upper_bound <- prior_distributions$prior_params$threshold$max
 
-      threshold <- ifelse(length(data_affected$age) > 0,
-        quantile(data_affected$age, 0.1, na.rm = TRUE), NA
-      )
+      # Add better NA handling for threshold calculation
+      threshold <- if(length(data_affected$age) > 0 && sum(!is.na(data_affected$age)) > 0) {
+        quantile(data_affected$age, 0.1, na.rm = TRUE)
+      } else {
+        (lower_bound + upper_bound) / 2  # Use middle of allowed range as default
+      }
 
       threshold <- pmax(pmin(threshold, upper_bound, na.rm = TRUE), lower_bound, na.rm = TRUE)
 
-      median_age <- ifelse(length(data_affected$age) > 0,
-        median(data_affected$age, na.rm = TRUE), 50
-      )
+      # Add better NA handling for median calculation
+      median_age <- if(length(data_affected$age) > 0 && sum(!is.na(data_affected$age)) > 0) {
+        median(data_affected$age, na.rm = TRUE)
+      } else {
+        50  # Default value when no data available
+      }
 
-      first_quartile <- ifelse(length(data_affected$age) > 0,
-        min(quantile(data_affected$age, probs = 0.25, na.rm = TRUE), median_age - 1), 40
-      )
+      # Add better NA handling for first quartile calculation
+      first_quartile <- if(length(data_affected$age) > 0 && sum(!is.na(data_affected$age)) > 0) {
+        q25 <- quantile(data_affected$age, probs = 0.25, na.rm = TRUE)
+        min(q25, median_age - 1)
+      } else {
+        threshold + 0.3 * (median_age - threshold)  # Default position between threshold and median
+      }
+      
+      # Ensure parameter relationships are maintained 
+      first_quartile <- max(first_quartile, threshold + 1)
+      median_age <- max(median_age, first_quartile + 1)
 
       asymptote <- runif(1, max(baseline_cum), 1)
 
@@ -326,6 +367,20 @@ mhChain <- function(seed, n_iter, burn_in, chain_id, ncores, data, twins, max_ag
     prior_params <- prior_distributions$prior_params
 
     if (sex_specific) {
+      # Add checks to prevent division by zero
+      if (max_age <= params$threshold_male) {
+        return(-Inf)  # Invalid parameter, reject immediately
+      }
+      if (max_age <= params$threshold_female) {
+        return(-Inf)  # Invalid parameter, reject immediately
+      }
+      if (params$median_male <= params$threshold_male) {
+        return(-Inf)  # Invalid parameter, reject immediately
+      }
+      if (params$median_female <= params$threshold_female) {
+        return(-Inf)  # Invalid parameter, reject immediately
+      }
+      
       scaled_asymptote_male <- params$asymptote_male
       scaled_asymptote_female <- params$asymptote_female
 
