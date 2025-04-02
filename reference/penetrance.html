@@ -19,7 +19,7 @@ chains and provides various options for analyzing and visualizing the results.">
 
     <a class="navbar-brand me-2" href="../index.html">penetrance</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -108,22 +108,21 @@ chains and provides various options for analyzing and visualizing the results.</
 
 
 <dl><dt id="arg-pedigree">pedigree<a class="anchor" aria-label="anchor" href="#arg-pedigree"></a></dt>
-<dd><p>A data frame containing the pedigree data in the required format. It should include the following columns:</p><ul><li><p><code>PedigreeID</code>: A numeric value representing the unique identifier for each family. There should be no duplicated entries.</p></li>
-<li><p><code>ID</code>: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.</p></li>
-<li><p><code>Sex</code>: A numeric value where <code>0</code> indicates female and <code>1</code> indicates male. Unknown sex needs to be coded as <code>NA</code>.</p></li>
-<li><p><code>MotherID</code>: A numeric value representing the unique identifier for an individual's mother.</p></li>
-<li><p><code>FatherID</code>: A numeric value representing the unique identifier for an individual's father.</p></li>
-<li><p><code>isProband</code>: A numeric value where <code>1</code> indicates the individual is a proband and <code>0</code> otherwise.</p></li>
-<li><p><code>CurAge</code>: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from <code>1</code> to <code>94</code>. Unknown ages can be left empty or coded as <code>NA</code>.</p></li>
-<li><p><code>isAff</code>: A numeric value indicating the affection status of cancer, with <code>1</code> for diagnosed individuals,
-<code>0</code> for unaffected individuals, and <code>NA</code> for unknown status.</p></li>
-<li><p><code>Age</code>: A numeric value indicating the age of cancer diagnosis, encoded as <code>NA</code> if the individual was not diagnosed. Allowed ages range from <code>1</code> to <code>94</code>. Unknown ages can be left empty or coded as <code>NA</code>.</p></li>
-<li><p><code>geno</code>: A column for germline testing or tumor marker testing results. Positive results should be coded as <code>1</code>, negative results as <code>0</code>, and unknown results as <code>NA</code> or left empty.</p></li>
+<dd><p>A list of data frames, where each data frame represents a single pedigree and contains the following columns:</p><ul><li><p><code>PedigreeID</code>: A numeric or character identifier for the family/pedigree. Must be consistent for all members of the same family within a data frame.</p></li>
+<li><p><code>ID</code>: A unique numeric or character identifier for each individual within their respective pedigree data frame.</p></li>
+<li><p><code>Sex</code>: An integer representing biological sex: <code>0</code> for female, <code>1</code> for male. Use <code>NA</code> for unknown sex.</p></li>
+<li><p><code>MotherID</code>: The <code>ID</code> of the individual's mother. Should correspond to an <code>ID</code> within the same pedigree data frame or be <code>NA</code> if the mother is not in the pedigree (founder).</p></li>
+<li><p><code>FatherID</code>: The <code>ID</code> of the individual's father. Should correspond to an <code>ID</code> within the same pedigree data frame or be <code>NA</code> if the father is not in the pedigree (founder).</p></li>
+<li><p><code>isProband</code>: An integer indicating if the individual is a proband: <code>1</code> for proband, <code>0</code> otherwise.</p></li>
+<li><p><code>CurAge</code>: An integer representing the age of censoring. This is the current age if the individual is alive, or the age at death if deceased. Must be between <code>1</code> and <code>max_age</code>. Use <code>NA</code> for unknown ages (but note this may affect analysis or require imputation).</p></li>
+<li><p><code>isAff</code>: An integer indicating the affection status for the cancer of interest: <code>1</code> if diagnosed, <code>0</code> if unaffected. Use <code>NA</code> for unknown status.</p></li>
+<li><p><code>Age</code>: An integer representing the age at cancer diagnosis. Should be <code>NA</code> if <code>isAff</code> is <code>0</code> or <code>NA</code>. Must be between <code>1</code> and <code>max_age</code>, and less than or equal to <code>CurAge</code>. Use <code>NA</code> for unknown diagnosis age (but note this may affect analysis or require imputation).</p></li>
+<li><p><code>Geno</code>: An integer representing the germline genetic test result: <code>1</code> for carrier (positive), <code>0</code> for non-carrier (negative). Use <code>NA</code> for unknown or untested individuals.</p></li>
 </ul></dd>
 
 
 <dt id="arg-twins">twins<a class="anchor" aria-label="anchor" href="#arg-twins"></a></dt>
-<dd><p>A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: <code>twins &lt;- list(c("ora024", "ora027"), c("aey063", "aey064"))</code>.</p></dd>
+<dd><p>A list specifying identical twins or triplets in the family. Each element of the list should be a vector containing the <code>ID</code>s of the identical siblings within a pedigree. For example: <code>list(c("ID1", "ID2"), c("ID3", "ID4", "ID5"))</code>. Default is <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-n-chains">n_chains<a class="anchor" aria-label="anchor" href="#arg-n-chains"></a></dt>
@@ -143,7 +142,11 @@ chains and provides various options for analyzing and visualizing the results.</
 
 
 <dt id="arg-baseline-data">baseline_data<a class="anchor" aria-label="anchor" href="#arg-baseline-data"></a></dt>
-<dd><p>Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.</p></dd>
+<dd><p>Data providing the absolute age-specific baseline risk (probability) of developing the cancer in the general population (e.g., from SEER database).
+All probability values must be between 0 and 1.
+- If <code>sex_specific = TRUE</code> (default): A data frame with columns 'Male' and 'Female', where each column contains the age-specific probabilities for that sex. The number of rows should ideally correspond to <code>max_age</code>.
+- If <code>sex_specific = FALSE</code>: A numeric vector or a single-column data frame containing the age-specific probabilities for the combined population. The length (or number of rows) should ideally correspond to <code>max_age</code>.
+Default data is provided for Colorectal cancer from SEER (up to age 94). If the number of rows/length does not match <code>max_age</code>, the data will be truncated or extended with the last value.</p></dd>
 
 
 <dt id="arg-remove-proband">remove_proband<a class="anchor" aria-label="anchor" href="#arg-remove-proband"></a></dt>
@@ -301,7 +304,7 @@ chains and provides various options for analyzing and visualizing the results.</
 <span class="r-in"><span>  CurAge <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">70</span>, <span class="fl">68</span>, <span class="fl">45</span>, <span class="fl">42</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  isAff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  Age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">40</span>, <span class="cn">NA</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  geno <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">1</span>, <span class="cn">NA</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  Geno <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="fl">1</span>, <span class="cn">NA</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Basic usage with minimal iterations</span></span></span>
@@ -319,24 +322,24 @@ chains and provides various options for analyzing and visualizing the results.</
 <span class="r-in"><span>  plot_acf <span class="op">=</span> <span class="cn">FALSE</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Rejection rates:</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span>   Chain 1: 0.80</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   Chain 1: 0.70</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># View basic results</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">summary_stats</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Median_Male    Median_Female   Threshold_Male  Threshold_Female</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Min.   :39.96   Min.   :50.00   Min.   :34.89   Min.   :34.94   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1st Qu.:40.00   1st Qu.:50.00   1st Qu.:34.98   1st Qu.:35.00   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Median :40.00   Median :50.00   Median :35.00   Median :35.00   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Mean   :39.99   Mean   :50.05   Mean   :34.98   Mean   :34.99   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3rd Qu.:40.00   3rd Qu.:50.09   3rd Qu.:35.00   3rd Qu.:35.00   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Max.   :40.01   Max.   :50.17   Max.   :35.00   Max.   :35.00   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Min.   :39.83   Min.   :49.99   Min.   :34.91   Min.   :25.00   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1st Qu.:40.00   1st Qu.:49.99   1st Qu.:34.94   1st Qu.:25.00   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Median :40.00   Median :50.00   Median :35.00   Median :25.00   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Mean   :39.98   Mean   :50.00   Mean   :34.97   Mean   :25.05   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3rd Qu.:40.00   3rd Qu.:50.00   3rd Qu.:35.00   3rd Qu.:25.00   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Max.   :40.03   Max.   :50.00   Max.   :35.00   Max.   :25.29   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  First_Quartile_Male First_Quartile_Female Asymptote_Male   Asymptote_Female</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Min.   :38.98       Min.   :40.00         Min.   :0.5672   Min.   :0.7194  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1st Qu.:39.00       1st Qu.:40.00         1st Qu.:0.5672   1st Qu.:0.7194  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Median :39.00       Median :40.00         Median :0.5672   Median :0.7194  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Mean   :39.00       Mean   :40.04         Mean   :0.6365   Mean   :0.7616  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3rd Qu.:39.00       3rd Qu.:40.02         3rd Qu.:0.7380   3rd Qu.:0.8239  </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Max.   :39.02       Max.   :40.19         Max.   :0.7999   Max.   :0.8610  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Min.   :38.93       Min.   :32.50         Min.   :0.5139   Min.   :0.5571  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1st Qu.:39.00       1st Qu.:32.50         1st Qu.:0.5672   1st Qu.:0.7194  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Median :39.00       Median :32.50         Median :0.5672   Median :0.7194  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Mean   :39.02       Mean   :32.59         Mean   :0.5786   Mean   :0.7031  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3rd Qu.:39.00       3rd Qu.:32.63         3rd Qu.:0.5672   3rd Qu.:0.7194  </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  Max.   :39.14       Max.   :32.83         Max.   :0.6793   Max.   :0.7534  </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
