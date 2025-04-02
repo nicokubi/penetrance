@@ -4,23 +4,26 @@
 #' penetrance estimation of cancer risk. It utilizes parallel computing to run multiple
 #' chains and provides various options for analyzing and visualizing the results.
 #'
-#' @param pedigree A data frame containing the pedigree data in the required format. It should include the following columns:
-#'   - `PedigreeID`: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
-#'   - `ID`: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
-#'   - `Sex`: A numeric value where `0` indicates female and `1` indicates male. Unknown sex needs to be coded as `NA`. 
-#'   - `MotherID`: A numeric value representing the unique identifier for an individual's mother.
-#'   - `FatherID`: A numeric value representing the unique identifier for an individual's father.
-#'   - `isProband`: A numeric value where `1` indicates the individual is a proband and `0` otherwise.
-#'   - `CurAge`: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from `1` to `94`. Unknown ages can be left empty or coded as `NA`. 
-#'   - `isAff`: A numeric value indicating the affection status of cancer, with `1` for diagnosed individuals,
-#'     `0` for unaffected individuals, and `NA` for unknown status.
-#'   - `Age`: A numeric value indicating the age of cancer diagnosis, encoded as `NA` if the individual was not diagnosed. Allowed ages range from `1` to `94`. Unknown ages can be left empty or coded as `NA`. 
-#'   - `geno`: A column for germline testing or tumor marker testing results. Positive results should be coded as `1`, negative results as `0`, and unknown results as `NA` or left empty.
-#' @param twins A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: `twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))`.
+#' @param pedigree A list of data frames, where each data frame represents a single pedigree and contains the following columns:
+#'   - `PedigreeID`: A numeric or character identifier for the family/pedigree. Must be consistent for all members of the same family within a data frame.
+#'   - `ID`: A unique numeric or character identifier for each individual within their respective pedigree data frame.
+#'   - `Sex`: An integer representing biological sex: `0` for female, `1` for male. Use `NA` for unknown sex.
+#'   - `MotherID`: The `ID` of the individual's mother. Should correspond to an `ID` within the same pedigree data frame or be `NA` if the mother is not in the pedigree (founder).
+#'   - `FatherID`: The `ID` of the individual's father. Should correspond to an `ID` within the same pedigree data frame or be `NA` if the father is not in the pedigree (founder).
+#'   - `isProband`: An integer indicating if the individual is a proband: `1` for proband, `0` otherwise.
+#'   - `CurAge`: An integer representing the age of censoring. This is the current age if the individual is alive, or the age at death if deceased. Must be between `1` and `max_age`. Use `NA` for unknown ages (but note this may affect analysis or require imputation).
+#'   - `isAff`: An integer indicating the affection status for the cancer of interest: `1` if diagnosed, `0` if unaffected. Use `NA` for unknown status.
+#'   - `Age`: An integer representing the age at cancer diagnosis. Should be `NA` if `isAff` is `0` or `NA`. Must be between `1` and `max_age`, and less than or equal to `CurAge`. Use `NA` for unknown diagnosis age (but note this may affect analysis or require imputation).
+#'   - `Geno`: An integer representing the germline genetic test result: `1` for carrier (positive), `0` for non-carrier (negative). Use `NA` for unknown or untested individuals.
+#' @param twins A list specifying identical twins or triplets in the family. Each element of the list should be a vector containing the `ID`s of the identical siblings within a pedigree. For example: `list(c("ID1", "ID2"), c("ID3", "ID4", "ID5"))`. Default is `NULL`.
 #' @param n_chains Integer, the number of chains for parallel computation. Default is 1.
 #' @param n_iter_per_chain Integer, the number of iterations for each chain. Default is 10000.
 #' @param ncores Integer, the number of cores for parallel computation. Default is 6.
-#' @param baseline_data Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.
+#' @param baseline_data Data providing the absolute age-specific baseline risk (probability) of developing the cancer in the general population (e.g., from SEER database).
+#'                      All probability values must be between 0 and 1.
+#'                      - If `sex_specific = TRUE` (default): A data frame with columns 'Male' and 'Female', where each column contains the age-specific probabilities for that sex. The number of rows should ideally correspond to `max_age`.
+#'                      - If `sex_specific = FALSE`: A numeric vector or a single-column data frame containing the age-specific probabilities for the combined population. The length (or number of rows) should ideally correspond to `max_age`.
+#'                      Default data is provided for Colorectal cancer from SEER (up to age 94). If the number of rows/length does not match `max_age`, the data will be truncated or extended with the last value.
 #' @param max_age Integer, the maximum age considered for analysis. Default is 94.
 #' @param remove_proband Logical, indicating whether to remove probands from the analysis. Default is FALSE.
 #' @param age_imputation Logical, indicating whether to perform age imputation. Default is FALSE.
@@ -86,7 +89,7 @@
 #'   CurAge = c(70, 68, 45, 42),
 #'   isAff = c(0, 0, 1, 0),
 #'   Age = c(NA, NA, 40, NA),
-#'   geno = c(NA, NA, 1, NA)
+#'   Geno = c(NA, NA, 1, NA)
 #' )
 #' 
 #' # Basic usage with minimal iterations
@@ -143,81 +146,225 @@ penetrance <- function(pedigree,
   if (missing(pedigree) || !is.list(pedigree) || length(pedigree) == 0) {
     stop("Error: 'pedigree' parameter is missing or invalid. Please provide a non-empty list of pedigrees.")
   }
-
-  # Check max_age is valid
-  if (!is.numeric(max_age) || max_age <= 0 || max_age > 150) {
-    stop("Error: 'max_age' must be a positive number not exceeding 150.")
+  if (!all(sapply(pedigree, is.data.frame))) {
+      stop("Error: Each element in the 'pedigree' list must be a data frame.")
   }
 
-  # Check pedigree data structure and content for each pedigree in the list
-  required_columns <- c("PedigreeID", "ID", "Sex", "MotherID", "FatherID", "isProband", "CurAge", "isAff", "Age", "geno")
+  # Validate max_age
+  if (!is.numeric(max_age) || length(max_age) != 1 || max_age <= 0 || max_age > 150 || floor(max_age) != max_age) {
+    stop("Error: 'max_age' must be a single positive integer not exceeding 150.")
+  }
+
+  # Validate logical flags
+  logical_params <- list(remove_proband = remove_proband, age_imputation = age_imputation, 
+                         median_max = median_max, BaselineNC = BaselineNC, 
+                         summary_stats = summary_stats, rejection_rates = rejection_rates, 
+                         density_plots = density_plots, plot_trace = plot_trace, 
+                         penetrance_plot = penetrance_plot, penetrance_plot_pdf = penetrance_plot_pdf,
+                         plot_loglikelihood = plot_loglikelihood, plot_acf = plot_acf,
+                         sex_specific = sex_specific)
+  for (param_name in names(logical_params)) {
+    param_value <- logical_params[[param_name]]
+    if (!is.logical(param_value) || length(param_value) != 1 || is.na(param_value)) {
+      stop(paste("Error: '", param_name, "' must be a single TRUE or FALSE value.", sep=""))
+    }
+  }
+
+  # Validate other numeric/integer parameters
+  if (!is.numeric(n_chains) || length(n_chains) != 1 || n_chains <= 0 || floor(n_chains) != n_chains) {
+    stop("Error: 'n_chains' parameter must be a single positive integer.")
+  }
+  if (!is.numeric(n_iter_per_chain) || length(n_iter_per_chain) != 1 || n_iter_per_chain <= 0 || floor(n_iter_per_chain) != n_iter_per_chain) {
+    stop("Error: 'n_iter_per_chain' parameter must be a single positive integer.")
+  }
+  if (!is.numeric(ncores) || length(ncores) != 1 || ncores <= 0 || floor(ncores) != ncores) {
+    stop("Error: 'ncores' parameter must be a single positive integer.")
+  }
+   detected_cores <- parallel::detectCores()
+  if (n_chains > detected_cores) {
+    warning(paste("'n_chains' (", n_chains, ") exceeds the number of available CPU cores (", detected_cores, ").", sep=""))
+    # Consider stopping if n_chains > detected_cores, but warning allows override.
+    # stop("Error: 'n_chains' exceeds the number of available CPU cores.") 
+  }
+   if (ncores > detected_cores) {
+    warning(paste("'ncores' (", ncores, ") exceeds the number of available CPU cores (", detected_cores, "). Using ", detected_cores, " cores instead.", sep=""))
+    ncores <- detected_cores
+  }
+  if (!is.numeric(prev) || length(prev) != 1 || prev < 0 || prev > 1) {
+    stop("Error: 'prev' must be a single numeric value between 0 and 1.")
+  }
+  if (!is.numeric(burn_in) || length(burn_in) != 1 || burn_in < 0 || burn_in >= 1) {
+    stop("Error: 'burn_in' must be a single numeric value between 0 (inclusive) and 1 (exclusive).")
+  }
+  if (!is.numeric(thinning_factor) || length(thinning_factor) != 1 || thinning_factor <= 0 || floor(thinning_factor) != thinning_factor) {
+    stop("Error: 'thinning_factor' must be a single positive integer.")
+  }
+   if (age_imputation && (!is.numeric(imp_interval) || length(imp_interval) != 1 || imp_interval <= 0 || floor(imp_interval) != imp_interval)) {
+    stop("Error: 'imp_interval' must be a single positive integer when 'age_imputation' is TRUE.")
+  }
+  if (!is.numeric(probCI) || length(probCI) != 1 || probCI <= 0 || probCI >= 1) {
+    stop("Error: 'probCI' must be a single numeric value between 0 (exclusive) and 1 (exclusive).")
+  }
+
+  # Validate var length based on sex_specific
+  expected_var_length <- if (sex_specific) 8 else 4
+  if (!is.numeric(var) || length(var) != expected_var_length) {
+     stop(paste("Error: 'var' must be a numeric vector of length", expected_var_length, "when 'sex_specific' is", sex_specific))
+  }
+  if (any(var <= 0)) {
+     stop("Error: All values in 'var' (proposal variances) must be positive.")
+  }
+  
+  # Validate prior_params structure (basic check)
+  if (!missing(prior_params) && !is.list(prior_params)) {
+    stop("Error: 'prior_params' must be a list.")
+  }
+  # Add more specific checks for prior_params contents if needed, e.g. prior_params$shape, prior_params$scale
+
+  # Validate pedigree data structure and content for each pedigree in the list
+  required_columns <- c("PedigreeID", "ID", "Sex", "MotherID", "FatherID", "isProband", "CurAge", "isAff", "Age", "Geno")
   for (i in seq_along(pedigree)) {
-    if (!all(required_columns %in% colnames(pedigree[[i]]))) {
-      stop(paste("Error: Pedigree", i, "is missing one or more required columns."))
+    ped_df <- pedigree[[i]]
+    ped_id_for_error <- unique(ped_df$PedigreeID)[1] # Get a representative PedigreeID for error messages
+
+    if (!all(required_columns %in% colnames(ped_df))) {
+      missing_cols <- setdiff(required_columns, colnames(ped_df))
+      stop(paste("Error: Pedigree", ped_id_for_error, "(index", i, ") is missing required column(s):", paste(missing_cols, collapse=", ")))
     }
 
-    # Check for NA values in critical columns
-    critical_columns <- c("PedigreeID", "ID")
-    for (col in critical_columns) {
-      if (any(is.na(pedigree[[i]][[col]]))) {
-        stop(paste("Error: NA values found in the", col, "column of pedigree", i, ". Please check your data."))
+    # Check for NA/invalid values in critical columns
+    critical_id_columns <- c("PedigreeID", "ID")
+    for (col in critical_id_columns) {
+      if (any(is.na(ped_df[[col]]))) {
+        stop(paste("Error: NA values found in the '", col, "' column of pedigree ", ped_id_for_error, " (index ", i, ").", sep=""))
       }
     }
+     if (any(duplicated(ped_df$ID))) {
+         stop(paste("Error: Duplicated IDs found in pedigree ", ped_id_for_error, " (index ", i, "). IDs must be unique within a pedigree.", sep=""))
+     }
+
+    # Check Sex values
+    if (!all(ped_df$Sex %in% c(0, 1, NA))) {
+      stop(paste("Error: 'Sex' column in pedigree", ped_id_for_error, "(index", i, ") must only contain 0 (female), 1 (male), or NA (unknown)."))
+    }
+
+    # Check isProband values
+    if (!all(ped_df$isProband %in% c(0, 1, NA))) { # Allow NA for flexibility, though 0/1 is standard
+        stop(paste("Error: 'isProband' column in pedigree", ped_id_for_error, "(index", i, ") should only contain 0, 1, or NA."))
+    }
+     if (sum(ped_df$isProband == 1, na.rm = TRUE) == 0) {
+        warning(paste("Warning: No proband (isProband=1) found in pedigree", ped_id_for_error, "(index", i, ")."))
+    }
+
 
     # Check isAff values
-    if (!all(pedigree[[i]]$isAff %in% c(0, 1, NA))) {
-      stop(paste("Error: 'isAff' column in pedigree", i, "should only contain 0, 1, or NA."))
+    if (!all(ped_df$isAff %in% c(0, 1, NA))) {
+      stop(paste("Error: 'isAff' column in pedigree", ped_id_for_error, "(index", i, ") must only contain 0 (unaffected), 1 (affected), or NA (unknown)."))
     }
-  }
-  if (missing(n_chains) || !is.numeric(n_chains) || n_chains <= 0) {
-    stop("Error: 'n_chains' parameter is missing or invalid. Please specify a positive integer.")
-  }
-  if (missing(n_iter_per_chain) || !is.numeric(n_iter_per_chain) || n_iter_per_chain <= 0) {
-    stop("Error: 'n_iter_per_chain' parameter is missing or invalid. It must be a positive integer.")
-  }
-  if (n_chains > parallel::detectCores()) {
-    stop("Error: 'n_chains' exceeds the number of available CPU cores.")
-  }
-  if (prev < 0 || prev > 1) {
-    stop("Error: 'prev' must be between 0 and 1.")
+
+    # Check geno values
+    if (!all(ped_df$Geno %in% c(0, 1, NA))) {
+      stop(paste("Error: 'Geno' column in pedigree", ped_id_for_error, "(index", i, ") must only contain 0 (negative/non-carrier), 1 (positive/carrier), or NA (unknown)."))
+    }
+    
+    # Validate and attempt to coerce CurAge column to numeric
+    original_na_curage <- sum(is.na(ped_df$CurAge))
+    ped_df$CurAge <- suppressWarnings(as.numeric(as.character(ped_df$CurAge)))
+    # Round to nearest integer
+    ped_df$CurAge <- round(ped_df$CurAge)
+    new_na_curage <- sum(is.na(ped_df$CurAge))
+    if (new_na_curage > original_na_curage) {
+        warning(paste("Warning: Non-numeric values found in 'CurAge' for pedigree", ped_id_for_error, "(index", i, ") were coerced to NA."))
+    }
+    # Check CurAge values are integers within the valid range [1, max_age]
+    # Note: Rounding handles the integer requirement, just check the range.
+    invalid_curage <- !is.na(ped_df$CurAge) & (ped_df$CurAge < 1 | ped_df$CurAge > max_age)
+    if (any(invalid_curage)) {
+        stop(paste("Error: 'CurAge' in pedigree", ped_id_for_error, "(index", i, ") contains values outside the valid range [1, ", max_age, "] after rounding. Check individuals: ", paste(ped_df$ID[invalid_curage], collapse=", ")))
+    }
+    
+    # Validate and attempt to coerce Age column to numeric
+    original_na_age <- sum(is.na(ped_df$Age))
+    ped_df$Age <- suppressWarnings(as.numeric(as.character(ped_df$Age)))
+    # Round to nearest integer
+    ped_df$Age <- round(ped_df$Age)
+    new_na_age <- sum(is.na(ped_df$Age))
+     if (new_na_age > original_na_age) {
+        warning(paste("Warning: Non-numeric values found in 'Age' (diagnosis age) for pedigree", ped_id_for_error, "(index", i, ") were coerced to NA."))
+    }
+    # Check Age values are integers within the valid range [1, max_age]
+    # Note: Rounding handles the integer requirement, just check the range.
+    invalid_age <- !is.na(ped_df$Age) & (ped_df$Age < 1 | ped_df$Age > max_age)
+     if (any(invalid_age)) {
+        stop(paste("Error: 'Age' (age of diagnosis) in pedigree", ped_id_for_error, "(index", i, ") contains values outside the valid range [1, ", max_age, "] after rounding. Check individuals: ", paste(ped_df$ID[invalid_age], collapse=", ")))
+    }
+
+    # Check consistency between Age, CurAge, and isAff (using rounded numeric values)
+    # Note: Check if rounding causes Age > CurAge issues, although unlikely if original data was consistent.
+    age_inconsistency <- !is.na(ped_df$Age) & !is.na(ped_df$CurAge) & (ped_df$Age > ped_df$CurAge)
+     if (any(age_inconsistency)) {
+        # It might be worth warning instead of stopping if rounding caused this.
+        warning(paste("Warning: Age of diagnosis ('Age') may be greater than current age ('CurAge') after rounding for some individuals in pedigree", ped_id_for_error, "(index", i, "). Check individuals: ", paste(ped_df$ID[age_inconsistency], collapse=", ")))
+        # Alternatively, stop as before:
+        # stop(paste("Error: Age of diagnosis ('Age') is greater than current age ('CurAge') for some individuals in pedigree", ped_id_for_error, "(index", i, "). Check individuals: ", paste(ped_df$ID[age_inconsistency], collapse=", ")))
+    }
+    
+     # Check MotherID and FatherID correspond to IDs within the same pedigree (optional but good practice)
+    all_ids <- ped_df$ID
+    invalid_mother_ids <- !is.na(ped_df$MotherID) & !(ped_df$MotherID %in% all_ids)
+    invalid_father_ids <- !is.na(ped_df$FatherID) & !(ped_df$FatherID %in% all_ids)
+    if (any(invalid_mother_ids)) {
+       warning(paste("Warning: Some MotherIDs in pedigree", ped_id_for_error, "(index", i, ") do not correspond to existing IDs in the same pedigree. Ensure founders have NA parent IDs. Invalid MotherIDs for individuals:", paste(ped_df$ID[invalid_mother_ids], collapse=", ")))
+    }
+     if (any(invalid_father_ids)) {
+       warning(paste("Warning: Some FatherIDs in pedigree", ped_id_for_error, "(index", i, ") do not correspond to existing IDs in the same pedigree. Ensure founders have NA parent IDs. Invalid FatherIDs for individuals:", paste(ped_df$ID[invalid_father_ids], collapse=", ")))
+    }
+    
+    # Assign potentially modified ped_df back to the list to reflect numeric coercion
+    pedigree[[i]] <- ped_df 
   }
 
-  # Check the length of var based on sex_specific
-  if (sex_specific && length(var) != 8) {
-    stop("Error: When 'sex_specific' is TRUE, 'var' must have exactly 8 elements.")
-  } else if (!sex_specific && length(var) != 4) {
-    stop("Error: When 'sex_specific' is FALSE, 'var' must have exactly 4 elements.")
-  }
-
-  # Check baseline_data structure
+  # Validate baseline_data structure and values
   if (sex_specific) {
     if (!is.data.frame(baseline_data)) {
       stop("Error: 'baseline_data' must be a data frame when 'sex_specific' is TRUE.")
     }
-    if (ncol(baseline_data) != 3) {
-      stop("Error: 'baseline_data' must have 3 columns (Age, Female, Male) when 'sex_specific' is TRUE.")
+    required_bl_columns <- c("Male", "Female")
+    if (!all(required_bl_columns %in% colnames(baseline_data))) {
+      stop("Error: 'baseline_data' must have columns named 'Male' and 'Female' when 'sex_specific' is TRUE.")
     }
-    # Check if baseline_data matches max_age
-    if (nrow(baseline_data) < max_age) {
-      warning(paste("Baseline data has fewer rows (", nrow(baseline_data), ") than max_age (", max_age, "). The data will be extended.", sep=""))
-    } else if (nrow(baseline_data) > max_age) {
-      warning(paste("Baseline data has more rows (", nrow(baseline_data), ") than max_age (", max_age, "). The data will be truncated.", sep=""))
+     if (!all(sapply(baseline_data[, required_bl_columns], is.numeric))) {
+         stop("Error: 'Male' and 'Female' columns in 'baseline_data' must be numeric.")
+     }
+     if (any(baseline_data$Male < 0, na.rm = TRUE) || any(baseline_data$Male > 1, na.rm = TRUE) ||
+         any(baseline_data$Female < 0, na.rm = TRUE) || any(baseline_data$Female > 1, na.rm = TRUE)) {
+         stop("Error: Baseline probabilities in 'baseline_data' must be between 0 and 1.")
+     }
+    # Check if baseline_data matches max_age (warning handled below)
+    data_rows <- nrow(baseline_data)
+  } else { # Not sex_specific
+    if (is.data.frame(baseline_data)) {
+      if (ncol(baseline_data) != 1) {
+        stop("Error: When 'baseline_data' is a data frame and 'sex_specific' is FALSE, it must have exactly one column.")
+      }
+      bl_vector <- baseline_data[[1]]
+    } else if (is.vector(baseline_data) && is.numeric(baseline_data)) {
+      bl_vector <- baseline_data
+    } else {
+      stop("Error: 'baseline_data' must be a numeric vector or a single-column data frame when 'sex_specific' is FALSE.")
     }
-  } else {
-    if (!is.data.frame(baseline_data) && !is.vector(baseline_data)) {
-      stop("Error: 'baseline_data' must be either a data frame or a numeric vector when 'sex_specific' is FALSE.")
-    }
-    if (is.data.frame(baseline_data) && ncol(baseline_data) != 1) {
-      stop("Error: When 'baseline_data' is a data frame for non-sex-specific analysis, it must have 1 column.")
-    }
-    # Check length against max_age
-    data_length <- if(is.data.frame(baseline_data)) nrow(baseline_data) else length(baseline_data)
-    if (data_length < max_age) {
-      warning(paste("Baseline data has fewer elements (", data_length, ") than max_age (", max_age, "). The data will be extended.", sep=""))
-    } else if (data_length > max_age) {
-      warning(paste("Baseline data has more elements (", data_length, ") than max_age (", max_age, "). The data will be truncated.", sep=""))
-    }
+     if (any(bl_vector < 0, na.rm = TRUE) || any(bl_vector > 1, na.rm = TRUE)) {
+         stop("Error: Baseline probabilities in 'baseline_data' must be between 0 and 1.")
+     }
+    data_rows <- length(bl_vector)
   }
+  
+   # Common baseline_data row check and warning
+   if (data_rows < max_age) {
+      warning(paste("Baseline data has fewer entries (", data_rows, ") than max_age (", max_age, "). Data will be extended by repeating the last value.", sep=""))
+    } else if (data_rows > max_age) {
+      warning(paste("Baseline data has more entries (", data_rows, ") than max_age (", max_age, "). Data will be truncated to the first ", max_age, " entries.", sep=""))
+    }
 
   # Create the seeds for the individual chains
   seeds <- sample.int(1000, n_chains)
@@ -238,7 +385,7 @@ penetrance <- function(pedigree,
   cores <- parallel::detectCores()
 
   if (n_chains > cores) {
-    stop("Error: 'n_chains exceeds the number of available CPU cores.")
+    stop("Error: 'n_chains' exceeds the number of available CPU cores.")
   }
   cl <- parallel::makeCluster(n_chains)
 

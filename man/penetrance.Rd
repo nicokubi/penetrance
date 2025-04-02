@@ -41,22 +41,21 @@ penetrance(
 )
 }
 \arguments{
-\item{pedigree}{A data frame containing the pedigree data in the required format. It should include the following columns:
+\item{pedigree}{A list of data frames, where each data frame represents a single pedigree and contains the following columns:
 \itemize{
-\item \code{PedigreeID}: A numeric value representing the unique identifier for each family. There should be no duplicated entries.
-\item \code{ID}: A numeric value representing the unique identifier for each individual. There should be no duplicated entries.
-\item \code{Sex}: A numeric value where \code{0} indicates female and \code{1} indicates male. Unknown sex needs to be coded as \code{NA}.
-\item \code{MotherID}: A numeric value representing the unique identifier for an individual's mother.
-\item \code{FatherID}: A numeric value representing the unique identifier for an individual's father.
-\item \code{isProband}: A numeric value where \code{1} indicates the individual is a proband and \code{0} otherwise.
-\item \code{CurAge}: A numeric value indicating the age of censoring (current age if the person is alive or age at death if the person is deceased). Allowed ages range from \code{1} to \code{94}. Unknown ages can be left empty or coded as \code{NA}.
-\item \code{isAff}: A numeric value indicating the affection status of cancer, with \code{1} for diagnosed individuals,
-\code{0} for unaffected individuals, and \code{NA} for unknown status.
-\item \code{Age}: A numeric value indicating the age of cancer diagnosis, encoded as \code{NA} if the individual was not diagnosed. Allowed ages range from \code{1} to \code{94}. Unknown ages can be left empty or coded as \code{NA}.
-\item \code{geno}: A column for germline testing or tumor marker testing results. Positive results should be coded as \code{1}, negative results as \code{0}, and unknown results as \code{NA} or left empty.
+\item \code{PedigreeID}: A numeric or character identifier for the family/pedigree. Must be consistent for all members of the same family within a data frame.
+\item \code{ID}: A unique numeric or character identifier for each individual within their respective pedigree data frame.
+\item \code{Sex}: An integer representing biological sex: \code{0} for female, \code{1} for male. Use \code{NA} for unknown sex.
+\item \code{MotherID}: The \code{ID} of the individual's mother. Should correspond to an \code{ID} within the same pedigree data frame or be \code{NA} if the mother is not in the pedigree (founder).
+\item \code{FatherID}: The \code{ID} of the individual's father. Should correspond to an \code{ID} within the same pedigree data frame or be \code{NA} if the father is not in the pedigree (founder).
+\item \code{isProband}: An integer indicating if the individual is a proband: \code{1} for proband, \code{0} otherwise.
+\item \code{CurAge}: An integer representing the age of censoring. This is the current age if the individual is alive, or the age at death if deceased. Must be between \code{1} and \code{max_age}. Use \code{NA} for unknown ages (but note this may affect analysis or require imputation).
+\item \code{isAff}: An integer indicating the affection status for the cancer of interest: \code{1} if diagnosed, \code{0} if unaffected. Use \code{NA} for unknown status.
+\item \code{Age}: An integer representing the age at cancer diagnosis. Should be \code{NA} if \code{isAff} is \code{0} or \code{NA}. Must be between \code{1} and \code{max_age}, and less than or equal to \code{CurAge}. Use \code{NA} for unknown diagnosis age (but note this may affect analysis or require imputation).
+\item \code{Geno}: An integer representing the germline genetic test result: \code{1} for carrier (positive), \code{0} for non-carrier (negative). Use \code{NA} for unknown or untested individuals.
 }}
 
-\item{twins}{A list specifying identical twins or triplets in the family. For example, to indicate that "ora024" and "ora027" are identical twins, and "aey063" and "aey064" are identical twins, use the following format: \code{twins <- list(c("ora024", "ora027"), c("aey063", "aey064"))}.}
+\item{twins}{A list specifying identical twins or triplets in the family. Each element of the list should be a vector containing the \code{ID}s of the identical siblings within a pedigree. For example: \code{list(c("ID1", "ID2"), c("ID3", "ID4", "ID5"))}. Default is \code{NULL}.}
 
 \item{n_chains}{Integer, the number of chains for parallel computation. Default is 1.}
 
@@ -66,7 +65,11 @@ penetrance(
 
 \item{max_age}{Integer, the maximum age considered for analysis. Default is 94.}
 
-\item{baseline_data}{Data for the baseline risk estimates (probability of developing cancer), such as population-level risk from a cancer registry. Default data, for exemplary purposes, is for Colorectal cancer from the SEER database.}
+\item{baseline_data}{Data providing the absolute age-specific baseline risk (probability) of developing the cancer in the general population (e.g., from SEER database).
+All probability values must be between 0 and 1.
+- If \code{sex_specific = TRUE} (default): A data frame with columns 'Male' and 'Female', where each column contains the age-specific probabilities for that sex. The number of rows should ideally correspond to \code{max_age}.
+- If \code{sex_specific = FALSE}: A numeric vector or a single-column data frame containing the age-specific probabilities for the combined population. The length (or number of rows) should ideally correspond to \code{max_age}.
+Default data is provided for Colorectal cancer from SEER (up to age 94). If the number of rows/length does not match \code{max_age}, the data will be truncated or extended with the last value.}
 
 \item{remove_proband}{Logical, indicating whether to remove probands from the analysis. Default is FALSE.}
 
@@ -173,7 +176,7 @@ example_pedigree <- data.frame(
   CurAge = c(70, 68, 45, 42),
   isAff = c(0, 0, 1, 0),
   Age = c(NA, NA, 40, NA),
-  geno = c(NA, NA, 1, NA)
+  Geno = c(NA, NA, 1, NA)
 )
 
 # Basic usage with minimal iterations

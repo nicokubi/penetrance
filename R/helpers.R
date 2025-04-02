@@ -143,10 +143,12 @@ transformDF <- function(df) {
   })
   
   # Process 'geno' column, checking for both 'geno' and 'Geno'
-  if ("geno" %in% colnames(df)) {
-    df$geno <- ifelse(is.na(df$geno), "", ifelse(df$geno == 1, "1/2", ifelse(df$geno == 0, "1/1", df$geno)))
-  } else if ("Geno" %in% colnames(df)) {
+  if ("Geno" %in% colnames(df)) {
     df$geno <- ifelse(is.na(df$Geno), "", ifelse(df$Geno == 1, "1/2", ifelse(df$Geno == 0, "1/1", df$Geno)))
+  } else {
+    # Handle case where neither geno nor Geno column is present, maybe default or error
+    warning("Neither 'geno' nor 'Geno' column found in the input data frame. 'geno' column in output will be empty.")
+    df$geno <- ""
   }
   
   # Select only the necessary columns
